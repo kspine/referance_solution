@@ -55,12 +55,17 @@ void LeagueMember::InitAttributes(LegionUuid legion_uuid,unsigned nTitleid)
 void LeagueMember::leave()
 {
 	// 删除属性表
-
+	/*
 	std::string strsql = "DELETE FROM League_MemberAttribute WHERE legion_uuid='";
 	strsql += get_legion_uuid().str();
 	strsql += "';";
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_MemberAttribute",strsql);
+	*/
+	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	Poseidon::MongoDb::BsonBuilder query;
+	query.append_uuid(sslit("legion_uuid"), get_legion_uuid().get());
+	conn->execute_delete("League_MemberAttribute",query,true);
 
 }
 
