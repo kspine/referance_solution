@@ -94,8 +94,8 @@ namespace {
 		std::map<AccountUuid, TempAccountElement> temp_account_map;
 
 		LOG_EMPERY_CENTER_INFO("Loading accounts...");
-		conn->execute_sql("SELECT * FROM `Center_Account`");
-		while(conn->fetch_row()){
+		conn->execute_query("Center_Account", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_Account>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
@@ -105,8 +105,8 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loaded ", temp_account_map.size(), " account(s).");
 
 		LOG_EMPERY_CENTER_INFO("Loading account attributes...");
-		conn->execute_sql("SELECT * FROM `Center_AccountAttribute`");
-		while(conn->fetch_row()){
+		conn->execute_query("Center_AccountAttribute", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_AccountAttribute>();
 			obj->fetch(conn);
 			const auto account_uuid = AccountUuid(obj->unlocked_get_account_uuid());
@@ -142,16 +142,16 @@ namespace {
 
 #define RELOAD_PART_(sink_, table_)	\
 		{	\
-			std::ostringstream oss;	\
+			Poseidon::MongoDb::BsonBuilder query;	\
 			const auto account_uuid = obj->unlocked_get_account_uuid();	\
-			oss <<"SELECT * FROM `" #table_ "` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid);	\
+			query.append_uuid(sslit("account_uuid"), account_uuid);	\
 			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
 				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
 					auto obj = boost::make_shared<MongoDb:: table_ >();	\
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, oss.str());	\
+				}, #table_, std::move(query), 0, UINT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
 //=============================================================================
@@ -393,15 +393,15 @@ boost::shared_ptr<Account> AccountMap::forced_reload(AccountUuid account_uuid){
 
 	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Account>>>();
 	{
-		std::ostringstream oss;
-		oss <<"SELECT * FROM `Center_Account` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid.get());
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_uuid(sslit("account_uuid"), account_uuid.get());
 		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 				auto obj = boost::make_shared<MongoDb::Center_Account>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Account", oss.str());
+			}, "Center_Account", std::move(query), 0, UINT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){
@@ -451,16 +451,16 @@ boost::shared_ptr<Account> AccountMap::forced_reload_by_login_name(PlatformId pl
 
 	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Account>>>();
 	{
-		std::ostringstream oss;
-		oss <<"SELECT * FROM `Center_Account` WHERE `platform_id` = " <<platform_id
-		    <<" AND `login_name` = " <<Poseidon::MongoDb::StringEscaper(login_name);
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_unsigned(sslit("platform_id"), platform_id.get());
+		query.append_string(sslit("login_name"), login_name);
 		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 				auto obj = boost::make_shared<MongoDb::Center_Account>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Account", oss.str());
+			}, "Center_Account", std::move(query), 0, UINT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){
