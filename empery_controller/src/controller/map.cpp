@@ -38,8 +38,8 @@ namespace {
 	void invalidate_castle_aux(void *old_controller, MapObjectUuid map_object_uuid, Coord new_coord){
 		PROFILE_ME;
 
-		const auto delay = get_config<std::uint64_t>("mysql_synchronization_delay", 5000);
-		const auto retry_count = get_config<unsigned>("mysql_synchronization_retry_count", 12);
+		const auto delay = get_config<std::uint64_t>("mongodb_synchronization_delay", 5000);
+		const auto retry_count = get_config<unsigned>("mongodb_synchronization_retry_count", 12);
 
 		unsigned count = 0;
 		for(;;){

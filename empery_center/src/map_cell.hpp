@@ -9,7 +9,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_MapCell;
 	class Center_MapCellAttribute;
 	class Center_MapCellBuff;
@@ -30,12 +30,12 @@ public:
 	};
 
 private:
-	const boost::shared_ptr<MySql::Center_MapCell> m_obj;
+	const boost::shared_ptr<MongoDb::Center_MapCell> m_obj;
 
 	boost::container::flat_map<AttributeId,
-		boost::shared_ptr<MySql::Center_MapCellAttribute>> m_attributes;
+		boost::shared_ptr<MongoDb::Center_MapCellAttribute>> m_attributes;
 	boost::container::flat_map<BuffId,
-		boost::shared_ptr<MySql::Center_MapCellBuff>> m_buffs;
+		boost::shared_ptr<MongoDb::Center_MapCellBuff>> m_buffs;
 
 	// 非持久化数据。
 	double m_production_remainder = 0;
@@ -46,9 +46,9 @@ private:
 
 public:
 	explicit MapCell(Coord coord);
-	MapCell(boost::shared_ptr<MySql::Center_MapCell> obj,
-		const std::vector<boost::shared_ptr<MySql::Center_MapCellAttribute>> &attributes,
-		const std::vector<boost::shared_ptr<MySql::Center_MapCellBuff>> &buffs);
+	MapCell(boost::shared_ptr<MongoDb::Center_MapCell> obj,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapCellAttribute>> &attributes,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapCellBuff>> &buffs);
 	~MapCell();
 
 public:

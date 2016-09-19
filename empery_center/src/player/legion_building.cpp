@@ -1,7 +1,7 @@
 ﻿#include "../precompiled.hpp"
 #include "common.hpp"
 #include "../mmain.hpp"
-#include "../mysql/legion.hpp"
+#include "../mongodb/legion.hpp"
 #include "../msg/cs_legion_building.hpp"
 #include "../data/legion_building_config.hpp"
 #include "../account.hpp"
@@ -33,7 +33,7 @@
 #include "../attribute_ids.hpp"
 #include "../data/legion_corps_level.hpp"
 #include "../msg/sc_legion.hpp"
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 
 

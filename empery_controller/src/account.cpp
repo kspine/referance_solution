@@ -1,11 +1,11 @@
 #include "precompiled.hpp"
 #include "account.hpp"
-#include "../../empery_center/src/mysql/account.hpp"
+#include "../../empery_center/src/mongodb/account.hpp"
 #include "singletons/account_map.hpp"
 
 namespace EmperyController {
 
-Account::Account(boost::shared_ptr<EmperyCenter::MySql::Center_Account> obj)
+Account::Account(boost::shared_ptr<EmperyCenter::MongoDb::Center_Account> obj)
 	: m_obj(std::move(obj))
 {
 }

@@ -9,7 +9,7 @@
 
 namespace EmperyCenter
 {
-	namespace MySql
+	namespace MongoDb
 	{
 		class Center_Legion_Package_Pick_Share;
 	}
@@ -20,9 +20,9 @@ namespace EmperyCenter
 
 	struct LegionPackagePickShareMap
 	{
-		static void insert(const boost::shared_ptr<MySql::Center_Legion_Package_Pick_Share> &picks_share_);
+		static void insert(const boost::shared_ptr<MongoDb::Center_Legion_Package_Pick_Share> &picks_share_);
 
-		static void get_by_share_uuid(std::vector<boost::shared_ptr<MySql::Center_Legion_Package_Pick_Share>> &ret, AccountUuid account_uuid);
+		static void get_by_share_uuid(std::vector<boost::shared_ptr<MongoDb::Center_Legion_Package_Pick_Share>> &ret, AccountUuid account_uuid);
 
 		static bool check_share_package_status(LegionPackageShareUuid share_uuid, AccountUuid account_uuid);
 

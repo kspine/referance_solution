@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "resource_crate.hpp"
-#include "mysql/resource_crate.hpp"
+#include "mongodb/resource_crate.hpp"
 #include "singletons/world_map.hpp"
 #include "player_session.hpp"
 #include "cluster_session.hpp"
@@ -18,14 +18,14 @@ ResourceCrate::ResourceCrate(ResourceCrateUuid resource_crate_uuid, ResourceId r
 	Coord coord, std::uint64_t created_time, std::uint64_t expiry_time)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_ResourceCrate>(resource_crate_uuid.get(),
+			auto obj = boost::make_shared<MongoDb::Center_ResourceCrate>(resource_crate_uuid.get(),
 				resource_id.get(), amount_max, coord.x(), coord.y(), created_time, expiry_time, amount_max);
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-ResourceCrate::ResourceCrate(boost::shared_ptr<MySql::Center_ResourceCrate> obj)
+ResourceCrate::ResourceCrate(boost::shared_ptr<MongoDb::Center_ResourceCrate> obj)
 	: m_obj(std::move(obj))
 {
 }

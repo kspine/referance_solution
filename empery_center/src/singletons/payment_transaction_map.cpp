@@ -2,10 +2,10 @@
 #include "payment_transaction_map.hpp"
 #include "../mmain.hpp"
 #include <poseidon/multi_index_map.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/timer_daemon.hpp>
 #include "../payment_transaction.hpp"
-#include "../mysql/payment.hpp"
+#include "../mongodb/payment.hpp"
 #include "../string_utilities.hpp"
 
 namespace EmperyCenter {
@@ -66,17 +66,17 @@ namespace {
 	}
 
 	MODULE_RAII_PRIORITY(handles, 2000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		const auto payment_transaction_map = boost::make_shared<PaymentTransactionContainer>();
 		LOG_EMPERY_CENTER_INFO("Loading payment transactions...");
 		const auto utc_now = Poseidon::get_utc_time();
 		std::ostringstream oss;
-		oss <<"SELECT * FROM `Center_PaymentTransaction` WHERE `expiry_time` > " <<Poseidon::MySql::DateTimeFormatter(utc_now)
+		oss <<"SELECT * FROM `Center_PaymentTransaction` WHERE `expiry_time` > " <<Poseidon::MongoDb::DateTimeFormatter(utc_now)
 		    <<"  AND `cancelled` = 0";
 		conn->execute_sql(oss.str());
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_PaymentTransaction>();
+			auto obj = boost::make_shared<MongoDb::Center_PaymentTransaction>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			auto payment_transaction = boost::make_shared<PaymentTransaction>(std::move(obj));

@@ -5,11 +5,11 @@
 #include <poseidon/multi_index_map.hpp>
 #include <poseidon/job_promise.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/event_dispatcher.hpp>
 #include "../events/account.hpp"
 #include "../friend_box.hpp"
-#include "../mysql/friend.hpp"
+#include "../mongodb/friend.hpp"
 #include "account_map.hpp"
 #include "../account.hpp"
 
@@ -21,7 +21,7 @@ namespace {
 		std::uint64_t unload_time;
 
 		mutable boost::shared_ptr<const Poseidon::JobPromise> promise;
-		mutable boost::shared_ptr<std::vector<boost::shared_ptr<MySql::Center_Friend>>> sink;
+		mutable boost::shared_ptr<std::vector<boost::shared_ptr<MongoDb::Center_Friend>>> sink;
 
 		mutable boost::shared_ptr<FriendBox> friend_box;
 		mutable boost::shared_ptr<Poseidon::TimerItem> timer;
@@ -66,7 +66,7 @@ namespace {
 			}
 		}
 
-		Poseidon::MySqlDaemon::enqueue_for_deleting("Center_Friend",
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Friend",
 			"DELETE QUICK `f`.*"
 			"  FROM `Center_Friend` AS `f` "
 			"  WHERE `f`.`category` = 0");
@@ -118,12 +118,12 @@ boost::shared_ptr<FriendBox> FriendBoxMap::get(AccountUuid account_uuid){
 		boost::shared_ptr<const Poseidon::JobPromise> promise_tack;
 		do {
 			if(!it->promise){
-				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MySql::Center_Friend>>>();
+				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Friend>>>();
 				std::ostringstream oss;
-				oss <<"SELECT * FROM `Center_Friend` WHERE `account_uuid` = " <<Poseidon::MySql::UuidFormatter(account_uuid.get());
-				auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-					[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-						auto obj = boost::make_shared<MySql::Center_Friend>();
+				oss <<"SELECT * FROM `Center_Friend` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid.get());
+				auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+						auto obj = boost::make_shared<MongoDb::Center_Friend>();
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));

@@ -10,7 +10,7 @@
 namespace EmperyLeague {
 
 
-namespace MySql {
+namespace MongoDb {
 	class League_LeagueInviteJoin;
 }
 
@@ -19,15 +19,15 @@ class LeagueSession;
 
 struct LeagueInviteJoinMap {
 
-	static boost::shared_ptr<MySql::League_LeagueInviteJoin> find(LeagueUuid league_uuid,LegionUuid legion_uuid);
+	static boost::shared_ptr<MongoDb::League_LeagueInviteJoin> find(LeagueUuid league_uuid,LegionUuid legion_uuid);
 
-	static void get_by_invited_uuid(std::vector<boost::shared_ptr<MySql::League_LeagueInviteJoin>> &ret, LeagueUuid league_uuid);
+	static void get_by_invited_uuid(std::vector<boost::shared_ptr<MongoDb::League_LeagueInviteJoin>> &ret, LeagueUuid league_uuid);
 
-	static boost::shared_ptr<MySql::League_LeagueInviteJoin> find_inviteinfo_by_user(LeagueUuid league_uuid,LegionUuid legion_uuid);
+	static boost::shared_ptr<MongoDb::League_LeagueInviteJoin> find_inviteinfo_by_user(LeagueUuid league_uuid,LegionUuid legion_uuid);
 
 	static std::uint64_t get_apply_count(LegionUuid legion_uuid);
 
-	static void insert(const boost::shared_ptr<MySql::League_LeagueInviteJoin> &account);
+	static void insert(const boost::shared_ptr<MongoDb::League_LeagueInviteJoin> &account);
 	static void deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uuid,bool bAll = false);
 
 	static void deleteInfo_by_invited_uuid(LeagueUuid league_uuid);

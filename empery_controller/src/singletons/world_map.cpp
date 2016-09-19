@@ -3,10 +3,10 @@
 #include "../mmain.hpp"
 #include <poseidon/multi_index_map.hpp>
 #include <poseidon/job_promise.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include "../castle.hpp"
-#include "../../../empery_center/src/mysql/map_object.hpp"
+#include "../../../empery_center/src/mongodb/map_object.hpp"
 #include "../../../empery_center/src/map_object_type_ids.hpp"
 #include "../../../empery_center/src/msg/kill.hpp"
 #include "../controller_session.hpp"
@@ -72,16 +72,16 @@ namespace {
 	boost::weak_ptr<ControllerContainer> g_controller_map;
 
 	MODULE_RAII_PRIORITY(handles, 5300){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		const auto castle_map = boost::make_shared<CastleContainer>();
 		LOG_EMPERY_CONTROLLER_INFO("Loading castles...");
-		std::ostringstream oss;
-		oss <<"SELECT * FROM `Center_MapObject` WHERE `expiry_time` != '0000-00-00 00:00:00' AND "
-		    <<"  `map_object_type_id` = " <<EmperyCenter::MapObjectTypeIds::ID_CASTLE;
-		conn->execute_sql(oss.str());
-		while(conn->fetch_row()){
-			auto obj = boost::make_shared<EmperyCenter::MySql::Center_MapObject>();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$ne"), 0));
+		query.append_unsigned(sslit("map_object_type_id"), EmperyCenter::MapObjectTypeIds::ID_CASTLE.get());
+		conn->execute_query("Center_MapObject", std::move(query), 0, UINT32_MAX);
+		while(conn->fetch_next()){
+			auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_MapObject>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			auto castle = boost::make_shared<Castle>(std::move(obj));
@@ -142,19 +142,19 @@ boost::shared_ptr<Castle> WorldMap::forced_reload_castle(MapObjectUuid map_objec
 		return { };
 	}
 
-	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<EmperyCenter::MySql::Center_MapObject>>>();
+	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<EmperyCenter::MongoDb::Center_MapObject>>>();
 	{
-		std::ostringstream oss;
-		oss <<"SELECT * FROM `Center_MapObject` WHERE `expiry_time` != '0000-00-00 00:00:00' "
-		    <<"  AND `map_object_type_id` = " <<EmperyCenter::MapObjectTypeIds::ID_CASTLE
-		    <<"  AND `map_object_uuid` = " <<Poseidon::MySql::UuidFormatter(map_object_uuid.get());
-		const auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-			[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-				auto obj = boost::make_shared<EmperyCenter::MySql::Center_MapObject>();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$ne"), 0));
+		query.append_unsigned(sslit("map_object_type_id"), EmperyCenter::MapObjectTypeIds::ID_CASTLE.get());
+		query.append_uuid(sslit("map_object_uuid"), map_object_uuid.get());
+		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+				auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_MapObject>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_MapObject", oss.str());
+			}, "Center_MapObject", std::move(query), 0, UINT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){

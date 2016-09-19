@@ -11,7 +11,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_LegionBuilding;
 	class Center_LegionBuildingAttribute;
 }
@@ -25,15 +25,15 @@ public:
 		 LegionBuildingUuid legion_building_uuid,  LegionUuid legion_uuid,  MapObjectUuid map_object_uuid, std::uint64_t ntype);
 
 private:
-	const boost::shared_ptr<MySql::Center_LegionBuilding> m_obj;
+	const boost::shared_ptr<MongoDb::Center_LegionBuilding> m_obj;
 
 	boost::container::flat_map<LegionBuildingAttributeId,
-		boost::shared_ptr<MySql::Center_LegionBuildingAttribute>> m_attributes;
+		boost::shared_ptr<MongoDb::Center_LegionBuildingAttribute>> m_attributes;
 
 
 public:
-	LegionBuilding(boost::shared_ptr<MySql::Center_LegionBuilding> obj,
-		const std::vector<boost::shared_ptr<MySql::Center_LegionBuildingAttribute>> &attributes);
+	LegionBuilding(boost::shared_ptr<MongoDb::Center_LegionBuilding> obj,
+		const std::vector<boost::shared_ptr<MongoDb::Center_LegionBuildingAttribute>> &attributes);
 	~LegionBuilding();
 
 public:

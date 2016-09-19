@@ -11,7 +11,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_TaxRecord;
 }
 
@@ -29,11 +29,11 @@ public:
 private:
 	const AccountUuid m_account_uuid;
 
-	std::deque<boost::shared_ptr<MySql::Center_TaxRecord>> m_records;
+	std::deque<boost::shared_ptr<MongoDb::Center_TaxRecord>> m_records;
 
 public:
 	TaxRecordBox(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_TaxRecord>> &records);
+		const std::vector<boost::shared_ptr<MongoDb::Center_TaxRecord>> &records);
 	~TaxRecordBox();
 
 public:

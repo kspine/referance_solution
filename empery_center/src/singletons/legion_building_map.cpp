@@ -5,13 +5,13 @@
 #include "../account.hpp"
 #include "../string_utilities.hpp"
 #include "../msg/sc_legion_building.hpp"
-#include "../mysql/legion.hpp"
+#include "../mongodb/legion.hpp"
 #include "../attribute_ids.hpp"
 #include "../singletons/world_map.hpp"
 #include "../map_object.hpp"
 #include "../warehouse_building.hpp"
 #include <poseidon/multi_index_map.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/timer_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include <tuple>
@@ -46,19 +46,19 @@ namespace {
 	boost::shared_ptr<LegionBuildingContainer> g_building_map;
 
 	MODULE_RAII_PRIORITY(handles, 5000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		// Legion
 		struct TempLegionBuildingElement {
-			boost::shared_ptr<MySql::Center_LegionBuilding> obj;
-			std::vector<boost::shared_ptr<MySql::Center_LegionBuildingAttribute>> attributes;
+			boost::shared_ptr<MongoDb::Center_LegionBuilding> obj;
+			std::vector<boost::shared_ptr<MongoDb::Center_LegionBuildingAttribute>> attributes;
 		};
 		std::map<LegionBuildingUuid, TempLegionBuildingElement> temp_account_map;
 
 		LOG_EMPERY_CENTER_INFO("Loading Center_LegionBuilding...");
 		conn->execute_sql("SELECT * FROM `Center_LegionBuilding`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_LegionBuilding>();
+			auto obj = boost::make_shared<MongoDb::Center_LegionBuilding>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			const auto legion_building_uuid = LegionBuildingUuid(obj->get_legion_building_uuid());
@@ -69,7 +69,7 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loading LegionBuilding attributes...");
 		conn->execute_sql("SELECT * FROM `Center_LegionBuildingAttribute`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_LegionBuildingAttribute>();
+			auto obj = boost::make_shared<MongoDb::Center_LegionBuildingAttribute>();
 			obj->fetch(conn);
 			const auto legion_building_uuid = LegionBuildingUuid(obj->unlocked_get_legion_building_uuid());
 			const auto it = temp_account_map.find(legion_building_uuid);
@@ -88,7 +88,7 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loading LegionBuilding attributes...");
 		conn->execute_sql("SELECT * FROM `Center_WarehouseBuilding`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_WarehouseBuilding>();
+			auto obj = boost::make_shared<MongoDb::Center_WarehouseBuilding>();
 			obj->fetch(conn);
 			const auto legion_building_uuid = LegionBuildingUuid(obj->unlocked_get_legion_building_uuid());
 			const auto it = temp_account_map.find(legion_building_uuid);
@@ -265,7 +265,7 @@ void LegionBuildingMap::deleteInfo(LegionUuid legion_uuid,AccountUuid account_uu
 
 	LOG_EMPERY_CENTER_DEBUG("Reclaiming legion apply join map strsql = ", strsql);
 
-	Poseidon::MySqlDaemon::enqueue_for_batch_saving("Center_LegionBuilding",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_batch_saving("Center_LegionBuilding",strsql);
 
 	*/
 }
@@ -296,7 +296,7 @@ void LegionBuildingMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 	strsql += "';";
 
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("Center_LegionBuilding",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuilding",strsql);
 }
 
 void  LegionBuildingMap::find_by_type(std::vector<boost::shared_ptr<LegionBuilding>> &buildings,LegionUuid legion_uuid,std::uint64_t ntype)
@@ -394,7 +394,7 @@ void LegionBuildingMap::deleteInfo_by_legion_building_uuid(LegionBuildingUuid le
 		strsql += "';";
 
 
-		Poseidon::MySqlDaemon::enqueue_for_deleting("Center_LegionBuilding",strsql);
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuilding",strsql);
 	}
 }
 

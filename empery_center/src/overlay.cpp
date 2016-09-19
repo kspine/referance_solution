@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "overlay.hpp"
-#include "mysql/overlay.hpp"
+#include "mongodb/overlay.hpp"
 #include "singletons/world_map.hpp"
 #include "player_session.hpp"
 #include "msg/sc_map.hpp"
@@ -20,14 +20,14 @@ Overlay::Overlay(Coord cluster_coord, std::string overlay_group_name,
 	OverlayId overlay_id, ResourceId resource_id, std::uint64_t resource_amount)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_Overlay>(cluster_coord.x(), cluster_coord.y(), std::move(overlay_group_name),
+			auto obj = boost::make_shared<MongoDb::Center_Overlay>(cluster_coord.x(), cluster_coord.y(), std::move(overlay_group_name),
 				overlay_id.get(), resource_id.get(), resource_amount);
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-Overlay::Overlay(boost::shared_ptr<MySql::Center_Overlay> obj)
+Overlay::Overlay(boost::shared_ptr<MongoDb::Center_Overlay> obj)
 	: m_obj(std::move(obj))
 {
 }

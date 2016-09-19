@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "map_event_block.hpp"
-#include "mysql/map_event.hpp"
+#include "mongodb/map_event.hpp"
 #include "data/map_event.hpp"
 #include "data/map.hpp"
 #include "data/global.hpp"
@@ -22,7 +22,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_map_event_info(MapEventBlock::EventInfo &info, const boost::shared_ptr<MySql::Center_MapEvent> &obj){
+	void fill_map_event_info(MapEventBlock::EventInfo &info, const boost::shared_ptr<MongoDb::Center_MapEvent> &obj){
 		PROFILE_ME;
 
 		info.coord        = Coord(obj->get_x(), obj->get_y());
@@ -78,14 +78,14 @@ namespace {
 MapEventBlock::MapEventBlock(Coord block_coord)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_MapEventBlock>(block_coord.x(), block_coord.y(), 0);
+			auto obj = boost::make_shared<MongoDb::Center_MapEventBlock>(block_coord.x(), block_coord.y(), 0);
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-MapEventBlock::MapEventBlock(boost::shared_ptr<MySql::Center_MapEventBlock> obj,
-	const std::vector<boost::shared_ptr<MySql::Center_MapEvent>> &events)
+MapEventBlock::MapEventBlock(boost::shared_ptr<MongoDb::Center_MapEventBlock> obj,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapEvent>> &events)
 	: m_obj(std::move(obj))
 {
 	for(auto it = events.begin(); it != events.end(); ++it){
@@ -445,7 +445,7 @@ void MapEventBlock::insert(MapEventBlock::EventInfo info){
 		DEBUG_THROW(Exception, sslit("Map event exists"));
 	}
 
-	const auto obj = boost::make_shared<MySql::Center_MapEvent>(coord.x(), coord.y(),
+	const auto obj = boost::make_shared<MongoDb::Center_MapEvent>(coord.x(), coord.y(),
 		info.created_time, info.expiry_time, info.map_event_id.get());
 	obj->async_save(true);
 	it = m_events.emplace(coord, obj).first;

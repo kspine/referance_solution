@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "friend_box.hpp"
 #include "msg/sc_friend.hpp"
-#include "mysql/friend.hpp"
+#include "mongodb/friend.hpp"
 #include "singletons/player_session_map.hpp"
 #include "player_session.hpp"
 #include "singletons/account_map.hpp"
@@ -10,7 +10,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_friend_info(FriendBox::FriendInfo &info, const boost::shared_ptr<MySql::Center_Friend> &obj){
+	void fill_friend_info(FriendBox::FriendInfo &info, const boost::shared_ptr<MongoDb::Center_Friend> &obj){
 		PROFILE_ME;
 
 		info.friend_uuid  = AccountUuid(obj->unlocked_get_friend_uuid());
@@ -19,7 +19,7 @@ namespace {
 		info.updated_time = obj->get_updated_time();
 	}
 
-	void fill_friend_message(Msg::SC_FriendChanged &msg, const boost::shared_ptr<MySql::Center_Friend> &obj){
+	void fill_friend_message(Msg::SC_FriendChanged &msg, const boost::shared_ptr<MongoDb::Center_Friend> &obj){
 		PROFILE_ME;
 
 		msg.friend_uuid = obj->unlocked_get_friend_uuid().to_string();
@@ -29,7 +29,7 @@ namespace {
 }
 
 FriendBox::FriendBox(AccountUuid account_uuid,
-	const std::vector<boost::shared_ptr<MySql::Center_Friend>> &friends)
+	const std::vector<boost::shared_ptr<MongoDb::Center_Friend>> &friends)
 	: m_account_uuid(account_uuid)
 {
 	for(auto it = friends.begin(); it != friends.end(); ++it){
@@ -104,7 +104,7 @@ void FriendBox::set(FriendBox::FriendInfo info){
 	if(it == map.end()){
 		map.reserve(map.size() + 1);
 
-		boost::shared_ptr<MySql::Center_Friend> obj;
+		boost::shared_ptr<MongoDb::Center_Friend> obj;
 		for(auto cit = m_friends.begin(); cit != m_friends.end(); ++cit){
 			if(cit->first == category){
 				continue;
@@ -118,7 +118,7 @@ void FriendBox::set(FriendBox::FriendInfo info){
 			break;
 		}
 		if(!obj){
-			obj = boost::make_shared<MySql::Center_Friend>(get_account_uuid().get(), friend_uuid.get(),
+			obj = boost::make_shared<MongoDb::Center_Friend>(get_account_uuid().get(), friend_uuid.get(),
 				0, std::string(), 0);
 			obj->async_save(true);
 		}

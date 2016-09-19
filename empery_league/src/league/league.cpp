@@ -18,7 +18,7 @@
 #include "../data/global.hpp"
 #include <poseidon/async_job.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 
 namespace EmperyLeague {
 
@@ -469,9 +469,9 @@ LEAGUE_SERVLET(Msg::SL_ApplyJoinLeague, league_session, req){
 				else
 				{
 					// 添加到待审批的列表中
-					auto obj = boost::make_shared<MySql::League_LeagueApplyJoin>( legion_uuid.get(),league_uuid.get(),account_uuid.get(),utc_now);
+					auto obj = boost::make_shared<MongoDb::League_LeagueApplyJoin>( legion_uuid.get(),league_uuid.get(),account_uuid.get(),utc_now);
 					obj->enable_auto_saving();
-					auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
+					auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
 
 					LeagueApplyJoinMap::insert(obj);
 
@@ -679,9 +679,9 @@ LEAGUE_SERVLET(Msg::SL_LeagueInviteJoin, league_session, req){
 				{
 					const auto utc_now = Poseidon::get_utc_time();
 					// 添加到邀请列表中
-					auto obj = boost::make_shared<MySql::League_LeagueInviteJoin>( target_legion_uuid.get(),league_uuid.get(),AccountUuid(req.account_uuid).get(),utc_now);
+					auto obj = boost::make_shared<MongoDb::League_LeagueInviteJoin>( target_legion_uuid.get(),league_uuid.get(),AccountUuid(req.account_uuid).get(),utc_now);
 					obj->enable_auto_saving();
-					auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
+					auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
 
 					LeagueInviteJoinMap::insert(obj);
 

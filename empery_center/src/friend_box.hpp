@@ -11,7 +11,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_Friend;
 }
 
@@ -43,13 +43,13 @@ private:
 	const AccountUuid m_account_uuid;
 
 	boost::container::flat_map<Category,
-		boost::container::flat_map<AccountUuid, boost::shared_ptr<MySql::Center_Friend>>> m_friends;
+		boost::container::flat_map<AccountUuid, boost::shared_ptr<MongoDb::Center_Friend>>> m_friends;
 
 	boost::container::flat_map<Poseidon::Uuid, AsyncRequestResultControl> m_async_requests;
 
 public:
 	FriendBox(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_Friend>> &friends);
+		const std::vector<boost::shared_ptr<MongoDb::Center_Friend>> &friends);
 	~FriendBox();
 
 public:

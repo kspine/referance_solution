@@ -1,11 +1,11 @@
 #include "precompiled.hpp"
 #include "castle.hpp"
-#include "../../empery_center/src/mysql/map_object.hpp"
+#include "../../empery_center/src/mongodb/map_object.hpp"
 #include "singletons/world_map.hpp"
 
 namespace EmperyController {
 
-Castle::Castle(boost::shared_ptr<EmperyCenter::MySql::Center_MapObject> obj)
+Castle::Castle(boost::shared_ptr<EmperyCenter::MongoDb::Center_MapObject> obj)
 	: m_obj(std::move(obj))
 {
 }

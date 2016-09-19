@@ -13,7 +13,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_AuctionTransfer;
 }
 
@@ -45,16 +45,16 @@ private:
 	const AccountUuid m_account_uuid;
 
 	boost::container::flat_map<ItemId,
-		boost::shared_ptr<MySql::Center_AuctionTransfer>> m_items;
+		boost::shared_ptr<MongoDb::Center_AuctionTransfer>> m_items;
 	bool m_locked_by_transaction = false;
 
 	boost::container::flat_map<MapObjectUuid,
 		boost::container::flat_map<ItemId,
-			boost::shared_ptr<MySql::Center_AuctionTransfer>>> m_transfers;
+			boost::shared_ptr<MongoDb::Center_AuctionTransfer>>> m_transfers;
 
 public:
 	AuctionCenter(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_AuctionTransfer>> &items);
+		const std::vector<boost::shared_ptr<MongoDb::Center_AuctionTransfer>> &items);
 	~AuctionCenter();
 
 public:

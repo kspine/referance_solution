@@ -2,10 +2,10 @@
 #include "activation_code_map.hpp"
 #include "../mmain.hpp"
 #include <poseidon/multi_index_map.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/timer_daemon.hpp>
 #include "../activation_code.hpp"
-#include "../mysql/activation_code.hpp"
+#include "../mongodb/activation_code.hpp"
 #include "../string_utilities.hpp"
 
 namespace EmperyCenter {
@@ -59,16 +59,16 @@ namespace {
 	}
 
 	MODULE_RAII_PRIORITY(handles, 2000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		const auto activation_code_map = boost::make_shared<ActivationCodeContainer>();
 		LOG_EMPERY_CENTER_INFO("Loading activation codes...");
 		std::ostringstream oss;
 		const auto utc_now = Poseidon::get_utc_time();
-		oss <<"SELECT * FROM `Center_ActivationCode` WHERE `expiry_time` > " <<Poseidon::MySql::DateTimeFormatter(utc_now);
+		oss <<"SELECT * FROM `Center_ActivationCode` WHERE `expiry_time` > " <<Poseidon::MongoDb::DateTimeFormatter(utc_now);
 		conn->execute_sql(oss.str());
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_ActivationCode>();
+			auto obj = boost::make_shared<MongoDb::Center_ActivationCode>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			auto activation_code = boost::make_shared<ActivationCode>(std::move(obj));

@@ -10,7 +10,7 @@
 #include "id_types.hpp"
 
 namespace EmperyCenter {
-	namespace MySql {
+	namespace MongoDb {
 		class Center_Task;
 	}
 
@@ -46,14 +46,14 @@ namespace EmperyCenter {
 	private:
 		const AccountUuid m_account_uuid;
 
-		boost::shared_ptr<MySql::Center_Task> m_stamps;
+		boost::shared_ptr<MongoDb::Center_Task> m_stamps;
 
 		boost::container::flat_map<TaskId,
-			std::pair<boost::shared_ptr<MySql::Center_Task>, boost::shared_ptr<Progress>>> m_tasks;
+			std::pair<boost::shared_ptr<MongoDb::Center_Task>, boost::shared_ptr<Progress>>> m_tasks;
 
 	public:
 		TaskBox(AccountUuid account_uuid,
-			const std::vector<boost::shared_ptr<MySql::Center_Task>> &tasks);
+			const std::vector<boost::shared_ptr<MongoDb::Center_Task>> &tasks);
 		~TaskBox();
 
 	public:

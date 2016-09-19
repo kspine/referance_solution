@@ -1,7 +1,7 @@
 #include "../precompiled.hpp"
 #include "common.hpp"
 #include "../msg/ts_account.hpp"
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include "../events/account.hpp"
 #include "../transaction_element.hpp"
@@ -57,7 +57,7 @@ CONTROLLER_SERVLET(Msg::TS_AccountInvalidate, controller, req){
 
 	Poseidon::sync_raise_event(boost::make_shared<Events::AccountInvalidate>(account_uuid));
 
-	const auto promise = Poseidon::MySqlDaemon::enqueue_for_waiting_for_all_async_operations();
+	const auto promise = Poseidon::MongoDbDaemon::enqueue_for_waiting_for_all_async_operations();
 	Poseidon::JobDispatcher::yield(promise, true);
 
 	return Response();

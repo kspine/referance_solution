@@ -1,7 +1,7 @@
 #include "../precompiled.hpp"
 #include "common.hpp"
 #include "../msg/cs_legion.hpp"
-#include "../mysql/legion.hpp"
+#include "../mongodb/legion.hpp"
 #include "../msg/err_legion.hpp"
 #include "../legion.hpp"
 #include "../singletons/legion_map.hpp"
@@ -24,7 +24,7 @@
 #include "../singletons/player_session_map.hpp"
 #include "../singletons/legion_member_map.hpp"
 #include "../id_types.hpp"
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include "../legion_member.hpp"
 #include "../legion_member_attribute_ids.hpp"
 #include "../msg/sc_legion.hpp"
@@ -445,9 +445,9 @@ PLAYER_SERVLET(Msg::CS_ApplyJoinLegionMessage, account, session, req){
 				else
 				{
 					// 添加到待审批的列表中
-					auto obj = boost::make_shared<MySql::Center_LegionApplyJoin>( account_uuid.get(),LegionUuid(req.legion_uuid).get(),utc_now);
+					auto obj = boost::make_shared<MongoDb::Center_LegionApplyJoin>( account_uuid.get(),LegionUuid(req.legion_uuid).get(),utc_now);
 					obj->enable_auto_saving();
-					auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
+					auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
 
 					LegionApplyJoinMap::insert(obj);
 
@@ -742,9 +742,9 @@ PLAYER_SERVLET(Msg::CS_LegionInviteJoinReqMessage, account, session, req)
 
 							LOG_EMPERY_CENTER_DEBUG("CS_LegionInviteJoinReqMessage =============没邀请过,加入邀请列表 ",req.nick);
 							// 添加到邀请列表中
-							auto obj = boost::make_shared<MySql::Center_LegionInviteJoin>( LegionUuid(member->get_legion_uuid()).get(),account_uuid.get(),info->get_account_uuid().get(),utc_now);
+							auto obj = boost::make_shared<MongoDb::Center_LegionInviteJoin>( LegionUuid(member->get_legion_uuid()).get(),account_uuid.get(),info->get_account_uuid().get(),utc_now);
 							obj->enable_auto_saving();
-							auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
+							auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
 
 							LegionInviteJoinMap::insert(obj);
 
@@ -755,7 +755,7 @@ PLAYER_SERVLET(Msg::CS_LegionInviteJoinReqMessage, account, session, req)
 							if(target_session)
 							{
 								// 临时把邀请列表发送给用户
-								std::vector<boost::shared_ptr<MySql::Center_LegionInviteJoin>> invites;
+								std::vector<boost::shared_ptr<MongoDb::Center_LegionInviteJoin>> invites;
 								LegionInviteJoinMap::get_by_invited_uuid(invites, AccountUuid(info->get_account_uuid()));
 
 								Msg::SC_LegionInviteList msg;
@@ -811,9 +811,9 @@ PLAYER_SERVLET(Msg::CS_LegionInviteJoinReqMessage, account, session, req)
 
 						LOG_EMPERY_CENTER_DEBUG("CS_LegionInviteJoinReqMessage 没邀请过,加入邀请列表 ",req.nick);
 						// 添加到邀请列表中
-						auto obj = boost::make_shared<MySql::Center_LegionInviteJoin>( LegionUuid(member->get_legion_uuid()).get(),account_uuid.get(),InviteMember->get_account_uuid().get(),utc_now);
+						auto obj = boost::make_shared<MongoDb::Center_LegionInviteJoin>( LegionUuid(member->get_legion_uuid()).get(),account_uuid.get(),InviteMember->get_account_uuid().get(),utc_now);
 						obj->enable_auto_saving();
-						auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
+						auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
 
 						LegionInviteJoinMap::insert(obj);
 
@@ -824,7 +824,7 @@ PLAYER_SERVLET(Msg::CS_LegionInviteJoinReqMessage, account, session, req)
 						if(target_session)
 						{
 							// 临时把邀请列表发送给用户
-							std::vector<boost::shared_ptr<MySql::Center_LegionInviteJoin>> invites;
+							std::vector<boost::shared_ptr<MongoDb::Center_LegionInviteJoin>> invites;
 							LegionInviteJoinMap::get_by_invited_uuid(invites, InviteMember->get_account_uuid());
 
 							Msg::SC_LegionInviteList msg;
@@ -1703,7 +1703,7 @@ PLAYER_SERVLET(Msg::CS_GetLegionInviteListMessage, account, session, req)
 {
 	PROFILE_ME;
 	// 临时把邀请列表发送给用户
-	std::vector<boost::shared_ptr<MySql::Center_LegionInviteJoin>> invites;
+	std::vector<boost::shared_ptr<MongoDb::Center_LegionInviteJoin>> invites;
 	LegionInviteJoinMap::get_by_invited_uuid(invites, account->get_account_uuid());
 
 	Msg::SC_LegionInviteList msg;

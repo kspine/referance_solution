@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "map_cell.hpp"
 #include "map_object.hpp"
-#include "mysql/map_cell.hpp"
+#include "mongodb/map_cell.hpp"
 #include "singletons/world_map.hpp"
 #include "player_session.hpp"
 #include "cluster_session.hpp"
@@ -31,7 +31,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_buff_info(MapCell::BuffInfo &info, const boost::shared_ptr<MySql::Center_MapCellBuff> &obj){
+	void fill_buff_info(MapCell::BuffInfo &info, const boost::shared_ptr<MongoDb::Center_MapCellBuff> &obj){
 		PROFILE_ME;
 
 		info.buff_id    = BuffId(obj->get_buff_id());
@@ -44,16 +44,16 @@ namespace {
 MapCell::MapCell(Coord coord)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_MapCell>(coord.x(), coord.y(),
+			auto obj = boost::make_shared<MongoDb::Center_MapCell>(coord.x(), coord.y(),
 				Poseidon::Uuid(), false, 0, 0, 0, 0, Poseidon::Uuid(), Poseidon::Uuid(), 0);
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-MapCell::MapCell(boost::shared_ptr<MySql::Center_MapCell> obj,
-	const std::vector<boost::shared_ptr<MySql::Center_MapCellAttribute>> &attributes,
-	const std::vector<boost::shared_ptr<MySql::Center_MapCellBuff>> &buffs)
+MapCell::MapCell(boost::shared_ptr<MongoDb::Center_MapCell> obj,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapCellAttribute>> &attributes,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapCellBuff>> &buffs)
 	: m_obj(std::move(obj))
 {
 	for(auto it = attributes.begin(); it != attributes.end(); ++it){
@@ -417,7 +417,7 @@ void MapCell::set_attributes(const boost::container::flat_map<AttributeId, std::
 	for(auto it = modifiers.begin(); it != modifiers.end(); ++it){
 		const auto obj_it = m_attributes.find(it->first);
 		if(obj_it == m_attributes.end()){
-			auto obj = boost::make_shared<MySql::Center_MapCellAttribute>(m_obj->get_x(), m_obj->get_y(),
+			auto obj = boost::make_shared<MongoDb::Center_MapCellAttribute>(m_obj->get_x(), m_obj->get_y(),
 				it->first.get(), 0);
 			// obj->async_save(true);
 			obj->enable_auto_saving();
@@ -485,7 +485,7 @@ void MapCell::set_buff(BuffId buff_id, std::uint64_t time_begin, std::uint64_t d
 
 	auto it = m_buffs.find(buff_id);
 	if(it == m_buffs.end()){
-		auto obj = boost::make_shared<MySql::Center_MapCellBuff>(m_obj->get_x(), m_obj->get_y(),
+		auto obj = boost::make_shared<MongoDb::Center_MapCellBuff>(m_obj->get_x(), m_obj->get_y(),
 			buff_id.get(), 0, 0, 0);
 		obj->async_save(true);
 		it = m_buffs.emplace(buff_id, std::move(obj)).first;
@@ -508,7 +508,7 @@ void MapCell::accumulate_buff_hint(BuffId buff_id, std::uint64_t utc_now, std::u
 
 	auto it = m_buffs.find(buff_id);
 	if(it == m_buffs.end()){
-		auto obj = boost::make_shared<MySql::Center_MapCellBuff>(m_obj->get_x(), m_obj->get_y(),
+		auto obj = boost::make_shared<MongoDb::Center_MapCellBuff>(m_obj->get_x(), m_obj->get_y(),
 			buff_id.get(), 0, 0, 0);
 		obj->async_save(true);
 		it = m_buffs.emplace(buff_id, std::move(obj)).first;

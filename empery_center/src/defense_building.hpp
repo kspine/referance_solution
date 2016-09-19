@@ -7,7 +7,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_DefenseBuilding;
 }
 
@@ -23,7 +23,7 @@ public:
 	};
 
 private:
-	const boost::shared_ptr<MySql::Center_DefenseBuilding> m_defense_obj;
+	const boost::shared_ptr<MongoDb::Center_DefenseBuilding> m_defense_obj;
 
 	// 非持久化数据。
 	double m_self_healing_remainder = 0;
@@ -31,10 +31,10 @@ private:
 public:
 	DefenseBuilding(MapObjectUuid map_object_uuid, MapObjectTypeId map_object_type_id, AccountUuid owner_uuid,
 		MapObjectUuid parent_object_uuid, std::string name, Coord coord, std::uint64_t created_time);
-	DefenseBuilding(boost::shared_ptr<MySql::Center_MapObject> obj,
-		const std::vector<boost::shared_ptr<MySql::Center_MapObjectAttribute>> &attributes,
-		const std::vector<boost::shared_ptr<MySql::Center_MapObjectBuff>> &buffs,
-		const std::vector<boost::shared_ptr<MySql::Center_DefenseBuilding>> &defense_objs);
+	DefenseBuilding(boost::shared_ptr<MongoDb::Center_MapObject> obj,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> &attributes,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectBuff>> &buffs,
+		const std::vector<boost::shared_ptr<MongoDb::Center_DefenseBuilding>> &defense_objs);
 	~DefenseBuilding();
 
 protected:

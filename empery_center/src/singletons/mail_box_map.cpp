@@ -6,12 +6,12 @@
 #include <poseidon/multi_index_map.hpp>
 #include <poseidon/job_promise.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/event_dispatcher.hpp>
 #include "../events/account.hpp"
 #include "../mail_box.hpp"
 #include "../mail_data.hpp"
-#include "../mysql/mail.hpp"
+#include "../mongodb/mail.hpp"
 #include "account_map.hpp"
 #include "../account.hpp"
 
@@ -23,7 +23,7 @@ namespace {
 		std::uint64_t unload_time;
 
 		mutable boost::shared_ptr<const Poseidon::JobPromise> promise;
-		mutable boost::shared_ptr<std::vector<boost::shared_ptr<MySql::Center_Mail>>> sink;
+		mutable boost::shared_ptr<std::vector<boost::shared_ptr<MongoDb::Center_Mail>>> sink;
 
 		mutable boost::shared_ptr<MailBox> mail_box;
 		mutable boost::shared_ptr<Poseidon::TimerItem> timer;
@@ -46,9 +46,9 @@ namespace {
 		std::uint64_t unload_time;
 
 		mutable boost::shared_ptr<const Poseidon::JobPromise> promise;
-		mutable boost::shared_ptr<boost::container::flat_map<LanguageId, boost::shared_ptr<MySql::Center_MailData>>> sink;
+		mutable boost::shared_ptr<boost::container::flat_map<LanguageId, boost::shared_ptr<MongoDb::Center_MailData>>> sink;
 
-		mutable boost::shared_ptr<MySql::Center_MailData> mail_data_obj;
+		mutable boost::shared_ptr<MongoDb::Center_MailData> mail_data_obj;
 		mutable boost::shared_ptr<MailData> mail_data;
 
 		MailDataElement(MailUuid mail_uuid_, LanguageId language_id_, std::uint64_t unload_time_)
@@ -181,14 +181,14 @@ boost::shared_ptr<MailBox> MailBoxMap::get(AccountUuid account_uuid){
 		boost::shared_ptr<const Poseidon::JobPromise> promise_tack;
 		do {
 			if(!it->promise){
-				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MySql::Center_Mail>>>();
+				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Mail>>>();
 				std::ostringstream oss;
 				const auto utc_now = Poseidon::get_utc_time();
-				oss <<"SELECT * FROM `Center_Mail` WHERE `expiry_time` > " <<Poseidon::MySql::DateTimeFormatter(utc_now)
-				    <<"  AND `account_uuid` = " <<Poseidon::MySql::UuidFormatter(account_uuid.get());
-				auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-					[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-						auto obj = boost::make_shared<MySql::Center_Mail>();
+				oss <<"SELECT * FROM `Center_Mail` WHERE `expiry_time` > " <<Poseidon::MongoDb::DateTimeFormatter(utc_now)
+				    <<"  AND `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid.get());
+				auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+						auto obj = boost::make_shared<MongoDb::Center_Mail>();
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));
@@ -294,12 +294,12 @@ boost::shared_ptr<MailData> MailBoxMap::get_mail_data(MailUuid mail_uuid, Langua
 		LOG_EMPERY_CENTER_DEBUG("Loading mail data: mail_uuid = ", mail_uuid, ", language_id = ", language_id);
 
 		if(!it->promise){
-			auto sink = boost::make_shared<boost::container::flat_map<LanguageId, boost::shared_ptr<MySql::Center_MailData>>>();
+			auto sink = boost::make_shared<boost::container::flat_map<LanguageId, boost::shared_ptr<MongoDb::Center_MailData>>>();
 			std::ostringstream oss;
-			oss <<"SELECT * FROM `Center_MailData` WHERE `mail_uuid` = " <<Poseidon::MySql::UuidFormatter(mail_uuid.get());
-			auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-				[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-					auto obj = boost::make_shared<MySql::Center_MailData>();
+			oss <<"SELECT * FROM `Center_MailData` WHERE `mail_uuid` = " <<Poseidon::MongoDb::UuidFormatter(mail_uuid.get());
+			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+				[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+					auto obj = boost::make_shared<MongoDb::Center_MailData>();
 					obj->fetch(conn);
 					obj->enable_auto_saving();
 					const auto language_id = LanguageId(obj->get_language_id());
@@ -317,7 +317,7 @@ boost::shared_ptr<MailData> MailBoxMap::get_mail_data(MailUuid mail_uuid, Langua
 			mail_data_map->set_key<0, 1>(it, 0);
 			LOG_EMPERY_CENTER_DEBUG("Async MySQL query completed: mail_uuid = ", mail_uuid, ", rows = ", it->sink->size());
 
-			boost::shared_ptr<MySql::Center_MailData> obj;
+			boost::shared_ptr<MongoDb::Center_MailData> obj;
 			decltype(it->sink->cbegin()) sit;
 			if((sit = it->sink->find(language_id)) != it->sink->end()){
 				obj = sit->second;

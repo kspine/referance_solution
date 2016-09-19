@@ -2,7 +2,7 @@
 #include "legion_applyjoin_map.hpp"
 #include "../mmain.hpp"
 #include <poseidon/multi_index_map.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/timer_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include <tuple>
@@ -10,7 +10,7 @@
 #include "../account.hpp"
 #include "../string_utilities.hpp"
 #include "../msg/sc_legion.hpp"
-#include "../mysql/legion.hpp"
+#include "../mongodb/legion.hpp"
 #include "account_map.hpp"
 #include "../account_attribute_ids.hpp"
 #include "../singletons/world_map.hpp"
@@ -21,12 +21,12 @@ namespace EmperyCenter {
 
 namespace {
 	struct LegionElement {
-		boost::shared_ptr<MySql::Center_LegionApplyJoin> account;
+		boost::shared_ptr<MongoDb::Center_LegionApplyJoin> account;
 
 		LegionUuid legion_uuid;
 		AccountUuid account_uuid;
 
-		explicit LegionElement(boost::shared_ptr<MySql::Center_LegionApplyJoin> account_)
+		explicit LegionElement(boost::shared_ptr<MongoDb::Center_LegionApplyJoin> account_)
 			: account(std::move(account_))
 			, legion_uuid(account->get_legion_uuid())
 			, account_uuid(account->get_account_uuid())
@@ -42,18 +42,18 @@ namespace {
 	boost::shared_ptr<LegionContainer> g_applyjoin_map;
 
 	MODULE_RAII_PRIORITY(handles, 5000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		// Legion
 		struct TempLegionElement {
-			boost::shared_ptr<MySql::Center_LegionApplyJoin> obj;
+			boost::shared_ptr<MongoDb::Center_LegionApplyJoin> obj;
 		};
 		std::map<LegionUuid, TempLegionElement> temp_account_map;
 
 		LOG_EMPERY_CENTER_INFO("Loading Center_LegionApplyJoin...");
 		conn->execute_sql("SELECT * FROM `Center_LegionApplyJoin`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_LegionApplyJoin>();
+			auto obj = boost::make_shared<MongoDb::Center_LegionApplyJoin>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			const auto legion_uuid = LegionUuid(obj->get_legion_uuid());
@@ -73,7 +73,7 @@ namespace {
 }
 
 
-void LegionApplyJoinMap::insert(const boost::shared_ptr<MySql::Center_LegionApplyJoin> &legion){
+void LegionApplyJoinMap::insert(const boost::shared_ptr<MongoDb::Center_LegionApplyJoin> &legion){
 	PROFILE_ME;
 
 	const auto &legion_map = g_applyjoin_map;
@@ -94,7 +94,7 @@ void LegionApplyJoinMap::insert(const boost::shared_ptr<MySql::Center_LegionAppl
 }
 
 
-boost::shared_ptr<MySql::Center_LegionApplyJoin> LegionApplyJoinMap::find(AccountUuid account_uuid,LegionUuid legion_uuid)
+boost::shared_ptr<MongoDb::Center_LegionApplyJoin> LegionApplyJoinMap::find(AccountUuid account_uuid,LegionUuid legion_uuid)
 {
 	PROFILE_ME;
 	const auto &account_map = g_applyjoin_map;
@@ -223,7 +223,7 @@ void LegionApplyJoinMap::deleteInfo(LegionUuid legion_uuid,AccountUuid account_u
 
 	LOG_EMPERY_CENTER_DEBUG("Reclaiming legion apply join map strsql = ", strsql);
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("Center_LegionApplyJoin",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionApplyJoin",strsql);
 }
 
 void LegionApplyJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
@@ -249,7 +249,7 @@ void LegionApplyJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 	strsql += "';";
 
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("Center_LegionApplyJoin",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionApplyJoin",strsql);
 
 }
 

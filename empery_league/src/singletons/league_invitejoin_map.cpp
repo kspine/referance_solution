@@ -3,13 +3,13 @@
 #include "../mmain.hpp"
 #include "../../../empery_center/src/msg/ls_league.hpp"
 #include "../string_utilities.hpp"
-#include "../mysql/league.hpp"
+#include "../mongodb/league.hpp"
 #include "league_map.hpp"
 #include "../league_session.hpp"
 #include "../league_attribute_ids.hpp"
 #include "../league.hpp"
 #include <poseidon/multi_index_map.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/timer_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include <tuple>
@@ -19,13 +19,13 @@ namespace EmperyLeague {
 
 namespace {
 	struct LegionElement {
-		boost::shared_ptr<MySql::League_LeagueInviteJoin> account;
+		boost::shared_ptr<MongoDb::League_LeagueInviteJoin> account;
 
 		LegionUuid legion_uuid;
 		LeagueUuid league_uuid;
 		AccountUuid account_uuid;
 
-		explicit LegionElement(boost::shared_ptr<MySql::League_LeagueInviteJoin> account_)
+		explicit LegionElement(boost::shared_ptr<MongoDb::League_LeagueInviteJoin> account_)
 			: account(std::move(account_))
 			, legion_uuid(account->get_legion_uuid())
 			, league_uuid(account->get_league_uuid())
@@ -42,18 +42,18 @@ namespace {
 	boost::shared_ptr<LegionContainer> g_invitejoin_map;
 
 	MODULE_RAII_PRIORITY(handles, 5000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		// Legion
 		struct TempLegionElement {
-			boost::shared_ptr<MySql::League_LeagueInviteJoin> obj;
+			boost::shared_ptr<MongoDb::League_LeagueInviteJoin> obj;
 		};
 		std::map<LegionUuid, TempLegionElement> temp_account_map;
 
 		LOG_EMPERY_LEAGUE_INFO("Loading League_LeagueInviteJoin...");
 		conn->execute_sql("SELECT * FROM `League_LeagueInviteJoin`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::League_LeagueInviteJoin>();
+			auto obj = boost::make_shared<MongoDb::League_LeagueInviteJoin>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			const auto legion_uuid = LegionUuid(obj->get_legion_uuid());
@@ -73,7 +73,7 @@ namespace {
 }
 
 
-void LeagueInviteJoinMap::insert(const boost::shared_ptr<MySql::League_LeagueInviteJoin> &legion){
+void LeagueInviteJoinMap::insert(const boost::shared_ptr<MongoDb::League_LeagueInviteJoin> &legion){
 	PROFILE_ME;
 
 	const auto &legion_map = g_invitejoin_map;
@@ -94,7 +94,7 @@ void LeagueInviteJoinMap::insert(const boost::shared_ptr<MySql::League_LeagueInv
 }
 
 
-boost::shared_ptr<MySql::League_LeagueInviteJoin> LeagueInviteJoinMap::find(LeagueUuid league_uuid,LegionUuid legion_uuid)
+boost::shared_ptr<MongoDb::League_LeagueInviteJoin> LeagueInviteJoinMap::find(LeagueUuid league_uuid,LegionUuid legion_uuid)
 {
 	PROFILE_ME;
 	const auto &account_map = g_invitejoin_map;
@@ -116,7 +116,7 @@ boost::shared_ptr<MySql::League_LeagueInviteJoin> LeagueInviteJoinMap::find(Leag
 	return { };
 }
 
-void LeagueInviteJoinMap::get_by_invited_uuid(std::vector<boost::shared_ptr<MySql::League_LeagueInviteJoin>> &ret, LeagueUuid league_uuid)
+void LeagueInviteJoinMap::get_by_invited_uuid(std::vector<boost::shared_ptr<MongoDb::League_LeagueInviteJoin>> &ret, LeagueUuid league_uuid)
 {
 	PROFILE_ME;
 	const auto &account_map = g_invitejoin_map;
@@ -132,7 +132,7 @@ void LeagueInviteJoinMap::get_by_invited_uuid(std::vector<boost::shared_ptr<MySq
 	}
 }
 
-boost::shared_ptr<MySql::League_LeagueInviteJoin> LeagueInviteJoinMap::find_inviteinfo_by_user(LeagueUuid league_uuid,LegionUuid legion_uuid)
+boost::shared_ptr<MongoDb::League_LeagueInviteJoin> LeagueInviteJoinMap::find_inviteinfo_by_user(LeagueUuid league_uuid,LegionUuid legion_uuid)
 {
 	PROFILE_ME;
 
@@ -259,7 +259,7 @@ void LeagueInviteJoinMap::deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uu
 
 	LOG_EMPERY_LEAGUE_DEBUG("Reclaiming legion apply join map strsql = ", strsql);
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
 }
 
 void LeagueInviteJoinMap::deleteInfo_by_invited_uuid(LeagueUuid league_uuid)
@@ -282,7 +282,7 @@ void LeagueInviteJoinMap::deleteInfo_by_invited_uuid(LeagueUuid league_uuid)
 	strsql += league_uuid.str();
 	strsql += "';";
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
 }
 
 void LeagueInviteJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
@@ -305,7 +305,7 @@ void LeagueInviteJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 	strsql += legion_uuid.str();
 	strsql += "';";
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
 }
 
 void LeagueInviteJoinMap::deleteInfo_by_invitedres_uuid(LeagueUuid league_uuid,LegionUuid legion_uuid,bool bAll/* = false*/)
@@ -356,7 +356,7 @@ void LeagueInviteJoinMap::deleteInfo_by_invitedres_uuid(LeagueUuid league_uuid,L
 
 	LOG_EMPERY_LEAGUE_DEBUG("deleteInfo_by_invitedres_uuid strsql = ", strsql);
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
 }
 
 }

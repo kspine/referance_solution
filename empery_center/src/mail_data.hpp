@@ -11,7 +11,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_MailData;
 }
 
@@ -19,7 +19,7 @@ class PlayerSession;
 
 class MailData : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 private:
-	const boost::shared_ptr<MySql::Center_MailData> m_obj;
+	const boost::shared_ptr<MongoDb::Center_MailData> m_obj;
 
 	std::vector<std::pair<ChatMessageSlotId, std::string>> m_segments;
 	boost::container::flat_map<ItemId, std::uint64_t> m_attachments;
@@ -28,7 +28,7 @@ public:
 	MailData(MailUuid mail_uuid, LanguageId language_id, std::uint64_t created_time,
 		ChatMessageTypeId type, AccountUuid from_account_uuid, std::string subject,
 		std::vector<std::pair<ChatMessageSlotId, std::string>> segments, boost::container::flat_map<ItemId, std::uint64_t> attachments);
-	explicit MailData(boost::shared_ptr<MySql::Center_MailData> obj);
+	explicit MailData(boost::shared_ptr<MongoDb::Center_MailData> obj);
 	~MailData();
 
 public:

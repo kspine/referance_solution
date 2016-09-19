@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "tax_box.hpp"
-#include "mysql/tax_record.hpp"
+#include "mongodb/tax_record.hpp"
 #include "data/global.hpp"
 #include "msg/sc_tax.hpp"
 #include "singletons/player_session_map.hpp"
@@ -9,7 +9,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_record_info(TaxBox::RecordInfo &info, const boost::shared_ptr<MySql::Center_TaxRecord> &obj){
+	void fill_record_info(TaxBox::RecordInfo &info, const boost::shared_ptr<MongoDb::Center_TaxRecord> &obj){
 		PROFILE_ME;
 
 		info.auto_uuid         = obj->unlocked_get_auto_uuid();
@@ -22,7 +22,7 @@ namespace {
 }
 
 TaxBox::TaxBox(AccountUuid account_uuid,
-	const std::vector<boost::shared_ptr<MySql::Center_TaxRecord>> &records)
+	const std::vector<boost::shared_ptr<MongoDb::Center_TaxRecord>> &records)
 	: m_account_uuid(account_uuid)
 {
 	for(auto it = records.begin(); it != records.end(); ++it){
@@ -30,7 +30,7 @@ TaxBox::TaxBox(AccountUuid account_uuid,
 		m_records.emplace_back(record);
 	}
 	std::sort(m_records.begin(), m_records.end(),
-		[](const boost::shared_ptr<MySql::Center_TaxRecord> &lhs, const boost::shared_ptr<MySql::Center_TaxRecord> &rhs){
+		[](const boost::shared_ptr<MongoDb::Center_TaxRecord> &lhs, const boost::shared_ptr<MongoDb::Center_TaxRecord> &rhs){
 			return lhs->unlocked_get_auto_uuid() < rhs->unlocked_get_auto_uuid();
 		});
 }
@@ -72,7 +72,7 @@ void TaxBox::push(std::uint64_t timestamp, AccountUuid from_account_uuid,
 {
 	PROFILE_ME;
 
-	const auto obj = boost::make_shared<MySql::Center_TaxRecord>(Poseidon::Uuid::random(),
+	const auto obj = boost::make_shared<MongoDb::Center_TaxRecord>(Poseidon::Uuid::random(),
 		get_account_uuid().get(), timestamp, from_account_uuid.get(),
 		reason.get(), old_amount, new_amount, static_cast<std::int64_t>(new_amount - old_amount), false);
 	obj->enable_auto_saving(); // obj->async_save(true);

@@ -10,7 +10,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_CastleBuildingBase;
 	class Center_CastleResource;
 	class Center_CastleTech;
@@ -76,29 +76,29 @@ public:
 
 private:
 	boost::container::flat_map<BuildingBaseId,
-		boost::shared_ptr<MySql::Center_CastleBuildingBase>> m_buildings;
+		boost::shared_ptr<MongoDb::Center_CastleBuildingBase>> m_buildings;
 	boost::container::flat_map<TechId,
-		boost::shared_ptr<MySql::Center_CastleTech>> m_techs;
+		boost::shared_ptr<MongoDb::Center_CastleTech>> m_techs;
 
 	boost::container::flat_map<ResourceId,
-		boost::shared_ptr<MySql::Center_CastleResource>> m_resources;
+		boost::shared_ptr<MongoDb::Center_CastleResource>> m_resources;
 	bool m_locked_by_resource_transaction = false;
 
 	boost::container::flat_map<MapObjectTypeId,
-		boost::shared_ptr<MySql::Center_CastleBattalion>> m_soldiers;
+		boost::shared_ptr<MongoDb::Center_CastleBattalion>> m_soldiers;
 	bool m_locked_by_soldier_transaction = false;
 
-	boost::shared_ptr<MySql::Center_CastleBattalionProduction> m_population_production_stamps;
+	boost::shared_ptr<MongoDb::Center_CastleBattalionProduction> m_population_production_stamps;
 
 	boost::container::flat_map<BuildingBaseId,
-		boost::shared_ptr<MySql::Center_CastleBattalionProduction>> m_soldier_production;
+		boost::shared_ptr<MongoDb::Center_CastleBattalionProduction>> m_soldier_production;
 
 	boost::container::flat_map<MapObjectTypeId,
-		boost::shared_ptr<MySql::Center_CastleWoundedSoldier>> m_wounded_soldiers;
+		boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier>> m_wounded_soldiers;
 	bool m_locked_by_wounded_soldier_transaction = false;
 
 	boost::container::flat_map<MapObjectTypeId,
-		boost::shared_ptr<MySql::Center_CastleTreatment>> m_treatment;
+		boost::shared_ptr<MongoDb::Center_CastleTreatment>> m_treatment;
 
 	// 非持久化数据。
 	double m_population_production_remainder = 0;
@@ -108,17 +108,17 @@ private:
 public:
 	Castle(MapObjectUuid map_object_uuid, AccountUuid owner_uuid, MapObjectUuid parent_object_uuid,
 		std::string name, Coord coord, std::uint64_t created_time);
-	Castle(boost::shared_ptr<MySql::Center_MapObject> obj,
-		const std::vector<boost::shared_ptr<MySql::Center_MapObjectAttribute>> &attributes,
-		const std::vector<boost::shared_ptr<MySql::Center_MapObjectBuff>> &buffs,
-		const std::vector<boost::shared_ptr<MySql::Center_DefenseBuilding>> &defense_objs,
-		const std::vector<boost::shared_ptr<MySql::Center_CastleBuildingBase>> &buildings,
-		const std::vector<boost::shared_ptr<MySql::Center_CastleTech>> &techs,
-		const std::vector<boost::shared_ptr<MySql::Center_CastleResource>> &resources,
-		const std::vector<boost::shared_ptr<MySql::Center_CastleBattalion>> &soldiers,
-		const std::vector<boost::shared_ptr<MySql::Center_CastleBattalionProduction>> &soldier_production,
-		const std::vector<boost::shared_ptr<MySql::Center_CastleWoundedSoldier>> &wounded_soldiers,
-		const std::vector<boost::shared_ptr<MySql::Center_CastleTreatment>> &treatment);
+	Castle(boost::shared_ptr<MongoDb::Center_MapObject> obj,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> &attributes,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectBuff>> &buffs,
+		const std::vector<boost::shared_ptr<MongoDb::Center_DefenseBuilding>> &defense_objs,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleBuildingBase>> &buildings,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleTech>> &techs,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleResource>> &resources,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalion>> &soldiers,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalionProduction>> &soldier_production,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier>> &wounded_soldiers,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleTreatment>> &treatment);
 	~Castle();
 
 public:

@@ -2,7 +2,7 @@
 #include "auction_center.hpp"
 #include "flag_guard.hpp"
 #include "transaction_element.hpp"
-#include "mysql/auction.hpp"
+#include "mongodb/auction.hpp"
 #include "events/auction.hpp"
 #include "item_box.hpp"
 #include "castle.hpp"
@@ -21,13 +21,13 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_item_info(AuctionCenter::ItemInfo &info, const boost::shared_ptr<MySql::Center_AuctionTransfer> &obj){
+	void fill_item_info(AuctionCenter::ItemInfo &info, const boost::shared_ptr<MongoDb::Center_AuctionTransfer> &obj){
 		PROFILE_ME;
 
 		info.item_id = ItemId(obj->get_item_id());
 		info.count   = obj->get_item_count();
 	}
-	void fill_transfer_info(AuctionCenter::TransferInfo &info, const boost::shared_ptr<MySql::Center_AuctionTransfer> &obj){
+	void fill_transfer_info(AuctionCenter::TransferInfo &info, const boost::shared_ptr<MongoDb::Center_AuctionTransfer> &obj){
 		PROFILE_ME;
 
 		info.map_object_uuid        = MapObjectUuid(obj->unlocked_get_map_object_uuid());
@@ -42,14 +42,14 @@ namespace {
 		info.due_time               = obj->get_due_time();
 	}
 
-	void fill_item_message(Msg::SC_AuctionItemChanged &msg, const boost::shared_ptr<MySql::Center_AuctionTransfer> &obj){
+	void fill_item_message(Msg::SC_AuctionItemChanged &msg, const boost::shared_ptr<MongoDb::Center_AuctionTransfer> &obj){
 		PROFILE_ME;
 
 		msg.item_id = obj->get_item_id();
 		msg.count   = obj->get_item_count();
 	}
 	void fill_transfer_message(Msg::SC_AuctionTransferStatus &msg,
-		MapObjectUuid map_object_uuid, const boost::container::flat_map<ItemId, boost::shared_ptr<MySql::Center_AuctionTransfer>> &transfers,
+		MapObjectUuid map_object_uuid, const boost::container::flat_map<ItemId, boost::shared_ptr<MongoDb::Center_AuctionTransfer>> &transfers,
 		std::uint64_t utc_now)
 	{
 		PROFILE_ME;
@@ -68,7 +68,7 @@ namespace {
 	}
 
 	void check_transfer(const boost::shared_ptr<AuctionCenter> &auction_center,
-		MapObjectUuid map_object_uuid, boost::container::flat_map<ItemId, boost::shared_ptr<MySql::Center_AuctionTransfer>> &transfers,
+		MapObjectUuid map_object_uuid, boost::container::flat_map<ItemId, boost::shared_ptr<MongoDb::Center_AuctionTransfer>> &transfers,
 		std::uint64_t utc_now)
 	{
 		PROFILE_ME;
@@ -136,7 +136,7 @@ namespace {
 }
 
 AuctionCenter::AuctionCenter(AccountUuid account_uuid,
-	const std::vector<boost::shared_ptr<MySql::Center_AuctionTransfer>> &transfers)
+	const std::vector<boost::shared_ptr<MongoDb::Center_AuctionTransfer>> &transfers)
 	: m_account_uuid(account_uuid)
 {
 	for(auto it = transfers.begin(); it != transfers.end(); ++it){
@@ -194,7 +194,7 @@ ItemId AuctionCenter::commit_item_transaction_nothrow(const std::vector<AuctionT
 
 	std::vector<boost::shared_ptr<Poseidon::EventBaseWithoutId>> events;
 	events.reserve(transaction.size());
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_AuctionTransfer>, std::uint64_t /* new_count */> temp_result_map;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_AuctionTransfer>, std::uint64_t /* new_count */> temp_result_map;
 	temp_result_map.reserve(transaction.size());
 
 	const FlagGuard transaction_guard(m_locked_by_transaction);
@@ -223,7 +223,7 @@ ItemId AuctionCenter::commit_item_transaction_nothrow(const std::vector<AuctionT
 			{
 				auto it = m_items.find(item_id);
 				if(it == m_items.end()){
-					auto obj = boost::make_shared<MySql::Center_AuctionTransfer>(
+					auto obj = boost::make_shared<MongoDb::Center_AuctionTransfer>(
 						account_uuid.get(), Poseidon::Uuid(), item_id.get(), 0, 0, 0, 0, 0, 0, 0, 0);
 					obj->async_save(true);
 					it = m_items.emplace_hint(it, item_id, std::move(obj));
@@ -368,13 +368,13 @@ std::pair<ResourceId, ItemId> AuctionCenter::begin_transfer(const boost::shared_
 		DEBUG_THROW(Exception, sslit("Another auction transfer is in progress"));
 	}
 
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_AuctionTransfer>, TransferInfo> temp_result;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_AuctionTransfer>, TransferInfo> temp_result;
 	temp_result.reserve(items.size());
 	for(auto it = items.begin(); it != items.end(); ++it){
 		const auto item_id = it->first;
 		auto iit = transfers.find(item_id);
 		if(iit == transfers.end()){
-			auto obj = boost::make_shared<MySql::Center_AuctionTransfer>(
+			auto obj = boost::make_shared<MongoDb::Center_AuctionTransfer>(
 				account_uuid.get(), map_object_uuid.get(), item_id.get(), 0, 0, 0, 0, 0, 0, 0, 0);
 			obj->async_save(true);
 			iit = transfers.emplace(item_id, std::move(obj)).first;
@@ -494,7 +494,7 @@ ResourceId AuctionCenter::commit_transfer(const boost::shared_ptr<Castle> &castl
 	}
 	auto &transfers = tit->second;
 
-	std::vector<boost::shared_ptr<MySql::Center_AuctionTransfer>> temp_result;
+	std::vector<boost::shared_ptr<MongoDb::Center_AuctionTransfer>> temp_result;
 	temp_result.reserve(transfers.size());
 
 	std::vector<AuctionTransactionElement> auction_transaction;
@@ -578,7 +578,7 @@ void AuctionCenter::cancel_transfer(const boost::shared_ptr<Castle> &castle, con
 	}
 	auto &transfers = tit->second;
 
-	std::vector<boost::shared_ptr<MySql::Center_AuctionTransfer>> temp_result;
+	std::vector<boost::shared_ptr<MongoDb::Center_AuctionTransfer>> temp_result;
 	temp_result.reserve(transfers.size());
 
 	std::vector<ResourceTransactionElement> resource_transaction;

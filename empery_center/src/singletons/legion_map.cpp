@@ -2,13 +2,13 @@
 #include "legion_map.hpp"
 #include "../mmain.hpp"
 #include <poseidon/multi_index_map.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/timer_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include <poseidon/job_promise.hpp>
 #include <tuple>
 #include "player_session_map.hpp"
-#include "../mysql/legion.hpp"
+#include "../mongodb/legion.hpp"
 #include "../msg/cs_legion.hpp"
 #include "../player_session.hpp"
 #include "../events/account.hpp"
@@ -76,20 +76,20 @@ namespace {
 	boost::weak_ptr<InfoCacheContainer> g_info_cache_map;
 
 	MODULE_RAII_PRIORITY(handles, 5000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		// Legion
 		struct TempLegionElement {
-			boost::shared_ptr<MySql::Center_Legion> obj;
-			std::vector<boost::shared_ptr<MySql::Center_LegionAttribute>> attributes;
-			std::vector<boost::shared_ptr<MySql::Center_Legion_Member>> members;
+			boost::shared_ptr<MongoDb::Center_Legion> obj;
+			std::vector<boost::shared_ptr<MongoDb::Center_LegionAttribute>> attributes;
+			std::vector<boost::shared_ptr<MongoDb::Center_Legion_Member>> members;
 		};
 		std::map<LegionUuid, TempLegionElement> temp_account_map;
 
 		LOG_EMPERY_CENTER_INFO("Loading Legions...");
 		conn->execute_sql("SELECT * FROM `Center_Legion`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_Legion>();
+			auto obj = boost::make_shared<MongoDb::Center_Legion>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			const auto legion_uuid = LegionUuid(obj->get_legion_uuid());
@@ -100,7 +100,7 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loading Legion attributes...");
 		conn->execute_sql("SELECT * FROM `Center_LegionAttribute`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_LegionAttribute>();
+			auto obj = boost::make_shared<MongoDb::Center_LegionAttribute>();
 			obj->fetch(conn);
 			const auto legion_uuid = LegionUuid(obj->unlocked_get_legion_uuid());
 			const auto it = temp_account_map.find(legion_uuid);
@@ -117,7 +117,7 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loading Legion members...");
 		conn->execute_sql("SELECT * FROM `Center_Legion_Member`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_Legion_Member>();
+			auto obj = boost::make_shared<MongoDb::Center_Legion_Member>();
 			obj->fetch(conn);
 			const auto legion_uuid = LegionUuid(obj->unlocked_get_legion_uuid());
 			const auto it = temp_account_map.find(legion_uuid);
@@ -150,21 +150,21 @@ namespace {
 		handles.push(info_cache_map);
 	}
 
-	boost::shared_ptr<Legion> reload_account_aux(boost::shared_ptr<MySql::Center_Legion> obj){
+	boost::shared_ptr<Legion> reload_account_aux(boost::shared_ptr<MongoDb::Center_Legion> obj){
 		PROFILE_ME;
 
 		std::deque<boost::shared_ptr<const Poseidon::JobPromise>> promises;
 
-		const auto attributes = boost::make_shared<std::vector<boost::shared_ptr<MySql::Center_LegionAttribute>>>();
+		const auto attributes = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_LegionAttribute>>>();
 
 #define RELOAD_PART_(sink_, table_)	\
 		{	\
 			std::ostringstream oss;	\
 			const auto account_uuid = obj->unlocked_get_account_uuid();	\
-			oss <<"SELECT * FROM `" #table_ "` WHERE `account_uuid` = " <<Poseidon::MySql::UuidFormatter(account_uuid);	\
-			auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(	\
-				[sink_](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){	\
-					auto obj = boost::make_shared<MySql:: table_ >();	\
+			oss <<"SELECT * FROM `" #table_ "` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid);	\
+			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
+				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
+					auto obj = boost::make_shared<MongoDb:: table_ >();	\
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
@@ -417,13 +417,13 @@ boost::shared_ptr<Legion> LegionMap::forced_reload(LegionUuid account_uuid){
 		return { };
 	}
 
-	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MySql::Center_Legion>>>();
+	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Legion>>>();
 	{
 		std::ostringstream oss;
-		oss <<"SELECT * FROM `Center_Legion` WHERE `account_uuid` = " <<Poseidon::MySql::UuidFormatter(account_uuid.get());
-		const auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-			[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-				auto obj = boost::make_shared<MySql::Center_Legion>();
+		oss <<"SELECT * FROM `Center_Legion` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid.get());
+		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+				auto obj = boost::make_shared<MongoDb::Center_Legion>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
@@ -478,14 +478,14 @@ boost::shared_ptr<Legion> LegionMap::forced_reload_by_login_name(PlatformId plat
 		return { };
 	}
 
-	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MySql::Center_Legion>>>();
+	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Legion>>>();
 	{
 		std::ostringstream oss;
 		oss <<"SELECT * FROM `Center_Legion` WHERE `platform_id` = " <<platform_id
-		    <<" AND `login_name` = " <<Poseidon::MySql::StringEscaper(login_name);
-		const auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-			[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-				auto obj = boost::make_shared<MySql::Center_Legion>();
+		    <<" AND `login_name` = " <<Poseidon::MongoDb::StringEscaper(login_name);
+		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+				auto obj = boost::make_shared<MongoDb::Center_Legion>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
@@ -695,7 +695,7 @@ void LegionMap::deletelegion(LegionUuid legion_uuid)
 		strsql += "';";
 
 		LOG_EMPERY_CENTER_INFO("LegionMap::deletelegion==============================================",strsql);
-		Poseidon::MySqlDaemon::enqueue_for_deleting("Center_Legion",strsql);
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Legion",strsql);
 	}
 }
 

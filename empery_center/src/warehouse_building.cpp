@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "warehouse_building.hpp"
-#include "mysql/defense_building.hpp"
+#include "mongodb/defense_building.hpp"
 #include "msg/sc_map.hpp"
 #include "singletons/world_map.hpp"
 #include "singletons/player_session_map.hpp"
@@ -15,21 +15,21 @@
 #include "msg/sc_legion_building.hpp"
 #include "singletons/legion_building_map.hpp"
 #include "data/global.hpp"
-#include "mysql/map_object.hpp"
+#include "mongodb/map_object.hpp"
 
 namespace EmperyCenter {
 
 namespace {
-	boost::shared_ptr<MySql::Center_WarehouseBuilding> create_default_warehouse_obj(MapObjectUuid map_object_uuid,LegionUuid legion_uuid){
+	boost::shared_ptr<MongoDb::Center_WarehouseBuilding> create_default_warehouse_obj(MapObjectUuid map_object_uuid,LegionUuid legion_uuid){
 		PROFILE_ME;
 
-		auto obj = boost::make_shared<MySql::Center_WarehouseBuilding>(map_object_uuid.get(),legion_uuid.get(),
+		auto obj = boost::make_shared<MongoDb::Center_WarehouseBuilding>(map_object_uuid.get(),legion_uuid.get(),
 			0, WarehouseBuilding::MIS_NONE, 0, 0, 0, Poseidon::Uuid(), 0,0,0,0,0);
 		obj->async_save(true, true);
 		return obj;
 	}
 
-	bool check_defense_building_mission(const boost::shared_ptr<MySql::Center_WarehouseBuilding> &obj, std::uint64_t utc_now){
+	bool check_defense_building_mission(const boost::shared_ptr<MongoDb::Center_WarehouseBuilding> &obj, std::uint64_t utc_now){
 		PROFILE_ME;
 
 	//	LOG_EMPERY_CENTER_ERROR("WarehouseBuilding check_defense_building_mission*******************",utc_now);
@@ -145,10 +145,10 @@ WarehouseBuilding::WarehouseBuilding(MapObjectUuid map_object_uuid, MapObjectTyp
 	, m_defense_obj(create_default_warehouse_obj(map_object_uuid,legion_uuid))
 {
 }
-WarehouseBuilding::WarehouseBuilding(boost::shared_ptr<MySql::Center_MapObject> obj,
-	const std::vector<boost::shared_ptr<MySql::Center_MapObjectAttribute>> &attributes,
-	const std::vector<boost::shared_ptr<MySql::Center_MapObjectBuff>> &buffs,
-	const std::vector<boost::shared_ptr<MySql::Center_WarehouseBuilding>> &defense_objs)
+WarehouseBuilding::WarehouseBuilding(boost::shared_ptr<MongoDb::Center_MapObject> obj,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> &attributes,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectBuff>> &buffs,
+	const std::vector<boost::shared_ptr<MongoDb::Center_WarehouseBuilding>> &defense_objs)
 	: MapObject(std::move(obj), attributes, buffs)
 	, m_defense_obj(std::move(defense_objs.front()))
 {

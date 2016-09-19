@@ -3,7 +3,7 @@
 #include "flag_guard.hpp"
 #include "transaction_element.hpp"
 #include "msg/sc_item.hpp"
-#include "mysql/item.hpp"
+#include "mongodb/item.hpp"
 #include "singletons/player_session_map.hpp"
 #include "events/item.hpp"
 #include "player_session.hpp"
@@ -19,14 +19,14 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_item_info(ItemBox::ItemInfo &info, const boost::shared_ptr<MySql::Center_Item> &obj){
+	void fill_item_info(ItemBox::ItemInfo &info, const boost::shared_ptr<MongoDb::Center_Item> &obj){
 		PROFILE_ME;
 
 		info.item_id = ItemId(obj->get_item_id());
 		info.count   = obj->get_count();
 	}
 
-	void fill_item_message(Msg::SC_ItemChanged &msg, const boost::shared_ptr<MySql::Center_Item> &obj){
+	void fill_item_message(Msg::SC_ItemChanged &msg, const boost::shared_ptr<MongoDb::Center_Item> &obj){
 		PROFILE_ME;
 
 		msg.item_id = obj->get_item_id();
@@ -35,7 +35,7 @@ namespace {
 }
 
 ItemBox::ItemBox(AccountUuid account_uuid,
-	const std::vector<boost::shared_ptr<MySql::Center_Item>> &items)
+	const std::vector<boost::shared_ptr<MongoDb::Center_Item>> &items)
 	: m_account_uuid(account_uuid)
 {
 	for(auto it = items.begin(); it != items.end(); ++it){
@@ -81,13 +81,13 @@ void ItemBox::check_auto_inc_items(){
 	std::vector<ItemTransactionElement> transaction;
 	std::vector<boost::shared_ptr<const Data::Item>> items_to_check;
 	Data::Item::get_auto_inc(items_to_check);
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_Item>, std::uint64_t> new_timestamps;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_Item>, std::uint64_t> new_timestamps;
 	for(auto dit = items_to_check.begin(); dit != items_to_check.end(); ++dit){
 		const auto &item_data = *dit;
 		const auto item_id = item_data->item_id;
 		auto it = m_items.find(item_id);
 		if(it == m_items.end()){
-			auto obj = boost::make_shared<MySql::Center_Item>(get_account_uuid().get(), item_id.get(), 0, 0);
+			auto obj = boost::make_shared<MongoDb::Center_Item>(get_account_uuid().get(), item_id.get(), 0, 0);
 			obj->async_save(true);
 			it = m_items.emplace(item_id, std::move(obj)).first;
 		}
@@ -195,7 +195,7 @@ ItemId ItemBox::commit_transaction_nothrow(const std::vector<ItemTransactionElem
 
 	std::vector<boost::shared_ptr<Poseidon::EventBaseWithoutId>> events;
 	events.reserve(transaction.size());
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_Item>, std::uint64_t /* new_count */> temp_result_map;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_Item>, std::uint64_t /* new_count */> temp_result_map;
 	temp_result_map.reserve(transaction.size());
 	std::uint64_t taxing_amount = 0;
 
@@ -228,7 +228,7 @@ ItemId ItemBox::commit_transaction_nothrow(const std::vector<ItemTransactionElem
 			{
 				auto it = m_items.find(item_id);
 				if(it == m_items.end()){
-					auto obj = boost::make_shared<MySql::Center_Item>(account_uuid.get(), item_id.get(), 0, 0);
+					auto obj = boost::make_shared<MongoDb::Center_Item>(account_uuid.get(), item_id.get(), 0, 0);
 					obj->async_save(true);
 					it = m_items.emplace_hint(it, item_id, std::move(obj));
 				}

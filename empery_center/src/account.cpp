@@ -1,11 +1,11 @@
 #include "precompiled.hpp"
 #include "account.hpp"
 #include "mmain.hpp"
-#include "mysql/account.hpp"
+#include "mongodb/account.hpp"
 #include "singletons/account_map.hpp"
 #include "msg/sc_account.hpp"
 #include "player_session.hpp"
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 
 namespace EmperyCenter {
 
@@ -15,16 +15,16 @@ std::pair<boost::shared_ptr<const Poseidon::JobPromise>, boost::shared_ptr<Accou
 {
 	PROFILE_ME;
 
-	auto obj = boost::make_shared<MySql::Center_Account>(account_uuid.get(), platformId.get(), std::move(login_name),
+	auto obj = boost::make_shared<MongoDb::Center_Account>(account_uuid.get(), platformId.get(), std::move(login_name),
 		referrer_uuid.get(), promotion_level, created_time, std::move(nick), false, 0, 0);
 	obj->enable_auto_saving();
-	auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
-	auto account = boost::make_shared<Account>(std::move(obj), std::vector<boost::shared_ptr<MySql::Center_AccountAttribute>>());
+	auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
+	auto account = boost::make_shared<Account>(std::move(obj), std::vector<boost::shared_ptr<MongoDb::Center_AccountAttribute>>());
 	return std::make_pair(std::move(promise), std::move(account));
 }
 
-Account::Account(boost::shared_ptr<MySql::Center_Account> obj,
-	const std::vector<boost::shared_ptr<MySql::Center_AccountAttribute>> &attributes)
+Account::Account(boost::shared_ptr<MongoDb::Center_Account> obj,
+	const std::vector<boost::shared_ptr<MongoDb::Center_AccountAttribute>> &attributes)
 	: m_obj(std::move(obj))
 {
 	for(auto it = attributes.begin(); it != attributes.end(); ++it){
@@ -125,7 +125,7 @@ void Account::set_attributes(boost::container::flat_map<AccountAttributeId, std:
 	for(auto it = modifiers.begin(); it != modifiers.end(); ++it){
 		const auto obj_it = m_attributes.find(it->first);
 		if(obj_it == m_attributes.end()){
-			auto obj = boost::make_shared<MySql::Center_AccountAttribute>(m_obj->get_account_uuid(),
+			auto obj = boost::make_shared<MongoDb::Center_AccountAttribute>(m_obj->get_account_uuid(),
 				it->first.get(), std::string());
 			obj->async_save(true);
 			m_attributes.emplace(it->first, std::move(obj));

@@ -10,7 +10,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_AuctionTransaction;
 }
 
@@ -29,12 +29,12 @@ public:
 	static std::string random_serial();
 
 private:
-	const boost::shared_ptr<MySql::Center_AuctionTransaction> m_obj;
+	const boost::shared_ptr<MongoDb::Center_AuctionTransaction> m_obj;
 
 public:
 	AuctionTransaction(std::string serial, AccountUuid account_uuid, Operation operation,
 		std::uint64_t created_time, std::uint64_t expiry_time, ItemId item_id, std::uint64_t item_count, std::string remarks);
-	explicit AuctionTransaction(boost::shared_ptr<MySql::Center_AuctionTransaction> obj);
+	explicit AuctionTransaction(boost::shared_ptr<MongoDb::Center_AuctionTransaction> obj);
 	~AuctionTransaction();
 
 public:

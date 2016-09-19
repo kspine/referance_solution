@@ -2,11 +2,11 @@
 #include "account_map.hpp"
 #include <poseidon/multi_index_map.hpp>
 #include <poseidon/job_promise.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include "../account.hpp"
 #include "../controller_session.hpp"
-#include "../../../empery_center/src/mysql/account.hpp"
+#include "../../../empery_center/src/mongodb/account.hpp"
 #include "../string_utilities.hpp"
 
 namespace EmperyController {
@@ -36,13 +36,13 @@ namespace {
 	boost::shared_ptr<AccountContainer> g_account_map;
 
 	MODULE_RAII_PRIORITY(handles, 5000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		const auto account_map = boost::make_shared<AccountContainer>();
 		LOG_EMPERY_CONTROLLER_INFO("Loading accounts...");
-		conn->execute_sql("SELECT * FROM `Center_Account`");
-		while(conn->fetch_row()){
-			auto obj = boost::make_shared<EmperyCenter::MySql::Center_Account>();
+		conn->execute_query("Center_Account", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
+			auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_Account>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			auto account = boost::make_shared<Account>(std::move(obj));
@@ -99,17 +99,17 @@ boost::shared_ptr<Account> AccountMap::forced_reload(AccountUuid account_uuid){
 		return { };
 	}
 
-	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<EmperyCenter::MySql::Center_Account>>>();
+	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<EmperyCenter::MongoDb::Center_Account>>>();
 	{
-		std::ostringstream oss;
-		oss <<"SELECT * FROM `Center_Account` WHERE `account_uuid` = " <<Poseidon::MySql::UuidFormatter(account_uuid.get());
-		const auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-			[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-				auto obj = boost::make_shared<EmperyCenter::MySql::Center_Account>();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_uuid(sslit("account_uuid"), account_uuid.get());
+		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+				auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_Account>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Account", oss.str());
+			}, "Center_Account", std::move(query), 0, UINT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){
@@ -152,18 +152,18 @@ boost::shared_ptr<Account> AccountMap::get_or_reload_by_login_name(PlatformId pl
 	}
 	LOG_EMPERY_CONTROLLER_DEBUG("Login name not found. Reloading: platform_id = ", platform_id, ", login_name = ", login_name);
 
-	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<EmperyCenter::MySql::Center_Account>>>();
+	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<EmperyCenter::MongoDb::Center_Account>>>();
 	{
-		std::ostringstream oss;
-		oss <<"SELECT * FROM `Center_Account` WHERE `platform_id` = " <<platform_id
-		    <<" AND `login_name` = " <<Poseidon::MySql::StringEscaper(login_name);
-		const auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-			[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-				auto obj = boost::make_shared<EmperyCenter::MySql::Center_Account>();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_unsigned(sslit("platform_id"), platform_id.get());
+		query.append_string(sslit("login_name"), login_name);
+		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+				auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_Account>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Account", oss.str());
+			}, "Center_Account", std::move(query), 0, UINT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){

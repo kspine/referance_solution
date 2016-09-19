@@ -11,7 +11,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_HornMessage;
 }
 
@@ -19,7 +19,7 @@ class PlayerSession;
 
 class HornMessage : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 private:
-	const boost::shared_ptr<MySql::Center_HornMessage> m_obj;
+	const boost::shared_ptr<MongoDb::Center_HornMessage> m_obj;
 
 	std::vector<std::pair<ChatMessageSlotId, std::string>> m_segments;
 
@@ -27,7 +27,7 @@ public:
 	HornMessage(HornMessageUuid horn_message_uuid, ItemId item_id,
 		LanguageId language_id, std::uint64_t created_time, std::uint64_t expiry_time,
 		AccountUuid from_account_uuid, std::vector<std::pair<ChatMessageSlotId, std::string>> segments);
-	explicit HornMessage(boost::shared_ptr<MySql::Center_HornMessage> obj);
+	explicit HornMessage(boost::shared_ptr<MongoDb::Center_HornMessage> obj);
 	~HornMessage();
 
 public:

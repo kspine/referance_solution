@@ -5,11 +5,11 @@
 #include <poseidon/multi_index_map.hpp>
 #include <poseidon/job_promise.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/event_dispatcher.hpp>
 #include "../events/account.hpp"
 #include "../legion_task_box.hpp"
-#include "../mysql/task.hpp"
+#include "../mongodb/task.hpp"
 
 namespace EmperyCenter {
 
@@ -19,7 +19,7 @@ namespace {
 		std::uint64_t unload_time;
 
 		mutable boost::shared_ptr<const Poseidon::JobPromise> promise;
-		mutable boost::shared_ptr<std::vector<boost::shared_ptr<MySql::Center_LegionTask>>> sink;
+		mutable boost::shared_ptr<std::vector<boost::shared_ptr<MongoDb::Center_LegionTask>>> sink;
 
 		mutable boost::shared_ptr<LegionTaskBox> legion_task_box;
 		mutable boost::shared_ptr<Poseidon::TimerItem> timer;
@@ -96,12 +96,12 @@ boost::shared_ptr<LegionTaskBox> LegionTaskBoxMap::get(LegionUuid legion_uuid){
 		boost::shared_ptr<const Poseidon::JobPromise> promise_tack;
 		do {
 			if(!it->promise){
-				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MySql::Center_LegionTask>>>();
+				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_LegionTask>>>();
 				std::ostringstream oss;
-				oss <<"SELECT * FROM `Center_LegionTask` WHERE `legion_uuid` = " <<Poseidon::MySql::UuidFormatter(legion_uuid.get());
-				auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-					[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-						auto obj = boost::make_shared<MySql::Center_LegionTask>();
+				oss <<"SELECT * FROM `Center_LegionTask` WHERE `legion_uuid` = " <<Poseidon::MongoDb::UuidFormatter(legion_uuid.get());
+				auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+						auto obj = boost::make_shared<MongoDb::Center_LegionTask>();
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));

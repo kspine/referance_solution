@@ -10,7 +10,7 @@
 
 namespace EmperyLeague {
 
-namespace MySql {
+namespace MongoDb {
 	class League_Member;
 	class League_MemberAttribute;
 }
@@ -25,15 +25,15 @@ public:
 		LeagueUuid league_uuid,   LegionUuid legion_uuid,  std::uint64_t created_time);
 
 private:
-	const boost::shared_ptr<MySql::League_Member> m_obj;
+	const boost::shared_ptr<MongoDb::League_Member> m_obj;
 
 	boost::container::flat_map<LeagueMemberAttributeId,
-		boost::shared_ptr<MySql::League_MemberAttribute>> m_attributes;
+		boost::shared_ptr<MongoDb::League_MemberAttribute>> m_attributes;
 
 
 public:
-	LeagueMember(boost::shared_ptr<MySql::League_Member> obj,
-		const std::vector<boost::shared_ptr<MySql::League_MemberAttribute>> &attributes);
+	LeagueMember(boost::shared_ptr<MongoDb::League_Member> obj,
+		const std::vector<boost::shared_ptr<MongoDb::League_MemberAttribute>> &attributes);
 	~LeagueMember();
 
 public:

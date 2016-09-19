@@ -8,7 +8,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_Overlay;
 }
 
@@ -17,7 +17,7 @@ class PlayerSession;
 
 class Overlay : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 private:
-	const boost::shared_ptr<MySql::Center_Overlay> m_obj;
+	const boost::shared_ptr<MongoDb::Center_Overlay> m_obj;
 
 	// 非持久化数据。
 	double m_harvest_remainder = 0;
@@ -26,7 +26,7 @@ private:
 public:
 	Overlay(Coord cluster_coord, std::string overlay_group_name,
 		OverlayId overlay_id, ResourceId resource_id, std::uint64_t resource_amount);
-	explicit Overlay(boost::shared_ptr<MySql::Center_Overlay> obj);
+	explicit Overlay(boost::shared_ptr<MongoDb::Center_Overlay> obj);
 	~Overlay();
 
 public:

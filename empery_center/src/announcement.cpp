@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "announcement.hpp"
 #include <poseidon/json.hpp>
-#include "mysql/announcement.hpp"
+#include "mongodb/announcement.hpp"
 #include "player_session.hpp"
 #include "msg/sc_announcement.hpp"
 #include "singletons/announcement_map.hpp"
@@ -55,7 +55,7 @@ Announcement::Announcement(AnnouncementUuid announcement_uuid, LanguageId langua
 	ChatMessageTypeId type, std::vector<std::pair<ChatMessageSlotId, std::string>> segments)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_Announcement>(announcement_uuid.get(), language_id.get(), created_time,
+			auto obj = boost::make_shared<MongoDb::Center_Announcement>(announcement_uuid.get(), language_id.get(), created_time,
 				expiry_time, period, type.get(), encode_segments(segments));
 			obj->async_save(true, true);
 			return obj;
@@ -63,7 +63,7 @@ Announcement::Announcement(AnnouncementUuid announcement_uuid, LanguageId langua
 	, m_segments(std::move(segments))
 {
 }
-Announcement::Announcement(boost::shared_ptr<MySql::Center_Announcement> obj)
+Announcement::Announcement(boost::shared_ptr<MongoDb::Center_Announcement> obj)
 	: m_obj(std::move(obj))
 	, m_segments(decode_segments(m_obj->unlocked_get_segments()))
 {

@@ -10,7 +10,7 @@
 #include "data/global.hpp"
 #include "singletons/league_invitejoin_map.hpp"
 #include "singletons/league_applyjoin_map.hpp"
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 
 
@@ -22,15 +22,15 @@ std::pair<boost::shared_ptr<const Poseidon::JobPromise>, boost::shared_ptr<Leagu
 {
 	PROFILE_ME;
 
-	auto obj = boost::make_shared<MySql::League_Info>(league_uuid.get(), std::move(league_name),legion_uuid.get(),account_uuid.get(),created_time);
+	auto obj = boost::make_shared<MongoDb::League_Info>(league_uuid.get(), std::move(league_name),legion_uuid.get(),account_uuid.get(),created_time);
 	obj->enable_auto_saving();
-	auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
-	auto account = boost::make_shared<League>(std::move(obj), std::vector<boost::shared_ptr<MySql::League_LeagueAttribute>>());
+	auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
+	auto account = boost::make_shared<League>(std::move(obj), std::vector<boost::shared_ptr<MongoDb::League_LeagueAttribute>>());
 	return std::make_pair(std::move(promise), std::move(account));
 }
 
-League::League(boost::shared_ptr<MySql::League_Info> obj,
-	const std::vector<boost::shared_ptr<MySql::League_LeagueAttribute>> &attributes)
+League::League(boost::shared_ptr<MongoDb::League_Info> obj,
+	const std::vector<boost::shared_ptr<MongoDb::League_LeagueAttribute>> &attributes)
 	: m_obj(std::move(obj))
 {
 	for(auto it = attributes.begin(); it != attributes.end(); ++it){
@@ -86,7 +86,7 @@ void League::set_attributes(boost::container::flat_map<LeagueAttributeId, std::s
 	for(auto it = modifiers.begin(); it != modifiers.end(); ++it){
 		const auto obj_it = m_attributes.find(it->first);
 		if(obj_it == m_attributes.end()){
-			auto obj = boost::make_shared<MySql::League_LeagueAttribute>(m_obj->get_league_uuid(),
+			auto obj = boost::make_shared<MongoDb::League_LeagueAttribute>(m_obj->get_league_uuid(),
 				it->first.get(), std::string());
 			obj->async_save(true);
 			m_attributes.emplace(it->first, std::move(obj));
@@ -220,7 +220,7 @@ void League::disband()
 	strsql += get_league_uuid().str();
 	strsql += "';";
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("League_LeagueAttribute",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueAttribute",strsql);
 
 	// 联盟解散的成员的善后操作
 	LeagueMemberMap::disband_league(get_league_uuid());

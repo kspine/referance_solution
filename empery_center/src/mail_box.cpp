@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "mail_box.hpp"
 #include "msg/sc_mail.hpp"
-#include "mysql/mail.hpp"
+#include "mongodb/mail.hpp"
 #include "singletons/mail_box_map.hpp"
 #include "singletons/player_session_map.hpp"
 #include "player_session.hpp"
@@ -9,7 +9,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_mail_info(MailBox::MailInfo &info, const boost::shared_ptr<MySql::Center_Mail> &obj){
+	void fill_mail_info(MailBox::MailInfo &info, const boost::shared_ptr<MongoDb::Center_Mail> &obj){
 		PROFILE_ME;
 
 		info.mail_uuid           = MailUuid(obj->get_mail_uuid());
@@ -19,7 +19,7 @@ namespace {
 		info.attachments_fetched = obj->get_attachments_fetched();
 	}
 
-	void fill_mail_message(Msg::SC_MailChanged &msg, const boost::shared_ptr<MySql::Center_Mail> &obj, std::uint64_t utc_now){
+	void fill_mail_message(Msg::SC_MailChanged &msg, const boost::shared_ptr<MongoDb::Center_Mail> &obj, std::uint64_t utc_now){
 		PROFILE_ME;
 
 		enum {
@@ -46,7 +46,7 @@ namespace {
 }
 
 MailBox::MailBox(AccountUuid account_uuid,
-	const std::vector<boost::shared_ptr<MySql::Center_Mail>> &mails)
+	const std::vector<boost::shared_ptr<MongoDb::Center_Mail>> &mails)
 	: m_account_uuid(account_uuid)
 {
 	for(auto it = mails.begin(); it != mails.end(); ++it){
@@ -76,7 +76,7 @@ void MailBox::pump_status(){
 				continue;
 			}
 			LOG_EMPERY_CENTER_DEBUG("> Creating system mail: account_uuid = ", get_account_uuid(), ", mail_uuid = ", it->first);
-			auto obj = boost::make_shared<MySql::Center_Mail>(it->first.get(), get_account_uuid().get(),
+			auto obj = boost::make_shared<MongoDb::Center_Mail>(it->first.get(), get_account_uuid().get(),
 				src->get_expiry_time(), true, false, false);
 			obj->async_save(true);
 			m_mails.emplace(it->first, std::move(obj));
@@ -146,7 +146,7 @@ void MailBox::insert(MailBox::MailInfo info){
 
 	const auto utc_now = Poseidon::get_utc_time();
 
-	const auto obj = boost::make_shared<MySql::Center_Mail>(mail_uuid.get(), get_account_uuid().get(),
+	const auto obj = boost::make_shared<MongoDb::Center_Mail>(mail_uuid.get(), get_account_uuid().get(),
 		info.expiry_time, info.system, info.read, info.attachments_fetched);
 	obj->async_save(true);
 	m_mails.emplace(mail_uuid, obj);

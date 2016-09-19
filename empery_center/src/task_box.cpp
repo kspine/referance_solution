@@ -2,7 +2,7 @@
 #include "task_box.hpp"
 #include <poseidon/json.hpp>
 #include "msg/sc_task.hpp"
-#include "mysql/task.hpp"
+#include "mongodb/task.hpp"
 #include "singletons/player_session_map.hpp"
 #include "player_session.hpp"
 #include "data/task.hpp"
@@ -81,7 +81,7 @@ namespace EmperyCenter {
 			return true;
 		}
 
-		using TaskObjectPair = std::pair<boost::shared_ptr<MySql::Center_Task>, boost::shared_ptr<TaskBox::Progress>>;
+		using TaskObjectPair = std::pair<boost::shared_ptr<MongoDb::Center_Task>, boost::shared_ptr<TaskBox::Progress>>;
 
 		void fill_task_info(TaskBox::TaskInfo &info, const TaskObjectPair &pair) {
 			PROFILE_ME;
@@ -120,7 +120,7 @@ namespace EmperyCenter {
 	}
 
 	TaskBox::TaskBox(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_Task>> &tasks)
+		const std::vector<boost::shared_ptr<MongoDb::Center_Task>> &tasks)
 		: m_account_uuid(account_uuid)
 	{
 		for (auto it = tasks.begin(); it != tasks.end(); ++it) {
@@ -221,7 +221,7 @@ namespace EmperyCenter {
 
 		if (!m_stamps)
 		{
-			auto obj = boost::make_shared<MySql::Center_Task>(get_account_uuid().get(), 0, 0, 0, 0, std::string(), false);
+			auto obj = boost::make_shared<MongoDb::Center_Task>(get_account_uuid().get(), 0, 0, 0, 0, std::string(), false);
 			obj->async_save(true);
 			m_stamps = std::move(obj);
 		}
@@ -387,7 +387,7 @@ namespace EmperyCenter {
 
 		if (!m_stamps)
 		{
-			auto obj = boost::make_shared<MySql::Center_Task>(get_account_uuid().get(), 0, 0, 0, 0, "", false);
+			auto obj = boost::make_shared<MongoDb::Center_Task>(get_account_uuid().get(), 0, 0, 0, 0, "", false);
 			obj->async_save(true);
 			m_stamps = std::move(obj);
 		}
@@ -497,7 +497,7 @@ namespace EmperyCenter {
 
 			if (!m_stamps)
 			{
-				auto obj = boost::make_shared<MySql::Center_Task>(get_account_uuid().get(), 0, 0, 0, 0, "", false);
+				auto obj = boost::make_shared<MongoDb::Center_Task>(get_account_uuid().get(), 0, 0, 0, 0, "", false);
 				obj->async_save(true);
 				m_stamps = std::move(obj);
 			}
@@ -719,7 +719,7 @@ namespace EmperyCenter {
 		if (info.progress) {
 			*progress = *info.progress;
 		}
-		const auto obj = boost::make_shared<MySql::Center_Task>(get_account_uuid().get(), task_id.get(),
+		const auto obj = boost::make_shared<MongoDb::Center_Task>(get_account_uuid().get(), task_id.get(),
 			info.category, info.created_time, info.expiry_time, encode_progress(*progress), info.rewarded);
 		obj->async_save(true);
 		it = m_tasks.emplace(task_id, std::make_pair(obj, progress)).first;

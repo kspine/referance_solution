@@ -12,7 +12,7 @@
 namespace EmperyCenter {
 
 
-namespace MySql {
+namespace MongoDb {
 	class Center_LegionBuilding;
 }
 

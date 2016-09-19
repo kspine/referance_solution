@@ -35,11 +35,11 @@
 #include "../data/task.hpp"
 #include "../data/legion_corps_level.hpp"
 
-#include "../mysql/legion.hpp"
+#include "../mongodb/legion.hpp"
 
 #include "../cluster/utilsplit.hpp"
 
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 
 namespace EmperyCenter
 {
@@ -75,7 +75,7 @@ namespace EmperyCenter
 		// 回复分享信息
 		const auto item_box = ItemBoxMap::require(account_uuid);
 
-		std::vector<boost::shared_ptr<MySql::Center_Legion_Package_Share>> shares;
+		std::vector<boost::shared_ptr<MongoDb::Center_Legion_Package_Share>> shares;
 		LegionPackageShareMap::get_by_legion_uuid(shares, member->get_legion_uuid());
 
 		Msg::SC_GetSharePackageInfoReqMessage msg;
@@ -161,7 +161,7 @@ namespace EmperyCenter
 		count = 0;
 
 		// 回复分享礼包领取信息
-		std::vector<boost::shared_ptr<MySql::Center_Legion_Package_Pick_Share>>
+		std::vector<boost::shared_ptr<MongoDb::Center_Legion_Package_Pick_Share>>
 			picks_share;
 		LegionPackagePickShareMap::get_by_share_uuid(picks_share, account_uuid);
 
@@ -305,14 +305,14 @@ namespace EmperyCenter
 
 		auto share_uuid = LegionPackageShareUuid(Poseidon::Uuid::random());
 
-		auto obj_share = boost::make_shared<MySql::Center_Legion_Package_Share>(
+		auto obj_share = boost::make_shared<MongoDb::Center_Legion_Package_Share>(
 			share_uuid.get(), member->get_legion_uuid().get(), account_uuid.get(),
 			task_id, task_package_item_id, share_package_item_id, share_package_time,
 			share_package_expire_time);
 
 		obj_share->enable_auto_saving();
 
-		Poseidon::MySqlDaemon::enqueue_for_saving(obj_share, false, true);
+		Poseidon::MongoDbDaemon::enqueue_for_saving(obj_share, false, true);
 
 		LegionPackageShareMap::insert(obj_share);
 
@@ -509,13 +509,13 @@ namespace EmperyCenter
 		// =============接收者领取分享礼包流程{记录军团分享礼包领取记录:开始} ");
 
 		auto share_package_pick_time = Poseidon::get_utc_time();
-		auto obj = boost::make_shared<MySql::Center_Legion_Package_Pick_Share>(
+		auto obj = boost::make_shared<MongoDb::Center_Legion_Package_Pick_Share>(
 			unique_share_uuid.get(), unique_account_uuid.get(),
 			(uint64_t)EPickShareStatus_Received, share_package_pick_time);
 
 		obj->enable_auto_saving();
 
-		Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
+		Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
 
 		LegionPackagePickShareMap::insert(obj);
 
@@ -635,7 +635,7 @@ namespace EmperyCenter
 
 		auto utc_time = Poseidon::get_utc_time();
 
-		std::vector<boost::shared_ptr<MySql::Center_Legion_Package_Share>> shares;
+		std::vector<boost::shared_ptr<MongoDb::Center_Legion_Package_Share>> shares;
 		LegionPackageShareMap::get_by_legion_uuid(shares, member->get_legion_uuid());
 		for (auto it = shares.begin(); it != shares.end(); ++it)
 		{

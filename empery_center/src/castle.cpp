@@ -4,7 +4,7 @@
 #include "transaction_element.hpp"
 #include "map_object.hpp"
 #include "map_object_type_ids.hpp"
-#include "mysql/castle.hpp"
+#include "mongodb/castle.hpp"
 #include "msg/sc_castle.hpp"
 #include "singletons/player_session_map.hpp"
 #include "player_session.hpp"
@@ -23,7 +23,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_building_base_info(Castle::BuildingBaseInfo &info, const boost::shared_ptr<MySql::Center_CastleBuildingBase> &obj){
+	void fill_building_base_info(Castle::BuildingBaseInfo &info, const boost::shared_ptr<MongoDb::Center_CastleBuildingBase> &obj){
 		PROFILE_ME;
 
 		info.building_base_id      = BuildingBaseId(obj->get_building_base_id());
@@ -34,7 +34,7 @@ namespace {
 		info.mission_time_begin    = obj->get_mission_time_begin();
 		info.mission_time_end      = obj->get_mission_time_end();
 	}
-	void fill_tech_info(Castle::TechInfo &info, const boost::shared_ptr<MySql::Center_CastleTech> &obj){
+	void fill_tech_info(Castle::TechInfo &info, const boost::shared_ptr<MongoDb::Center_CastleTech> &obj){
 		PROFILE_ME;
 
 		info.tech_id               = TechId(obj->get_tech_id());
@@ -44,20 +44,20 @@ namespace {
 		info.mission_time_begin    = obj->get_mission_time_begin();
 		info.mission_time_end      = obj->get_mission_time_end();
 	}
-	void fill_resource_info(Castle::ResourceInfo &info, const boost::shared_ptr<MySql::Center_CastleResource> &obj){
+	void fill_resource_info(Castle::ResourceInfo &info, const boost::shared_ptr<MongoDb::Center_CastleResource> &obj){
 		PROFILE_ME;
 
 		info.resource_id           = ResourceId(obj->get_resource_id());
 		info.amount                = obj->get_amount();
 	}
-	void fill_soldier_info(Castle::SoldierInfo &info, const boost::shared_ptr<MySql::Center_CastleBattalion> &obj){
+	void fill_soldier_info(Castle::SoldierInfo &info, const boost::shared_ptr<MongoDb::Center_CastleBattalion> &obj){
 		PROFILE_ME;
 
 		info.map_object_type_id    = MapObjectTypeId(obj->get_map_object_type_id());
 		info.count                 = obj->get_count();
 		info.enabled               = obj->get_enabled();
 	}
-	void fill_soldier_production_info(Castle::SoldierProductionInfo &info, const boost::shared_ptr<MySql::Center_CastleBattalionProduction> &obj){
+	void fill_soldier_production_info(Castle::SoldierProductionInfo &info, const boost::shared_ptr<MongoDb::Center_CastleBattalionProduction> &obj){
 		PROFILE_ME;
 
 		info.building_base_id      = BuildingBaseId(obj->get_building_base_id());
@@ -67,13 +67,13 @@ namespace {
 		info.production_time_begin = obj->get_production_time_begin();
 		info.production_time_end   = obj->get_production_time_end();
 	}
-	void fill_wounded_soldier_info(Castle::WoundedSoldierInfo &info, const boost::shared_ptr<MySql::Center_CastleWoundedSoldier> &obj){
+	void fill_wounded_soldier_info(Castle::WoundedSoldierInfo &info, const boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier> &obj){
 		PROFILE_ME;
 
 		info.map_object_type_id    = MapObjectTypeId(obj->get_map_object_type_id());
 		info.count                 = obj->get_count();
 	}
-	void fill_treatment_info(Castle::TreatmentInfo &info, const boost::shared_ptr<MySql::Center_CastleTreatment> &obj){
+	void fill_treatment_info(Castle::TreatmentInfo &info, const boost::shared_ptr<MongoDb::Center_CastleTreatment> &obj){
 		PROFILE_ME;
 
 		info.map_object_type_id    = MapObjectTypeId(obj->get_map_object_type_id());
@@ -84,7 +84,7 @@ namespace {
 	}
 
 	void fill_building_message(Msg::SC_CastleBuildingBase &msg,
-		const boost::shared_ptr<MySql::Center_CastleBuildingBase> &obj, std::uint64_t utc_now)
+		const boost::shared_ptr<MongoDb::Center_CastleBuildingBase> &obj, std::uint64_t utc_now)
 	{
 		PROFILE_ME;
 
@@ -98,7 +98,7 @@ namespace {
 		// msg.reserved2
 		msg.mission_time_remaining = saturated_sub(obj->get_mission_time_end(), utc_now);
 	}
-	void fill_tech_message(Msg::SC_CastleTech &msg, const boost::shared_ptr<MySql::Center_CastleTech> &obj, std::uint64_t utc_now){
+	void fill_tech_message(Msg::SC_CastleTech &msg, const boost::shared_ptr<MongoDb::Center_CastleTech> &obj, std::uint64_t utc_now){
 		PROFILE_ME;
 
 		msg.map_object_uuid        = obj->unlocked_get_map_object_uuid().to_string();
@@ -110,14 +110,14 @@ namespace {
 		// msg.reserved2
 		msg.mission_time_remaining = saturated_sub(obj->get_mission_time_end(), utc_now);
 	}
-	void fill_resource_message(Msg::SC_CastleResource &msg, const boost::shared_ptr<MySql::Center_CastleResource> &obj){
+	void fill_resource_message(Msg::SC_CastleResource &msg, const boost::shared_ptr<MongoDb::Center_CastleResource> &obj){
 		PROFILE_ME;
 
 		msg.map_object_uuid        = obj->unlocked_get_map_object_uuid().to_string();
 		msg.resource_id            = obj->get_resource_id();
 		msg.amount                 = obj->get_amount();
 	}
-	void fill_soldier_message(Msg::SC_CastleSoldier &msg, const boost::shared_ptr<MySql::Center_CastleBattalion> &obj){
+	void fill_soldier_message(Msg::SC_CastleSoldier &msg, const boost::shared_ptr<MongoDb::Center_CastleBattalion> &obj){
 		PROFILE_ME;
 
 		msg.map_object_uuid        = obj->unlocked_get_map_object_uuid().to_string();
@@ -126,7 +126,7 @@ namespace {
 		msg.enabled                = obj->get_enabled();
 	}
 	void fill_soldier_production_message(Msg::SC_CastleSoldierProduction &msg,
-		const boost::shared_ptr<MySql::Center_CastleBattalionProduction> &obj, std::uint64_t utc_now)
+		const boost::shared_ptr<MongoDb::Center_CastleBattalionProduction> &obj, std::uint64_t utc_now)
 	{
 		PROFILE_ME;
 
@@ -137,7 +137,7 @@ namespace {
 		msg.production_duration       = obj->get_production_duration();
 		msg.production_time_remaining = saturated_sub(obj->get_production_time_end(), utc_now);
 	}
-	void fill_wounded_soldier_message(Msg::SC_CastleWoundedSoldier &msg, const boost::shared_ptr<MySql::Center_CastleWoundedSoldier> &obj){
+	void fill_wounded_soldier_message(Msg::SC_CastleWoundedSoldier &msg, const boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier> &obj){
 		PROFILE_ME;
 
 		msg.map_object_uuid        = obj->unlocked_get_map_object_uuid().to_string();
@@ -145,7 +145,7 @@ namespace {
 		msg.count                  = obj->get_count();
 	}
 	void fill_treatment_message(Msg::SC_CastleTreatment &msg, MapObjectUuid map_object_uuid,
-		const boost::container::flat_map<MapObjectTypeId, boost::shared_ptr<MySql::Center_CastleTreatment>> &objs, std::uint64_t utc_now)
+		const boost::container::flat_map<MapObjectTypeId, boost::shared_ptr<MongoDb::Center_CastleTreatment>> &objs, std::uint64_t utc_now)
 	{
 		PROFILE_ME;
 
@@ -162,7 +162,7 @@ namespace {
 		}
 	}
 
-	bool check_building_mission(const boost::shared_ptr<MySql::Center_CastleBuildingBase> &obj, std::uint64_t utc_now){
+	bool check_building_mission(const boost::shared_ptr<MongoDb::Center_CastleBuildingBase> &obj, std::uint64_t utc_now){
 		PROFILE_ME;
 
 		const auto mission = Castle::Mission(obj->get_mission());
@@ -206,7 +206,7 @@ namespace {
 
 		return true;
 	}
-	bool check_tech_mission(const boost::shared_ptr<MySql::Center_CastleTech> &obj, std::uint64_t utc_now){
+	bool check_tech_mission(const boost::shared_ptr<MongoDb::Center_CastleTech> &obj, std::uint64_t utc_now){
 		PROFILE_ME;
 
 		const auto mission = Castle::Mission(obj->get_mission());
@@ -249,7 +249,7 @@ namespace {
 
 		return true;
 	}
-	bool check_treatment_mission(const boost::shared_ptr<MySql::Center_CastleTreatment> &obj, std::uint64_t utc_now){
+	bool check_treatment_mission(const boost::shared_ptr<MongoDb::Center_CastleTreatment> &obj, std::uint64_t utc_now){
 		PROFILE_ME;
 
 		const auto time_end = obj->get_time_end();
@@ -273,17 +273,17 @@ Castle::Castle(MapObjectUuid map_object_uuid, AccountUuid owner_uuid, MapObjectU
 		std::move(name), coord, created_time)
 {
 }
-Castle::Castle(boost::shared_ptr<MySql::Center_MapObject> obj,
-	const std::vector<boost::shared_ptr<MySql::Center_MapObjectAttribute>> &attributes,
-	const std::vector<boost::shared_ptr<MySql::Center_MapObjectBuff>> &buffs,
-	const std::vector<boost::shared_ptr<MySql::Center_DefenseBuilding>> &defense_objs,
-	const std::vector<boost::shared_ptr<MySql::Center_CastleBuildingBase>> &buildings,
-	const std::vector<boost::shared_ptr<MySql::Center_CastleTech>> &techs,
-	const std::vector<boost::shared_ptr<MySql::Center_CastleResource>> &resources,
-	const std::vector<boost::shared_ptr<MySql::Center_CastleBattalion>> &soldiers,
-	const std::vector<boost::shared_ptr<MySql::Center_CastleBattalionProduction>> &soldier_production,
-	const std::vector<boost::shared_ptr<MySql::Center_CastleWoundedSoldier>> &wounded_soldiers,
-	const std::vector<boost::shared_ptr<MySql::Center_CastleTreatment>> &treatment)
+Castle::Castle(boost::shared_ptr<MongoDb::Center_MapObject> obj,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> &attributes,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectBuff>> &buffs,
+	const std::vector<boost::shared_ptr<MongoDb::Center_DefenseBuilding>> &defense_objs,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleBuildingBase>> &buildings,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleTech>> &techs,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleResource>> &resources,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalion>> &soldiers,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalionProduction>> &soldier_production,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier>> &wounded_soldiers,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleTreatment>> &treatment)
 	: DefenseBuilding(std::move(obj), attributes, buffs, defense_objs)
 {
 	for(auto it = buildings.begin(); it != buildings.end(); ++it){
@@ -467,7 +467,7 @@ void Castle::pump_population_production(){
 	const auto utc_now = Poseidon::get_utc_time();
 
 	if(!m_population_production_stamps){
-		auto obj = boost::make_shared<MySql::Center_CastleBattalionProduction>(
+		auto obj = boost::make_shared<MongoDb::Center_CastleBattalionProduction>(
 			get_map_object_uuid().get(), 0, 0, 0, 0, utc_now, utc_now);
 		obj->async_save(true);
 		m_population_production_stamps = std::move(obj);
@@ -669,7 +669,7 @@ void Castle::check_init_buildings(){
 
 		LOG_EMPERY_CENTER_DEBUG("> Creating init building: map_object_uuid = ", get_map_object_uuid(), ", building_base_id = ", building_base_id,
 			", init_building_id = ", init_building_id, ", init_level = ", init_level);
-		auto obj = boost::make_shared<MySql::Center_CastleBuildingBase>(get_map_object_uuid().get(), building_base_id.get(),
+		auto obj = boost::make_shared<MongoDb::Center_CastleBuildingBase>(get_map_object_uuid().get(), building_base_id.get(),
 			init_building_id.get(), init_level, MIS_NONE, 0, 0, 0);
 		obj->async_save(true);
 		m_buildings.emplace(building_base_id, std::move(obj));
@@ -742,7 +742,7 @@ void Castle::create_building_mission(BuildingBaseId building_base_id, Castle::Mi
 
 	auto it = m_buildings.find(building_base_id);
 	if(it == m_buildings.end()){
-		auto obj = boost::make_shared<MySql::Center_CastleBuildingBase>(
+		auto obj = boost::make_shared<MongoDb::Center_CastleBuildingBase>(
 			get_map_object_uuid().get(), building_base_id.get(), 0, 0, MIS_NONE, 0, 0, 0);
 		obj->async_save(true);
 		it = m_buildings.emplace(building_base_id, obj).first;
@@ -870,7 +870,7 @@ void Castle::forced_replace_building(BuildingBaseId building_base_id, BuildingId
 
 	auto it = m_buildings.find(building_base_id);
 	if(it == m_buildings.end()){
-		auto obj = boost::make_shared<MySql::Center_CastleBuildingBase>(
+		auto obj = boost::make_shared<MongoDb::Center_CastleBuildingBase>(
 			get_map_object_uuid().get(), building_base_id.get(), 0, 0, MIS_NONE, 0, 0, 0);
 		obj->async_save(true);
 		it = m_buildings.emplace(building_base_id, obj).first;
@@ -1191,7 +1191,7 @@ void Castle::create_tech_mission(TechId tech_id, Castle::Mission mission, std::u
 
 	auto it = m_techs.find(tech_id);
 	if(it == m_techs.end()){
-		auto obj = boost::make_shared<MySql::Center_CastleTech>(
+		auto obj = boost::make_shared<MongoDb::Center_CastleTech>(
 			get_map_object_uuid().get(), tech_id.get(), 0, MIS_NONE, 0, 0, 0);
 		obj->async_save(true);
 		it = m_techs.emplace(tech_id, obj).first;
@@ -1304,7 +1304,7 @@ void Castle::forced_replace_tech(TechId tech_id, unsigned tech_level){
 
 	auto it = m_techs.find(tech_id);
 	if(it == m_techs.end()){
-		auto obj = boost::make_shared<MySql::Center_CastleTech>(
+		auto obj = boost::make_shared<MongoDb::Center_CastleTech>(
 			get_map_object_uuid().get(), tech_id.get(), 0, MIS_NONE, 0, 0, 0);
 		obj->async_save(true);
 		it = m_techs.emplace(tech_id, obj).first;
@@ -1410,13 +1410,13 @@ void Castle::check_auto_inc_resources(){
 	std::vector<ResourceTransactionElement> transaction;
 	std::vector<boost::shared_ptr<const Data::CastleResource>> resources_to_check;
 	Data::CastleResource::get_auto_inc(resources_to_check);
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_CastleResource>, std::uint64_t> new_timestamps;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleResource>, std::uint64_t> new_timestamps;
 	for(auto dit = resources_to_check.begin(); dit != resources_to_check.end(); ++dit){
 		const auto &resource_data = *dit;
 		const auto resource_id = resource_data->resource_id;
 		auto it = m_resources.find(resource_id);
 		if(it == m_resources.end()){
-			auto obj = boost::make_shared<MySql::Center_CastleResource>(get_map_object_uuid().get(), resource_id.get(), 0, 0);
+			auto obj = boost::make_shared<MongoDb::Center_CastleResource>(get_map_object_uuid().get(), resource_id.get(), 0, 0);
 			obj->async_save(true);
 			it = m_resources.emplace(resource_id, std::move(obj)).first;
 		}
@@ -1524,7 +1524,7 @@ ResourceId Castle::commit_resource_transaction_nothrow(const std::vector<Resourc
 
 	std::vector<boost::shared_ptr<Poseidon::EventBaseWithoutId>> events;
 	events.reserve(transaction.size());
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_CastleResource>, std::uint64_t /* new_amount */> temp_result_map;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleResource>, std::uint64_t /* new_amount */> temp_result_map;
 	temp_result_map.reserve(transaction.size());
 
 	const FlagGuard transaction_guard(m_locked_by_resource_transaction);
@@ -1552,11 +1552,11 @@ ResourceId Castle::commit_resource_transaction_nothrow(const std::vector<Resourc
 
 		case ResourceTransactionElement::OP_ADD:
 			{
-				boost::shared_ptr<MySql::Center_CastleResource> obj;
+				boost::shared_ptr<MongoDb::Center_CastleResource> obj;
 				{
 					const auto it = m_resources.find(resource_id);
 					if(it == m_resources.end()){
-						obj = boost::make_shared<MySql::Center_CastleResource>(get_map_object_uuid().get(), resource_id.get(), 0, 0);
+						obj = boost::make_shared<MongoDb::Center_CastleResource>(get_map_object_uuid().get(), resource_id.get(), 0, 0);
 						obj->async_save(true);
 						m_resources.emplace(resource_id, obj);
 					} else {
@@ -1692,7 +1692,7 @@ void Castle::enable_soldier(MapObjectTypeId map_object_type_id){
 
 	auto it = m_soldiers.find(map_object_type_id);
 	if(it == m_soldiers.end()){
-		auto obj = boost::make_shared<MySql::Center_CastleBattalion>(
+		auto obj = boost::make_shared<MongoDb::Center_CastleBattalion>(
 			get_map_object_uuid().get(), map_object_type_id.get(), 0, false);
 		obj->async_save(true);
 		it = m_soldiers.emplace(map_object_type_id, std::move(obj)).first;
@@ -1725,7 +1725,7 @@ MapObjectTypeId Castle::commit_soldier_transaction_nothrow(const std::vector<Sol
 
 	std::vector<boost::shared_ptr<Poseidon::EventBaseWithoutId>> events;
 	events.reserve(transaction.size());
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_CastleBattalion>, std::uint64_t /* new_count */> temp_result_map;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleBattalion>, std::uint64_t /* new_count */> temp_result_map;
 	temp_result_map.reserve(transaction.size());
 
 	const FlagGuard transaction_guard(m_locked_by_soldier_transaction);
@@ -1753,11 +1753,11 @@ MapObjectTypeId Castle::commit_soldier_transaction_nothrow(const std::vector<Sol
 
 		case SoldierTransactionElement::OP_ADD:
 			{
-				boost::shared_ptr<MySql::Center_CastleBattalion> obj;
+				boost::shared_ptr<MongoDb::Center_CastleBattalion> obj;
 				{
 					const auto it = m_soldiers.find(map_object_type_id);
 					if(it == m_soldiers.end()){
-						obj = boost::make_shared<MySql::Center_CastleBattalion>(
+						obj = boost::make_shared<MongoDb::Center_CastleBattalion>(
 							get_map_object_uuid().get(), map_object_type_id.get(), 0, false);
 						obj->enable_auto_saving(); // obj->async_save(true);
 						m_soldiers.emplace(map_object_type_id, obj);
@@ -1897,7 +1897,7 @@ void Castle::begin_soldier_production(BuildingBaseId building_base_id,
 
 	auto it = m_soldier_production.find(building_base_id);
 	if(it == m_soldier_production.end()){
-		auto obj = boost::make_shared<MySql::Center_CastleBattalionProduction>(
+		auto obj = boost::make_shared<MongoDb::Center_CastleBattalionProduction>(
 			get_map_object_uuid().get(), building_base_id.get(), 0, 0, 0, 0, 0);
 		obj->async_save(true);
 		it = m_soldier_production.emplace(building_base_id, obj).first;
@@ -2112,7 +2112,7 @@ MapObjectTypeId Castle::commit_wounded_soldier_transaction_nothrow(const std::ve
 
 	std::vector<boost::shared_ptr<Poseidon::EventBaseWithoutId>> events;
 	events.reserve(transaction.size());
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_CastleWoundedSoldier>, std::uint64_t /* new_count */> temp_result_map;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier>, std::uint64_t /* new_count */> temp_result_map;
 	temp_result_map.reserve(transaction.size());
 
 	const FlagGuard transaction_guard(m_locked_by_wounded_soldier_transaction);
@@ -2140,11 +2140,11 @@ MapObjectTypeId Castle::commit_wounded_soldier_transaction_nothrow(const std::ve
 
 		case WoundedSoldierTransactionElement::OP_ADD:
 			{
-				boost::shared_ptr<MySql::Center_CastleWoundedSoldier> obj;
+				boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier> obj;
 				{
 					const auto it = m_wounded_soldiers.find(map_object_type_id);
 					if(it == m_wounded_soldiers.end()){
-						obj = boost::make_shared<MySql::Center_CastleWoundedSoldier>(
+						obj = boost::make_shared<MongoDb::Center_CastleWoundedSoldier>(
 							get_map_object_uuid().get(), map_object_type_id.get(), 0);
 						obj->enable_auto_saving(); // obj->async_save(true);
 						m_wounded_soldiers.emplace(map_object_type_id, obj);
@@ -2310,7 +2310,7 @@ void Castle::begin_treatment(const boost::container::flat_map<MapObjectTypeId, s
 		DEBUG_THROW(Exception, sslit("Soldier treatment in progress"));
 	}
 
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_CastleTreatment>, std::uint64_t> temp_result;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleTreatment>, std::uint64_t> temp_result;
 	temp_result.reserve(soldiers.size());
 
 	m_treatment.reserve(m_treatment.size() + soldiers.size());
@@ -2318,7 +2318,7 @@ void Castle::begin_treatment(const boost::container::flat_map<MapObjectTypeId, s
 		const auto map_object_type_id = it->first;
 		auto iit = m_treatment.find(map_object_type_id);
 		if(iit == m_treatment.end()){
-			auto obj = boost::make_shared<MySql::Center_CastleTreatment>(
+			auto obj = boost::make_shared<MongoDb::Center_CastleTreatment>(
 				get_map_object_uuid().get(), map_object_type_id.get(), 0, 0, 0, 0);
 			obj->async_save(true);
 			iit = m_treatment.emplace(map_object_type_id, std::move(obj)).first;
@@ -2417,7 +2417,7 @@ void Castle::harvest_treatment(){
 
 	const auto utc_now = Poseidon::get_utc_time();
 
-	boost::container::flat_map<boost::shared_ptr<MySql::Center_CastleTreatment>, std::uint64_t> temp_result;
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleTreatment>, std::uint64_t> temp_result;
 	for(auto it = m_treatment.begin(); it != m_treatment.end(); ++it){
 		const auto &obj = it->second;
 		const auto count = obj->get_count();

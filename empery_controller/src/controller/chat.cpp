@@ -16,8 +16,8 @@ namespace {
 	void synchronize_horn_message_aux(const boost::weak_ptr<ControllerSession> &weak_controller, HornMessageUuid horn_message_uuid){
 		PROFILE_ME;
 
-		const auto delay = get_config<std::uint64_t>("mysql_synchronization_delay", 5000);
-		const auto retry_count = get_config<unsigned>("mysql_synchronization_retry_count", 12);
+		const auto delay = get_config<std::uint64_t>("mongodb_synchronization_delay", 5000);
+		const auto retry_count = get_config<unsigned>("mongodb_synchronization_retry_count", 12);
 
 		unsigned count = 0;
 		for(;;){

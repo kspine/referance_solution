@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "battle_record_box.hpp"
-#include "mysql/battle_record.hpp"
+#include "mongodb/battle_record.hpp"
 #include "data/global.hpp"
 #include "msg/sc_battle_record.hpp"
 #include "singletons/player_session_map.hpp"
@@ -9,7 +9,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_record_info(BattleRecordBox::RecordInfo &info, const boost::shared_ptr<MySql::Center_BattleRecord> &obj){
+	void fill_record_info(BattleRecordBox::RecordInfo &info, const boost::shared_ptr<MongoDb::Center_BattleRecord> &obj){
 		PROFILE_ME;
 
 		info.auto_uuid              = obj->unlocked_get_auto_uuid();
@@ -28,7 +28,7 @@ namespace {
 }
 
 BattleRecordBox::BattleRecordBox(AccountUuid account_uuid,
-	const std::vector<boost::shared_ptr<MySql::Center_BattleRecord>> &records)
+	const std::vector<boost::shared_ptr<MongoDb::Center_BattleRecord>> &records)
 	: m_account_uuid(account_uuid)
 {
 	for(auto it = records.begin(); it != records.end(); ++it){
@@ -36,7 +36,7 @@ BattleRecordBox::BattleRecordBox(AccountUuid account_uuid,
 		m_records.emplace_back(record);
 	}
 	std::sort(m_records.begin(), m_records.end(),
-		[](const boost::shared_ptr<MySql::Center_BattleRecord> &lhs, const boost::shared_ptr<MySql::Center_BattleRecord> &rhs){
+		[](const boost::shared_ptr<MongoDb::Center_BattleRecord> &lhs, const boost::shared_ptr<MongoDb::Center_BattleRecord> &rhs){
 			return lhs->unlocked_get_auto_uuid() < rhs->unlocked_get_auto_uuid();
 		});
 }
@@ -80,7 +80,7 @@ void BattleRecordBox::push(std::uint64_t timestamp, MapObjectTypeId first_object
 {
 	PROFILE_ME;
 
-	const auto obj = boost::make_shared<MySql::Center_BattleRecord>(Poseidon::Uuid::random(),
+	const auto obj = boost::make_shared<MongoDb::Center_BattleRecord>(Poseidon::Uuid::random(),
 		get_account_uuid().get(), timestamp, first_object_type_id.get(), first_coord.x(), first_coord.y(),
 		second_account_uuid.get(), second_object_type_id.get(), second_coord.x(), second_coord.y(),
 		result_type, soldiers_wounded, soldiers_wounded_added, soldiers_damaged, soldiers_remaining, false);

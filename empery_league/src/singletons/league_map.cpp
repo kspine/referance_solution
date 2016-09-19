@@ -5,7 +5,7 @@
 #include "../string_utilities.hpp"
 #include <poseidon/multi_index_map.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 
 
 namespace EmperyLeague {
@@ -41,19 +41,19 @@ namespace {
 
 	MODULE_RAII_PRIORITY(handles, 5000){
 
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		// League
 		struct TempLeagueElement {
-			boost::shared_ptr<MySql::League_Info> obj;
-			std::vector<boost::shared_ptr<MySql::League_LeagueAttribute>> attributes;
+			boost::shared_ptr<MongoDb::League_Info> obj;
+			std::vector<boost::shared_ptr<MongoDb::League_LeagueAttribute>> attributes;
 		};
 		std::map<LeagueUuid, TempLeagueElement> temp_account_map;
 
 		LOG_EMPERY_LEAGUE_INFO("Loading Leagues...");
 		conn->execute_sql("SELECT * FROM `League_Info`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::League_Info>();
+			auto obj = boost::make_shared<MongoDb::League_Info>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			const auto league_uuid = LeagueUuid(obj->get_league_uuid());
@@ -64,7 +64,7 @@ namespace {
 		LOG_EMPERY_LEAGUE_INFO("Loading Leagues attributes...");
 		conn->execute_sql("SELECT * FROM `League_LeagueAttribute`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::League_LeagueAttribute>();
+			auto obj = boost::make_shared<MongoDb::League_LeagueAttribute>();
 			obj->fetch(conn);
 			const auto league_uuid = LeagueUuid(obj->unlocked_get_league_uuid());
 			const auto it = temp_account_map.find(league_uuid);
@@ -281,7 +281,7 @@ void LeagueMap::remove(LeagueUuid league_uuid){
 		strsql += league_uuid.str();
 		strsql += "';";
 
-		Poseidon::MySqlDaemon::enqueue_for_deleting("League_Info",strsql);
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("League_Info",strsql);
 	}
 }
 

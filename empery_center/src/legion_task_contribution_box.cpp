@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "legion_task_contribution_box.hpp"
 #include <poseidon/json.hpp>
-#include "mysql/task.hpp"
+#include "mongodb/task.hpp"
 #include "singletons/player_session_map.hpp"
 #include "player_session.hpp"
 #include "data/task.hpp"
@@ -10,7 +10,7 @@
 
 namespace EmperyCenter {
 	namespace {
-		void fill_task_contribution_info(LegionTaskContributionBox::TaskContributionInfo &info,boost::shared_ptr<MySql::Center_LegionTaskContribution> obj){
+		void fill_task_contribution_info(LegionTaskContributionBox::TaskContributionInfo &info,boost::shared_ptr<MongoDb::Center_LegionTaskContribution> obj){
 			info.account_uuid        = AccountUuid(obj->get_account_uuid());
 		    info.day_contribution    = obj->get_day_contribution();
 		    info.week_contribution   = obj->get_week_contribution();
@@ -19,7 +19,7 @@ namespace EmperyCenter {
 		}
 	}
 	LegionTaskContributionBox::LegionTaskContributionBox(LegionUuid legion_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_LegionTaskContribution>> &contributions)
+		const std::vector<boost::shared_ptr<MongoDb::Center_LegionTaskContribution>> &contributions)
 		: m_legion_uuid(legion_uuid)
 	{
 		for (auto it = contributions.begin(); it != contributions.end(); ++it) {
@@ -65,7 +65,7 @@ namespace EmperyCenter {
 		const auto utc_now = Poseidon::get_utc_time();
 		const auto it = m_contributions.find(account_uuid);
 		if (it == m_contributions.end()) {
-			const auto obj = boost::make_shared<MySql::Center_LegionTaskContribution>(get_legion_uuid().get(), account_uuid.get(),delta,delta,delta,utc_now);
+			const auto obj = boost::make_shared<MongoDb::Center_LegionTaskContribution>(get_legion_uuid().get(), account_uuid.get(),delta,delta,delta,utc_now);
 			obj->async_save(true);
 			m_contributions.emplace(account_uuid,obj);
 			return;

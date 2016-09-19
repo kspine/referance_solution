@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "mail_data.hpp"
 #include <poseidon/json.hpp>
-#include "mysql/mail.hpp"
+#include "mongodb/mail.hpp"
 #include "player_session.hpp"
 #include "msg/sc_mail.hpp"
 #include "singletons/player_session_map.hpp"
@@ -91,7 +91,7 @@ MailData::MailData(MailUuid mail_uuid, LanguageId language_id, std::uint64_t cre
 	std::vector<std::pair<ChatMessageSlotId, std::string>> segments, boost::container::flat_map<ItemId, std::uint64_t> attachments)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_MailData>(
+			auto obj = boost::make_shared<MongoDb::Center_MailData>(
 				mail_uuid.get(), language_id.get(), created_time, type.get(), from_account_uuid.get(), std::move(subject),
 				encode_segments(segments), encode_attachments(attachments));
 			obj->async_save(true, true);
@@ -100,7 +100,7 @@ MailData::MailData(MailUuid mail_uuid, LanguageId language_id, std::uint64_t cre
 	, m_segments(std::move(segments)), m_attachments(std::move(attachments))
 {
 }
-MailData::MailData(boost::shared_ptr<MySql::Center_MailData> obj)
+MailData::MailData(boost::shared_ptr<MongoDb::Center_MailData> obj)
 	: m_obj(std::move(obj))
 	, m_segments(decode_segments(m_obj->unlocked_get_segments())), m_attachments(decode_attachments(m_obj->unlocked_get_attachments()))
 {

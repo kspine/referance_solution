@@ -10,7 +10,7 @@
 namespace EmperyCenter {
 
 
-namespace MySql {
+namespace MongoDb {
 	class Center_LegionApplyJoin;
 }
 
@@ -19,11 +19,11 @@ class PlayerSession;
 
 struct LegionApplyJoinMap {
 
-	static boost::shared_ptr<MySql::Center_LegionApplyJoin> find(AccountUuid account_uuid,LegionUuid legion_uuid);
+	static boost::shared_ptr<MongoDb::Center_LegionApplyJoin> find(AccountUuid account_uuid,LegionUuid legion_uuid);
 
 	static std::uint64_t get_apply_count(AccountUuid account_uuid);
 
-	static void insert(const boost::shared_ptr<MySql::Center_LegionApplyJoin> &account);
+	static void insert(const boost::shared_ptr<MongoDb::Center_LegionApplyJoin> &account);
 	static void deleteInfo(LegionUuid legion_uuid,AccountUuid account_uuid,bool bAll = false);
 	static void deleteInfo_by_legion_uuid(LegionUuid legion_uuid);
 

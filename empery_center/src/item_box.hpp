@@ -13,7 +13,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_Item;
 }
 
@@ -30,12 +30,12 @@ private:
 	const AccountUuid m_account_uuid;
 
 	boost::container::flat_map<ItemId,
-		boost::shared_ptr<MySql::Center_Item>> m_items;
+		boost::shared_ptr<MongoDb::Center_Item>> m_items;
 	bool m_locked_by_transaction = false;
 
 public:
 	ItemBox(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_Item>> &items);
+		const std::vector<boost::shared_ptr<MongoDb::Center_Item>> &items);
 	~ItemBox();
 
 public:

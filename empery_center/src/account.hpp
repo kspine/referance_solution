@@ -10,7 +10,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_Account;
 	class Center_AccountAttribute;
 }
@@ -24,14 +24,14 @@ public:
 		AccountUuid referrer_uuid, unsigned promotion_level, std::uint64_t created_time, std::string nick);
 
 private:
-	const boost::shared_ptr<MySql::Center_Account> m_obj;
+	const boost::shared_ptr<MongoDb::Center_Account> m_obj;
 
 	boost::container::flat_map<AccountAttributeId,
-		boost::shared_ptr<MySql::Center_AccountAttribute>> m_attributes;
+		boost::shared_ptr<MongoDb::Center_AccountAttribute>> m_attributes;
 
 public:
-	Account(boost::shared_ptr<MySql::Center_Account> obj,
-		const std::vector<boost::shared_ptr<MySql::Center_AccountAttribute>> &attributes);
+	Account(boost::shared_ptr<MongoDb::Center_Account> obj,
+		const std::vector<boost::shared_ptr<MongoDb::Center_AccountAttribute>> &attributes);
 	~Account();
 
 public:

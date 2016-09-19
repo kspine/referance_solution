@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "crate_record_box.hpp"
-#include "mysql/battle_record.hpp"
+#include "mongodb/battle_record.hpp"
 #include "data/global.hpp"
 #include "msg/sc_battle_record.hpp"
 #include "singletons/player_session_map.hpp"
@@ -9,7 +9,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_record_info(CrateRecordBox::RecordInfo &info, const boost::shared_ptr<MySql::Center_BattleRecordCrate> &obj){
+	void fill_record_info(CrateRecordBox::RecordInfo &info, const boost::shared_ptr<MongoDb::Center_BattleRecordCrate> &obj){
 		PROFILE_ME;
 
 		info.auto_uuid              = obj->unlocked_get_auto_uuid();
@@ -25,7 +25,7 @@ namespace {
 }
 
 CrateRecordBox::CrateRecordBox(AccountUuid account_uuid,
-	const std::vector<boost::shared_ptr<MySql::Center_BattleRecordCrate>> &records)
+	const std::vector<boost::shared_ptr<MongoDb::Center_BattleRecordCrate>> &records)
 	: m_account_uuid(account_uuid)
 {
 	for(auto it = records.begin(); it != records.end(); ++it){
@@ -33,7 +33,7 @@ CrateRecordBox::CrateRecordBox(AccountUuid account_uuid,
 		m_records.emplace_back(record);
 	}
 	std::sort(m_records.begin(), m_records.end(),
-		[](const boost::shared_ptr<MySql::Center_BattleRecordCrate> &lhs, const boost::shared_ptr<MySql::Center_BattleRecordCrate> &rhs){
+		[](const boost::shared_ptr<MongoDb::Center_BattleRecordCrate> &lhs, const boost::shared_ptr<MongoDb::Center_BattleRecordCrate> &rhs){
 			return lhs->unlocked_get_auto_uuid() < rhs->unlocked_get_auto_uuid();
 		});
 }
@@ -75,7 +75,7 @@ void CrateRecordBox::push(std::uint64_t timestamp, MapObjectTypeId first_object_
 {
 	PROFILE_ME;
 
-	const auto obj = boost::make_shared<MySql::Center_BattleRecordCrate>(Poseidon::Uuid::random(),
+	const auto obj = boost::make_shared<MongoDb::Center_BattleRecordCrate>(Poseidon::Uuid::random(),
 		get_account_uuid().get(), timestamp, first_object_type_id.get(), first_coord.x(), first_coord.y(),
 		second_coord.x(), second_coord.y(), resource_id.get(), resource_harvested, resource_gained, resource_remaining, false);
 	obj->async_save(true);

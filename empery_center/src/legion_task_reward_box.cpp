@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "legion_task_reward_box.hpp"
 #include <poseidon/json.hpp>
-#include "mysql/task.hpp"
+#include "mongodb/task.hpp"
 #include "singletons/player_session_map.hpp"
 #include "player_session.hpp"
 #include "data/task.hpp"
@@ -47,7 +47,7 @@ namespace EmperyCenter {
 			return progress;
 		}
 
-		using TaskAwardObjectPair = std::pair<boost::shared_ptr<MySql::Center_LegionTaskReward>, boost::shared_ptr<LegionTaskRewardBox::Progress>>;
+		using TaskAwardObjectPair = std::pair<boost::shared_ptr<MongoDb::Center_LegionTaskReward>, boost::shared_ptr<LegionTaskRewardBox::Progress>>;
 
 		void fill_task_reward_info(LegionTaskRewardBox::TaskRewardInfo &info, const TaskAwardObjectPair &pair) {
 			PROFILE_ME;
@@ -78,7 +78,7 @@ namespace EmperyCenter {
 	}
 
 	LegionTaskRewardBox::LegionTaskRewardBox(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_LegionTaskReward>> &tasks)
+		const std::vector<boost::shared_ptr<MongoDb::Center_LegionTaskReward>> &tasks)
 		: m_account_uuid(account_uuid)
 	{
 		for (auto it = tasks.begin(); it != tasks.end(); ++it) {
@@ -134,7 +134,7 @@ namespace EmperyCenter {
 		if (info.progress) {
 			*progress = *info.progress;
 		}
-		const auto obj = boost::make_shared<MySql::Center_LegionTaskReward>(get_account_uuid().get(), task_type_id.get(),encode_progress(*progress),info.created_time, info.last_reward_time);
+		const auto obj = boost::make_shared<MongoDb::Center_LegionTaskReward>(get_account_uuid().get(), task_type_id.get(),encode_progress(*progress),info.created_time, info.last_reward_time);
 		obj->async_save(true);
 		it = m_tasks.emplace(task_type_id, std::make_pair(obj, progress)).first;
 

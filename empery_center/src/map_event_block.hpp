@@ -11,7 +11,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_MapEventBlock;
 	class Center_MapEvent;
 }
@@ -33,15 +33,15 @@ public:
 	};
 
 private:
-	const boost::shared_ptr<MySql::Center_MapEventBlock> m_obj;
+	const boost::shared_ptr<MongoDb::Center_MapEventBlock> m_obj;
 
 	boost::container::flat_map<Coord,
-		boost::shared_ptr<MySql::Center_MapEvent>> m_events;
+		boost::shared_ptr<MongoDb::Center_MapEvent>> m_events;
 
 public:
 	explicit MapEventBlock(Coord block_coord);
-	MapEventBlock(boost::shared_ptr<MySql::Center_MapEventBlock> obj,
-		const std::vector<boost::shared_ptr<MySql::Center_MapEvent>> &events);
+	MapEventBlock(boost::shared_ptr<MongoDb::Center_MapEventBlock> obj,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapEvent>> &events);
 	~MapEventBlock();
 
 public:

@@ -5,11 +5,11 @@
 #include <poseidon/multi_index_map.hpp>
 #include <poseidon/job_promise.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/event_dispatcher.hpp>
 #include "../events/account.hpp"
 #include "../tax_record_box.hpp"
-#include "../mysql/tax_record.hpp"
+#include "../mongodb/tax_record.hpp"
 #include "account_map.hpp"
 
 namespace EmperyCenter {
@@ -20,7 +20,7 @@ namespace {
 		std::uint64_t unload_time;
 
 		mutable boost::shared_ptr<const Poseidon::JobPromise> promise;
-		mutable boost::shared_ptr<std::vector<boost::shared_ptr<MySql::Center_TaxRecord>>> sink;
+		mutable boost::shared_ptr<std::vector<boost::shared_ptr<MongoDb::Center_TaxRecord>>> sink;
 
 		mutable boost::shared_ptr<TaxRecordBox> tax_record_box;
 
@@ -64,7 +64,7 @@ namespace {
 			}
 		}
 
-		Poseidon::MySqlDaemon::enqueue_for_deleting("Center_TaxRecord",
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_TaxRecord",
 			"DELETE QUICK `r`.* "
 			"  FROM `Center_TaxRecord` AS `r` "
 			"  WHERE `r`.`deleted` > 0");
@@ -110,13 +110,13 @@ boost::shared_ptr<TaxRecordBox> TaxRecordBoxMap::get(AccountUuid account_uuid){
 		boost::shared_ptr<const Poseidon::JobPromise> promise_tack;
 		do {
 			if(!it->promise){
-				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MySql::Center_TaxRecord>>>();
+				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_TaxRecord>>>();
 				std::ostringstream oss;
-				oss <<"SELECT * FROM `Center_TaxRecord` WHERE `account_uuid` = " <<Poseidon::MySql::UuidFormatter(account_uuid.get())
+				oss <<"SELECT * FROM `Center_TaxRecord` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid.get())
 				    <<"  AND `deleted` = 0";
-				auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-					[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-						auto obj = boost::make_shared<MySql::Center_TaxRecord>();
+				auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+						auto obj = boost::make_shared<MongoDb::Center_TaxRecord>();
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));

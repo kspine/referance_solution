@@ -12,7 +12,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_Dungeon;
 }
 
@@ -31,11 +31,11 @@ private:
 	const AccountUuid m_account_uuid;
 
 	boost::container::flat_map<DungeonTypeId,
-		boost::shared_ptr<MySql::Center_Dungeon>> m_dungeons;
+		boost::shared_ptr<MongoDb::Center_Dungeon>> m_dungeons;
 
 public:
 	DungeonBox(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_Dungeon>> &dungeons);
+		const std::vector<boost::shared_ptr<MongoDb::Center_Dungeon>> &dungeons);
 	~DungeonBox();
 
 public:

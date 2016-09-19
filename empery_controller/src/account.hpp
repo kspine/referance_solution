@@ -7,7 +7,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_Account;
 }
 
@@ -19,14 +19,14 @@ class ControllerSession;
 
 class Account : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 private:
-	const boost::shared_ptr<EmperyCenter::MySql::Center_Account> m_obj;
+	const boost::shared_ptr<EmperyCenter::MongoDb::Center_Account> m_obj;
 
 	std::string m_client_ip;
 	boost::weak_ptr<ControllerSession> m_controller;
 	std::uint64_t m_locked_until = 0;
 
 public:
-	explicit Account(boost::shared_ptr<EmperyCenter::MySql::Center_Account> obj);
+	explicit Account(boost::shared_ptr<EmperyCenter::MongoDb::Center_Account> obj);
 	~Account();
 
 public:

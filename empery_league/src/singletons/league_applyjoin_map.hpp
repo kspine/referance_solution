@@ -10,7 +10,7 @@
 namespace EmperyLeague {
 
 
-namespace MySql {
+namespace MongoDb {
 	class League_LeagueApplyJoin;
 }
 
@@ -19,11 +19,11 @@ class LeagueSession;
 
 struct LeagueApplyJoinMap {
 
-	static boost::shared_ptr<MySql::League_LeagueApplyJoin> find(LegionUuid legion_uuid,LeagueUuid league_uuid);
+	static boost::shared_ptr<MongoDb::League_LeagueApplyJoin> find(LegionUuid legion_uuid,LeagueUuid league_uuid);
 
 	static std::uint64_t get_apply_count(LegionUuid legion_uuid);
 
-	static void insert(const boost::shared_ptr<MySql::League_LeagueApplyJoin> &account);
+	static void insert(const boost::shared_ptr<MongoDb::League_LeagueApplyJoin> &account);
 	static void deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uuid,bool bAll = false);
 	static void deleteInfo_by_legion_uuid(LegionUuid legion_uuid);
 	static void deleteInfo_by_league_uuid(LeagueUuid league_uuid);

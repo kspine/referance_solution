@@ -2,7 +2,7 @@
 #include "legion_task_box.hpp"
 #include <poseidon/json.hpp>
 #include "msg/sc_task.hpp"
-#include "mysql/task.hpp"
+#include "mongodb/task.hpp"
 #include "singletons/player_session_map.hpp"
 #include "player_session.hpp"
 #include "data/task.hpp"
@@ -85,7 +85,7 @@ namespace EmperyCenter {
 			return progress;
 		}
 
-		using TaskObjectPair = std::pair<boost::shared_ptr<MySql::Center_LegionTask>, boost::shared_ptr<LegionTaskBox::Progress>>;
+		using TaskObjectPair = std::pair<boost::shared_ptr<MongoDb::Center_LegionTask>, boost::shared_ptr<LegionTaskBox::Progress>>;
 
 		void fill_task_info(LegionTaskBox::TaskInfo &info, const TaskObjectPair &pair) {
 			PROFILE_ME;
@@ -122,7 +122,7 @@ namespace EmperyCenter {
 	}
 
 	LegionTaskBox::LegionTaskBox(LegionUuid legion_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_LegionTask>> &tasks)
+		const std::vector<boost::shared_ptr<MongoDb::Center_LegionTask>> &tasks)
 		: m_legion_uuid(legion_uuid)
 	{
 		for (auto it = tasks.begin(); it != tasks.end(); ++it) {
@@ -174,7 +174,7 @@ namespace EmperyCenter {
 		const auto utc_now = Poseidon::get_utc_time();
 
 		if (!m_stamps) {
-			auto obj = boost::make_shared<MySql::Center_LegionTask>(get_legion_uuid().get(), 0, 0, 0, 0, std::string(), false);
+			auto obj = boost::make_shared<MongoDb::Center_LegionTask>(get_legion_uuid().get(), 0, 0, 0, 0, std::string(), false);
 			obj->async_save(true);
 			m_stamps = std::move(obj);
 		}
@@ -309,7 +309,7 @@ namespace EmperyCenter {
 		if (info.progress) {
 			*progress = *info.progress;
 		}
-		const auto obj = boost::make_shared<MySql::Center_LegionTask>(get_legion_uuid().get(), task_id.get(),
+		const auto obj = boost::make_shared<MongoDb::Center_LegionTask>(get_legion_uuid().get(), task_id.get(),
 			info.category, info.created_time, info.expiry_time, encode_progress(*progress), info.rewarded);
 		obj->async_save(true);
 		it = m_tasks.emplace(task_id, std::make_pair(obj, progress)).first;

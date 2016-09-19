@@ -11,7 +11,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_Mail;
 }
 
@@ -32,11 +32,11 @@ private:
 	const AccountUuid m_account_uuid;
 
 	boost::container::flat_map<MailUuid,
-		boost::shared_ptr<MySql::Center_Mail>> m_mails;
+		boost::shared_ptr<MongoDb::Center_Mail>> m_mails;
 
 public:
 	MailBox(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_Mail>> &mails);
+		const std::vector<boost::shared_ptr<MongoDb::Center_Mail>> &mails);
 	~MailBox();
 
 public:

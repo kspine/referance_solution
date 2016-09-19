@@ -3,7 +3,7 @@
 #include "chat_message.hpp"
 #include <poseidon/json.hpp>
 #include "player_session.hpp"
-#include "mysql/horn_message.hpp"
+#include "mongodb/horn_message.hpp"
 #include "msg/sc_chat.hpp"
 #include "singletons/chat_box_map.hpp"
 #include "singletons/player_session_map.hpp"
@@ -57,7 +57,7 @@ HornMessage::HornMessage(HornMessageUuid horn_message_uuid, ItemId item_id,
 	AccountUuid from_account_uuid, std::vector<std::pair<ChatMessageSlotId, std::string>> segments)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_HornMessage>(horn_message_uuid.get(), item_id.get(),
+			auto obj = boost::make_shared<MongoDb::Center_HornMessage>(horn_message_uuid.get(), item_id.get(),
 				language_id.get(), created_time, expiry_time, from_account_uuid.get(), encode_segments(segments));
 			obj->async_save(true, true);
 			return obj;
@@ -65,7 +65,7 @@ HornMessage::HornMessage(HornMessageUuid horn_message_uuid, ItemId item_id,
 	, m_segments(std::move(segments))
 {
 }
-HornMessage::HornMessage(boost::shared_ptr<MySql::Center_HornMessage> obj)
+HornMessage::HornMessage(boost::shared_ptr<MongoDb::Center_HornMessage> obj)
 	: m_obj(std::move(obj))
 	, m_segments(decode_segments(m_obj->unlocked_get_segments()))
 {

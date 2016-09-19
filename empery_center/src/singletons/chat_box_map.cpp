@@ -4,13 +4,13 @@
 #include <poseidon/singletons/timer_daemon.hpp>
 #include <poseidon/multi_index_map.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/event_dispatcher.hpp>
 #include "../events/account.hpp"
 #include "../chat_box.hpp"
 #include "account_map.hpp"
 #include "../horn_message.hpp"
-#include "../mysql/horn_message.hpp"
+#include "../mongodb/horn_message.hpp"
 #include "controller_client.hpp"
 #include "../msg/st_chat.hpp"
 
@@ -110,14 +110,14 @@ namespace {
 			horn_message->delete_from_game();
 		}
 
-		Poseidon::MySqlDaemon::enqueue_for_deleting("Center_HornMessage",
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_HornMessage",
 			"DELETE QUICK `m`.* "
 			"  FROM `Center_HornMessage` AS `m` "
 			"  WHERE `m`.`expiry_time` = '0000-00-00 00:00:00'");
 	}
 
 	MODULE_RAII_PRIORITY(handles, 5000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		const auto chat_box_map = boost::make_shared<ChatBoxContainer>();
 		g_chat_box_map = chat_box_map;
@@ -127,7 +127,7 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loading horn messages...");
 		conn->execute_sql("SELECT * FROM `Center_HornMessage`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_HornMessage>();
+			auto obj = boost::make_shared<MongoDb::Center_HornMessage>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
 			auto horn = boost::make_shared<HornMessage>(std::move(obj));
@@ -169,7 +169,7 @@ namespace {
 		const auto horn_message_uuid = horn_message->get_horn_message_uuid();
 
 		try {
-			Poseidon::MySqlDaemon::enqueue_for_waiting_for_all_async_operations();
+			Poseidon::MongoDbDaemon::enqueue_for_waiting_for_all_async_operations();
 
 			Msg::ST_ChatBroadcastHornMessage msg;
 			msg.horn_message_uuid = horn_message_uuid.str();
@@ -288,15 +288,15 @@ boost::shared_ptr<HornMessage> ChatBoxMap::forced_reload_horn_message(HornMessag
 		return { };
 	}
 
-	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MySql::Center_HornMessage>>>();
+	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_HornMessage>>>();
 	{
 		std::ostringstream oss;
 		oss <<"SELECT * FROM `Center_HornMessage` "
-		    <<"  WHERE `horn_message_uuid` = " <<Poseidon::MySql::UuidFormatter(horn_message_uuid.get())
+		    <<"  WHERE `horn_message_uuid` = " <<Poseidon::MongoDb::UuidFormatter(horn_message_uuid.get())
 		    <<"    AND `expiry_time` > 0";
-		const auto promise = Poseidon::MySqlDaemon::enqueue_for_batch_loading(
-			[sink](const boost::shared_ptr<Poseidon::MySql::Connection> &conn){
-				auto obj = boost::make_shared<MySql::Center_HornMessage>();
+		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
+				auto obj = boost::make_shared<MongoDb::Center_HornMessage>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));

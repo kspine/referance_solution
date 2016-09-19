@@ -4,7 +4,7 @@
 #include "../mmain.hpp"
 
 #include <poseidon/multi_index_map.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/timer_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 
@@ -14,7 +14,7 @@
 #include "../account.hpp"
 #include "../string_utilities.hpp"
 
-#include "../mysql/legion.hpp"
+#include "../mongodb/legion.hpp"
 #include "account_map.hpp"
 #include "../account_attribute_ids.hpp"
 
@@ -24,13 +24,13 @@ namespace EmperyCenter
 	{
 		struct LegionPackagePickShareElement
 		{
-			boost::shared_ptr<MySql::Center_Legion_Package_Pick_Share> picks_share;
+			boost::shared_ptr<MongoDb::Center_Legion_Package_Pick_Share> picks_share;
 			LegionPackageShareUuid share_uuid;
 			AccountUuid account_uuid;
 			std::uint64_t share_package_status;
 			std::uint64_t share_package_pick_time;
 
-			explicit LegionPackagePickShareElement(boost::shared_ptr<MySql::Center_Legion_Package_Pick_Share> picks_share_)
+			explicit LegionPackagePickShareElement(boost::shared_ptr<MongoDb::Center_Legion_Package_Pick_Share> picks_share_)
 				: picks_share(std::move(picks_share_))
 				, share_uuid(picks_share->get_share_uuid())
 				, account_uuid(picks_share->get_account_uuid())
@@ -51,11 +51,11 @@ namespace EmperyCenter
 
 		MODULE_RAII_PRIORITY(handles, 5000)
 		{
-			const auto conn = Poseidon::MySqlDaemon::create_connection();
+			const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 			struct TempLegionPackagePickShareElement
 			{
-				boost::shared_ptr<MySql::Center_Legion_Package_Pick_Share> obj;
+				boost::shared_ptr<MongoDb::Center_Legion_Package_Pick_Share> obj;
 			};
 
 			std::map<LegionPackageShareUuid, TempLegionPackagePickShareElement> temp_map;
@@ -66,7 +66,7 @@ namespace EmperyCenter
 
 			while (conn->fetch_row())
 			{
-				auto obj = boost::make_shared<MySql::Center_Legion_Package_Pick_Share>();
+				auto obj = boost::make_shared<MongoDb::Center_Legion_Package_Pick_Share>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 
@@ -86,7 +86,7 @@ namespace EmperyCenter
 		}
 	}
 
-	void LegionPackagePickShareMap::insert(const boost::shared_ptr<MySql::Center_Legion_Package_Pick_Share> &picks_share)
+	void LegionPackagePickShareMap::insert(const boost::shared_ptr<MongoDb::Center_Legion_Package_Pick_Share> &picks_share)
 	{
 		PROFILE_ME;
 
@@ -126,7 +126,7 @@ namespace EmperyCenter
 		return false;
 	}
 
-	void LegionPackagePickShareMap::get_by_share_uuid(std::vector<boost::shared_ptr<MySql::Center_Legion_Package_Pick_Share>> &ret, AccountUuid account_uuid)
+	void LegionPackagePickShareMap::get_by_share_uuid(std::vector<boost::shared_ptr<MongoDb::Center_Legion_Package_Pick_Share>> &ret, AccountUuid account_uuid)
 	{
 		PROFILE_ME;
 		const auto &picks_share_map = g_legion_package_pick_share_map;

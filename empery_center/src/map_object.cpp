@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "map_object.hpp"
-#include "mysql/map_object.hpp"
+#include "mongodb/map_object.hpp"
 #include "singletons/world_map.hpp"
 #include "singletons/player_session_map.hpp"
 #include "player_session.hpp"
@@ -21,7 +21,7 @@
 namespace EmperyCenter {
 
 namespace {
-	void fill_buff_info(MapObject::BuffInfo &info, const boost::shared_ptr<MySql::Center_MapObjectBuff> &obj){
+	void fill_buff_info(MapObject::BuffInfo &info, const boost::shared_ptr<MongoDb::Center_MapObjectBuff> &obj){
 		PROFILE_ME;
 
 		info.buff_id    = BuffId(obj->get_buff_id());
@@ -62,16 +62,16 @@ MapObject::MapObject(MapObjectUuid map_object_uuid, MapObjectTypeId map_object_t
 	MapObjectUuid parent_object_uuid, std::string name, Coord coord, std::uint64_t created_time, std::uint64_t expiry_time, bool garrisoned)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_MapObject>(map_object_uuid.get(), map_object_type_id.get(), owner_uuid.get(),
+			auto obj = boost::make_shared<MongoDb::Center_MapObject>(map_object_uuid.get(), map_object_type_id.get(), owner_uuid.get(),
 				parent_object_uuid.get(), std::move(name), coord.x(), coord.y(), created_time, expiry_time, garrisoned);
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-MapObject::MapObject(boost::shared_ptr<MySql::Center_MapObject> obj,
-	const std::vector<boost::shared_ptr<MySql::Center_MapObjectAttribute>> &attributes,
-	const std::vector<boost::shared_ptr<MySql::Center_MapObjectBuff>> &buffs)
+MapObject::MapObject(boost::shared_ptr<MongoDb::Center_MapObject> obj,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> &attributes,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectBuff>> &buffs)
 	: m_obj(std::move(obj))
 {
 	for(auto it = attributes.begin(); it != attributes.end(); ++it){
@@ -353,7 +353,7 @@ void MapObject::set_attributes(boost::container::flat_map<AttributeId, std::int6
 	for(auto it = modifiers.begin(); it != modifiers.end(); ++it){
 		const auto obj_it = m_attributes.find(it->first);
 		if(obj_it == m_attributes.end()){
-			auto obj = boost::make_shared<MySql::Center_MapObjectAttribute>(m_obj->unlocked_get_map_object_uuid(),
+			auto obj = boost::make_shared<MongoDb::Center_MapObjectAttribute>(m_obj->unlocked_get_map_object_uuid(),
 				it->first.get(), 0);
 			// obj->async_save(true);
 			obj->enable_auto_saving();
@@ -431,7 +431,7 @@ void MapObject::set_buff(BuffId buff_id, std::uint64_t time_begin, std::uint64_t
 
 	auto it = m_buffs.find(buff_id);
 	if(it == m_buffs.end()){
-		auto obj = boost::make_shared<MySql::Center_MapObjectBuff>(m_obj->unlocked_get_map_object_uuid(),
+		auto obj = boost::make_shared<MongoDb::Center_MapObjectBuff>(m_obj->unlocked_get_map_object_uuid(),
 			buff_id.get(), 0, 0, 0);
 		obj->async_save(true);
 		it = m_buffs.emplace(buff_id, std::move(obj)).first;
@@ -464,7 +464,7 @@ void MapObject::accumulate_buff_hint(BuffId buff_id, std::uint64_t utc_now, std:
 
 	auto it = m_buffs.find(buff_id);
 	if(it == m_buffs.end()){
-		auto obj = boost::make_shared<MySql::Center_MapObjectBuff>(m_obj->unlocked_get_map_object_uuid(),
+		auto obj = boost::make_shared<MongoDb::Center_MapObjectBuff>(m_obj->unlocked_get_map_object_uuid(),
 			buff_id.get(), 0, 0, 0);
 		obj->async_save(true);
 		it = m_buffs.emplace(buff_id, std::move(obj)).first;
@@ -596,7 +596,7 @@ void MapObject::unload_resources(const boost::shared_ptr<Castle> &castle){
 	const auto map_object_uuid_head = Poseidon::load_be(reinterpret_cast<const std::uint64_t &>(map_object_uuid.get()[0]));
 
 	boost::container::flat_map<ResourceId, std::pair<std::uint64_t, std::uint64_t>> resources_to_add; // <total, alt>
-	std::vector<boost::shared_ptr<MySql::Center_MapObjectAttribute>> attribute_objs;
+	std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> attribute_objs;
 	for(auto it = m_attributes.begin(); it != m_attributes.end(); ++it){
 		const auto attribute_id = it->first;
 		const auto &obj = it->second;

@@ -1,9 +1,9 @@
 #include "../precompiled.hpp"
 #include "announcement_map.hpp"
 #include <poseidon/multi_index_map.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include "player_session_map.hpp"
-#include "../mysql/announcement.hpp"
+#include "../mongodb/announcement.hpp"
 #include "../announcement.hpp"
 #include "../player_session.hpp"
 
@@ -31,14 +31,14 @@ namespace {
 	boost::weak_ptr<AnnouncementContainer> g_announcement_map;
 
 	MODULE_RAII_PRIORITY(handles, 5000){
-		const auto conn = Poseidon::MySqlDaemon::create_connection();
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 		const auto utc_now = Poseidon::get_utc_time();
 
 		const auto announcement_map = boost::make_shared<AnnouncementContainer>();
 		LOG_EMPERY_CENTER_INFO("Loading announcements...");
 		conn->execute_sql("SELECT * FROM `Center_Announcement`");
 		while(conn->fetch_row()){
-			auto obj = boost::make_shared<MySql::Center_Announcement>();
+			auto obj = boost::make_shared<MongoDb::Center_Announcement>();
 			obj->fetch(conn);
 			if(obj->get_expiry_time() < utc_now){
 				continue;

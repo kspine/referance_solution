@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "auction_transaction.hpp"
 #include "singletons/auction_transaction_map.hpp"
-#include "mysql/auction.hpp"
+#include "mongodb/auction.hpp"
 #include "auction_center.hpp"
 #include "transaction_element.hpp"
 #include "reason_ids.hpp"
@@ -36,14 +36,14 @@ AuctionTransaction::AuctionTransaction(std::string serial, AccountUuid account_u
 	std::uint64_t created_time, std::uint64_t expiry_time, ItemId item_id, std::uint64_t item_count, std::string remarks)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_AuctionTransaction>(std::move(serial), account_uuid.get(), static_cast<unsigned>(operation),
+			auto obj = boost::make_shared<MongoDb::Center_AuctionTransaction>(std::move(serial), account_uuid.get(), static_cast<unsigned>(operation),
 				created_time, expiry_time, item_id.get(), item_count, std::move(remarks), 0, false, false, std::string());
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-AuctionTransaction::AuctionTransaction(boost::shared_ptr<MySql::Center_AuctionTransaction> obj)
+AuctionTransaction::AuctionTransaction(boost::shared_ptr<MongoDb::Center_AuctionTransaction> obj)
 	: m_obj(std::move(obj))
 {
 }

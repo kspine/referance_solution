@@ -9,7 +9,7 @@
 
 namespace EmperyCenter
 {
-	namespace MySql
+	namespace MongoDb
 	{
 		class Center_Legion_Package_Share;
 	}
@@ -18,11 +18,11 @@ namespace EmperyCenter
 
 	struct LegionPackageShareMap
 	{
-		static boost::shared_ptr<MySql::Center_Legion_Package_Share> find(LegionPackageShareUuid share_uuid);
+		static boost::shared_ptr<MongoDb::Center_Legion_Package_Share> find(LegionPackageShareUuid share_uuid);
 
-		static void insert(const boost::shared_ptr<MySql::Center_Legion_Package_Share> &shares);
+		static void insert(const boost::shared_ptr<MongoDb::Center_Legion_Package_Share> &shares);
 
-		static void get_by_legion_uuid(std::vector<boost::shared_ptr<MySql::Center_Legion_Package_Share>> &ret, LegionUuid legion_uuid);
+		static void get_by_legion_uuid(std::vector<boost::shared_ptr<MongoDb::Center_Legion_Package_Share>> &ret, LegionUuid legion_uuid);
 
 		static bool check(AccountUuid account_uuid, TaskId task_id, std::uint64_t task_package_item_id);
 

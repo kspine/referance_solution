@@ -12,7 +12,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_BattleRecord;
 }
 
@@ -42,11 +42,11 @@ public:
 private:
 	const AccountUuid m_account_uuid;
 
-	std::deque<boost::shared_ptr<MySql::Center_BattleRecord>> m_records;
+	std::deque<boost::shared_ptr<MongoDb::Center_BattleRecord>> m_records;
 
 public:
 	BattleRecordBox(AccountUuid account_uuid,
-		const std::vector<boost::shared_ptr<MySql::Center_BattleRecord>> &records);
+		const std::vector<boost::shared_ptr<MongoDb::Center_BattleRecord>> &records);
 	~BattleRecordBox();
 
 public:

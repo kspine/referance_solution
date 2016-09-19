@@ -11,7 +11,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_Announcement;
 }
 
@@ -19,7 +19,7 @@ class PlayerSession;
 
 class Announcement : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 private:
-	const boost::shared_ptr<MySql::Center_Announcement> m_obj;
+	const boost::shared_ptr<MongoDb::Center_Announcement> m_obj;
 
 	std::vector<std::pair<ChatMessageSlotId, std::string>> m_segments;
 
@@ -27,7 +27,7 @@ public:
 	Announcement(AnnouncementUuid announcement_uuid, LanguageId language_id, std::uint64_t created_time,
 		std::uint64_t expiry_time, std::uint64_t period,
 		ChatMessageTypeId type, std::vector<std::pair<ChatMessageSlotId, std::string>> segments);
-	explicit Announcement(boost::shared_ptr<MySql::Center_Announcement> obj);
+	explicit Announcement(boost::shared_ptr<MongoDb::Center_Announcement> obj);
 	~Announcement();
 
 public:

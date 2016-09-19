@@ -8,7 +8,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_ActivationCode;
 }
 
@@ -17,11 +17,11 @@ public:
 	static std::string random_code();
 
 private:
-	const boost::shared_ptr<MySql::Center_ActivationCode> m_obj;
+	const boost::shared_ptr<MongoDb::Center_ActivationCode> m_obj;
 
 public:
 	ActivationCode(std::string code, std::uint64_t created_time, std::uint64_t expiry_time);
-	explicit ActivationCode(boost::shared_ptr<MySql::Center_ActivationCode> obj);
+	explicit ActivationCode(boost::shared_ptr<MongoDb::Center_ActivationCode> obj);
 	~ActivationCode();
 
 public:

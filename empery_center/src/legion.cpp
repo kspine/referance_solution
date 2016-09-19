@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "account.hpp"
 #include "mmain.hpp"
-#include "mysql/legion.hpp"
+#include "mongodb/legion.hpp"
 #include "singletons/legion_map.hpp"
 #include "singletons/legion_building_map.hpp"
 #include "msg/cs_legion.hpp"
@@ -16,7 +16,7 @@
 #include "singletons/mail_box_map.hpp"
 #include "mail_box.hpp"
 #include "mail_data.hpp"
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include "singletons/legion_task_box_map.hpp"
 
@@ -27,15 +27,15 @@ std::pair<boost::shared_ptr<const Poseidon::JobPromise>, boost::shared_ptr<Legio
 {
 	PROFILE_ME;
 
-	auto obj = boost::make_shared<MySql::Center_Legion>(legion_uuid.get(), std::move(legion_name),account_uuid.get(),created_time);
+	auto obj = boost::make_shared<MongoDb::Center_Legion>(legion_uuid.get(), std::move(legion_name),account_uuid.get(),created_time);
 	obj->enable_auto_saving();
-	auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
-	auto account = boost::make_shared<Legion>(std::move(obj), std::vector<boost::shared_ptr<MySql::Center_LegionAttribute>>());
+	auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
+	auto account = boost::make_shared<Legion>(std::move(obj), std::vector<boost::shared_ptr<MongoDb::Center_LegionAttribute>>());
 	return std::make_pair(std::move(promise), std::move(account));
 }
 
-Legion::Legion(boost::shared_ptr<MySql::Center_Legion> obj,
-	const std::vector<boost::shared_ptr<MySql::Center_LegionAttribute>> &attributes)
+Legion::Legion(boost::shared_ptr<MongoDb::Center_Legion> obj,
+	const std::vector<boost::shared_ptr<MongoDb::Center_LegionAttribute>> &attributes)
 	: m_obj(std::move(obj))
 {
 	for(auto it = attributes.begin(); it != attributes.end(); ++it){
@@ -206,7 +206,7 @@ void Legion::set_attributes(boost::container::flat_map<LegionAttributeId, std::s
 	for(auto it = modifiers.begin(); it != modifiers.end(); ++it){
 		const auto obj_it = m_attributes.find(it->first);
 		if(obj_it == m_attributes.end()){
-			auto obj = boost::make_shared<MySql::Center_LegionAttribute>(m_obj->get_legion_uuid(),
+			auto obj = boost::make_shared<MongoDb::Center_LegionAttribute>(m_obj->get_legion_uuid(),
 				it->first.get(), std::string());
 			obj->async_save(true);
 			m_attributes.emplace(it->first, std::move(obj));
@@ -283,7 +283,7 @@ void Legion::disband()
 	strsql += get_legion_uuid().str();
 	strsql += "';";
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("Center_LegionAttribute",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionAttribute",strsql);
 
 	// 设置对应的联盟信息为空
 	set_member_league_uuid("");

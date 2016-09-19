@@ -1,7 +1,7 @@
 #include "precompiled.hpp"
 #include "payment_transaction.hpp"
 #include "singletons/payment_transaction_map.hpp"
-#include "mysql/payment.hpp"
+#include "mongodb/payment.hpp"
 #include "item_box.hpp"
 #include "transaction_element.hpp"
 #include "reason_ids.hpp"
@@ -66,14 +66,14 @@ PaymentTransaction::PaymentTransaction(std::string serial, AccountUuid account_u
 	ItemId item_id, std::uint64_t item_count, std::string remarks)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_PaymentTransaction>(std::move(serial), account_uuid.get(), created_time, expiry_time,
+			auto obj = boost::make_shared<MongoDb::Center_PaymentTransaction>(std::move(serial), account_uuid.get(), created_time, expiry_time,
 				item_id.get(), item_count, std::move(remarks), 0, false, false, std::string());
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-PaymentTransaction::PaymentTransaction(boost::shared_ptr<MySql::Center_PaymentTransaction> obj)
+PaymentTransaction::PaymentTransaction(boost::shared_ptr<MongoDb::Center_PaymentTransaction> obj)
 	: m_obj(std::move(obj))
 {
 }

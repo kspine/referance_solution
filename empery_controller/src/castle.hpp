@@ -8,7 +8,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_MapObject;
 }
 
@@ -18,10 +18,10 @@ namespace EmperyController {
 
 class Castle : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 private:
-	const boost::shared_ptr<EmperyCenter::MySql::Center_MapObject> m_obj;
+	const boost::shared_ptr<EmperyCenter::MongoDb::Center_MapObject> m_obj;
 
 public:
-	explicit Castle(boost::shared_ptr<EmperyCenter::MySql::Center_MapObject> obj);
+	explicit Castle(boost::shared_ptr<EmperyCenter::MongoDb::Center_MapObject> obj);
 	~Castle();
 
 public:

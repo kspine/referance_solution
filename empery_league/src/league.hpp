@@ -7,7 +7,7 @@
 #include <boost/container/flat_map.hpp>
 #include "id_types.hpp"
 #include "league_attribute_ids.hpp"
-#include "mysql/league.hpp"
+#include "mongodb/league.hpp"
 #include "league_attribute_ids.hpp"
 #include "league_session.hpp"
 #include "../../empery_center/src/chat_message_type_ids.hpp"
@@ -16,7 +16,7 @@
 
 namespace EmperyLeague {
 
-namespace MySql {
+namespace MongoDb {
 	class League_Info;
 	class League_LeagueAttribute;
 }
@@ -62,16 +62,16 @@ public:
 		LeagueUuid league_uuid,  LegionUuid legion_uuid,std::string league_name, AccountUuid account_uuid, std::uint64_t created_time);
 
 private:
-	const boost::shared_ptr<MySql::League_Info> m_obj;
+	const boost::shared_ptr<MongoDb::League_Info> m_obj;
 
 	boost::container::flat_map<LeagueAttributeId,
-		boost::shared_ptr<MySql::League_LeagueAttribute>> m_attributes;
+		boost::shared_ptr<MongoDb::League_LeagueAttribute>> m_attributes;
 
 	boost::weak_ptr<LeagueSession> m_leaguesession;
 
 public:
-	League(boost::shared_ptr<MySql::League_Info> obj,
-		const std::vector<boost::shared_ptr<MySql::League_LeagueAttribute>> &attributes);
+	League(boost::shared_ptr<MongoDb::League_Info> obj,
+		const std::vector<boost::shared_ptr<MongoDb::League_LeagueAttribute>> &attributes);
 	~League();
 
 public:

@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "defense_building.hpp"
-#include "mysql/defense_building.hpp"
+#include "mongodb/defense_building.hpp"
 #include "msg/sc_map.hpp"
 #include "singletons/world_map.hpp"
 #include "singletons/player_session_map.hpp"
@@ -12,16 +12,16 @@
 namespace EmperyCenter {
 
 namespace {
-	boost::shared_ptr<MySql::Center_DefenseBuilding> create_default_defense_obj(MapObjectUuid map_object_uuid){
+	boost::shared_ptr<MongoDb::Center_DefenseBuilding> create_default_defense_obj(MapObjectUuid map_object_uuid){
 		PROFILE_ME;
 
-		auto obj = boost::make_shared<MySql::Center_DefenseBuilding>(map_object_uuid.get(),
+		auto obj = boost::make_shared<MongoDb::Center_DefenseBuilding>(map_object_uuid.get(),
 			0, DefenseBuilding::MIS_NONE, 0, 0, 0, Poseidon::Uuid(), 0);
 		obj->async_save(true, true);
 		return obj;
 	}
 
-	bool check_defense_building_mission(const boost::shared_ptr<MySql::Center_DefenseBuilding> &obj, std::uint64_t utc_now){
+	bool check_defense_building_mission(const boost::shared_ptr<MongoDb::Center_DefenseBuilding> &obj, std::uint64_t utc_now){
 		PROFILE_ME;
 
 		const auto mission = DefenseBuilding::Mission(obj->get_mission());
@@ -79,10 +79,10 @@ DefenseBuilding::DefenseBuilding(MapObjectUuid map_object_uuid, MapObjectTypeId 
 	, m_defense_obj(create_default_defense_obj(map_object_uuid))
 {
 }
-DefenseBuilding::DefenseBuilding(boost::shared_ptr<MySql::Center_MapObject> obj,
-	const std::vector<boost::shared_ptr<MySql::Center_MapObjectAttribute>> &attributes,
-	const std::vector<boost::shared_ptr<MySql::Center_MapObjectBuff>> &buffs,
-	const std::vector<boost::shared_ptr<MySql::Center_DefenseBuilding>> &defense_objs)
+DefenseBuilding::DefenseBuilding(boost::shared_ptr<MongoDb::Center_MapObject> obj,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> &attributes,
+	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectBuff>> &buffs,
+	const std::vector<boost::shared_ptr<MongoDb::Center_DefenseBuilding>> &defense_objs)
 	: MapObject(std::move(obj), attributes, buffs)
 	, m_defense_obj(defense_objs.empty() ? create_default_defense_obj(MapObject::get_map_object_uuid())
 	                                     : std::move(defense_objs.front()))

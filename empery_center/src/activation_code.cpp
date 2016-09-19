@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "activation_code.hpp"
-#include "mysql/activation_code.hpp"
+#include "mongodb/activation_code.hpp"
 #include "singletons/activation_code_map.hpp"
 
 namespace EmperyCenter {
@@ -26,14 +26,14 @@ std::string ActivationCode::random_code(){
 ActivationCode::ActivationCode(std::string code, std::uint64_t created_time, std::uint64_t expiry_time)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_ActivationCode>(
+			auto obj = boost::make_shared<MongoDb::Center_ActivationCode>(
 				std::move(code), created_time, expiry_time, Poseidon::Uuid(), 0);
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-ActivationCode::ActivationCode(boost::shared_ptr<MySql::Center_ActivationCode> obj)
+ActivationCode::ActivationCode(boost::shared_ptr<MongoDb::Center_ActivationCode> obj)
 	: m_obj(std::move(obj))
 {
 }

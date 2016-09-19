@@ -8,7 +8,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_StrategicResource;
 }
 
@@ -17,7 +17,7 @@ class PlayerSession;
 
 class StrategicResource : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 private:
-	const boost::shared_ptr<MySql::Center_StrategicResource> m_obj;
+	const boost::shared_ptr<MongoDb::Center_StrategicResource> m_obj;
 
 	// 非持久化数据。
 	double m_harvest_remainder = 0;
@@ -26,7 +26,7 @@ private:
 public:
 	StrategicResource(Coord coord, ResourceId resource_id, std::uint64_t resource_amount,
 		std::uint64_t created_time, std::uint64_t expiry_time, MapEventId map_event_id);
-	explicit StrategicResource(boost::shared_ptr<MySql::Center_StrategicResource> obj);
+	explicit StrategicResource(boost::shared_ptr<MongoDb::Center_StrategicResource> obj);
 	~StrategicResource();
 
 public:

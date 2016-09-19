@@ -9,7 +9,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_ResourceCrate;
 }
 
@@ -19,7 +19,7 @@ class ClusterSession;
 
 class ResourceCrate : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 private:
-	const boost::shared_ptr<MySql::Center_ResourceCrate> m_obj;
+	const boost::shared_ptr<MongoDb::Center_ResourceCrate> m_obj;
 
 	// 非持久化数据。
 	boost::weak_ptr<MapObject> m_last_harvester;
@@ -27,7 +27,7 @@ private:
 public:
 	ResourceCrate(ResourceCrateUuid resource_crate_uuid, ResourceId resource_id, std::uint64_t amount_max,
 		Coord coord, std::uint64_t created_time, std::uint64_t expiry_time);
-	explicit ResourceCrate(boost::shared_ptr<MySql::Center_ResourceCrate> obj);
+	explicit ResourceCrate(boost::shared_ptr<MongoDb::Center_ResourceCrate> obj);
 	~ResourceCrate();
 
 public:

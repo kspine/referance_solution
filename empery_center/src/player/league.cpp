@@ -25,7 +25,7 @@
 #include "../attribute_ids.hpp"
 #include "../castle.hpp"
 #include <poseidon/json.hpp>
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 
 

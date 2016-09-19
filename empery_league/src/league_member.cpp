@@ -1,10 +1,10 @@
 #include "precompiled.hpp"
 #include "mmain.hpp"
-#include "mysql/league.hpp"
+#include "mongodb/league.hpp"
 #include "league_member.hpp"
 #include "league_member_attribute_ids.hpp"
 #include "singletons/league_member_map.hpp"
-#include <poseidon/singletons/mysql_daemon.hpp>
+#include <poseidon/singletons/mongodb_daemon.hpp>
 
 namespace EmperyLeague {
 
@@ -13,15 +13,15 @@ std::pair<boost::shared_ptr<const Poseidon::JobPromise>, boost::shared_ptr<Leagu
 {
 	PROFILE_ME;
 
-	auto obj = boost::make_shared<MySql::League_Member>(legion_uuid.get() ,league_uuid.get(),created_time);
+	auto obj = boost::make_shared<MongoDb::League_Member>(legion_uuid.get() ,league_uuid.get(),created_time);
 	obj->enable_auto_saving();
-	auto promise = Poseidon::MySqlDaemon::enqueue_for_saving(obj, false, true);
-	auto account = boost::make_shared<LeagueMember>(std::move(obj), std::vector<boost::shared_ptr<MySql::League_MemberAttribute>>());
+	auto promise = Poseidon::MongoDbDaemon::enqueue_for_saving(obj, false, true);
+	auto account = boost::make_shared<LeagueMember>(std::move(obj), std::vector<boost::shared_ptr<MongoDb::League_MemberAttribute>>());
 	return std::make_pair(std::move(promise), std::move(account));
 }
 
-LeagueMember::LeagueMember(boost::shared_ptr<MySql::League_Member> obj,
-	const std::vector<boost::shared_ptr<MySql::League_MemberAttribute>> &attributes)
+LeagueMember::LeagueMember(boost::shared_ptr<MongoDb::League_Member> obj,
+	const std::vector<boost::shared_ptr<MongoDb::League_MemberAttribute>> &attributes)
 	: m_obj(std::move(obj))
 {
 	for(auto it = attributes.begin(); it != attributes.end(); ++it){
@@ -60,7 +60,7 @@ void LeagueMember::leave()
 	strsql += get_legion_uuid().str();
 	strsql += "';";
 
-	Poseidon::MySqlDaemon::enqueue_for_deleting("League_MemberAttribute",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_MemberAttribute",strsql);
 
 }
 
@@ -92,7 +92,7 @@ void LeagueMember::set_attributes(boost::container::flat_map<LeagueMemberAttribu
 	for(auto it = modifiers.begin(); it != modifiers.end(); ++it){
 		const auto obj_it = m_attributes.find(it->first);
 		if(obj_it == m_attributes.end()){
-			auto obj = boost::make_shared<MySql::League_MemberAttribute>(m_obj->get_legion_uuid(),
+			auto obj = boost::make_shared<MongoDb::League_MemberAttribute>(m_obj->get_legion_uuid(),
 				it->first.get(), std::string());
 			obj->async_save(true);
 			m_attributes.emplace(it->first, std::move(obj));

@@ -9,7 +9,7 @@
 
 namespace EmperyCenter {
 
-namespace MySql {
+namespace MongoDb {
 	class Center_MapObject;
 	class Center_MapObjectAttribute;
 	class Center_MapObjectBuff;
@@ -32,12 +32,12 @@ public:
 	static const std::initializer_list<AttributeId> COMBAT_ATTRIBUTES;
 
 private:
-	const boost::shared_ptr<MySql::Center_MapObject> m_obj;
+	const boost::shared_ptr<MongoDb::Center_MapObject> m_obj;
 
 	boost::container::flat_map<AttributeId,
-		boost::shared_ptr<MySql::Center_MapObjectAttribute>> m_attributes;
+		boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> m_attributes;
 	boost::container::flat_map<BuffId,
-		boost::shared_ptr<MySql::Center_MapObjectBuff>> m_buffs;
+		boost::shared_ptr<MongoDb::Center_MapObjectBuff>> m_buffs;
 
 	// 非持久化数据。
 	std::uint64_t m_last_updated_time = 0;
@@ -49,9 +49,9 @@ private:
 public:
 	MapObject(MapObjectUuid map_object_uuid, MapObjectTypeId map_object_type_id, AccountUuid owner_uuid, MapObjectUuid parent_object_uuid,
 		std::string name, Coord coord, std::uint64_t created_time, std::uint64_t expiry_time, bool garrisoned);
-	MapObject(boost::shared_ptr<MySql::Center_MapObject> obj,
-		const std::vector<boost::shared_ptr<MySql::Center_MapObjectAttribute>> &attributes,
-		const std::vector<boost::shared_ptr<MySql::Center_MapObjectBuff>> &buffs);
+	MapObject(boost::shared_ptr<MongoDb::Center_MapObject> obj,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>> &attributes,
+		const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectBuff>> &buffs);
 	~MapObject();
 
 protected:

@@ -1,6 +1,6 @@
 #include "precompiled.hpp"
 #include "strategic_resource.hpp"
-#include "mysql/strategic_resource.hpp"
+#include "mongodb/strategic_resource.hpp"
 #include "singletons/world_map.hpp"
 #include "player_session.hpp"
 #include "msg/sc_map.hpp"
@@ -19,14 +19,14 @@ StrategicResource::StrategicResource(Coord coord, ResourceId resource_id, std::u
 	std::uint64_t created_time, std::uint64_t expiry_time, MapEventId map_event_id)
 	: m_obj(
 		[&]{
-			auto obj = boost::make_shared<MySql::Center_StrategicResource>(coord.x(), coord.y(),
+			auto obj = boost::make_shared<MongoDb::Center_StrategicResource>(coord.x(), coord.y(),
 				resource_id.get(), resource_amount, created_time, expiry_time, map_event_id.get());
 			obj->async_save(true, true);
 			return obj;
 		}())
 {
 }
-StrategicResource::StrategicResource(boost::shared_ptr<MySql::Center_StrategicResource> obj)
+StrategicResource::StrategicResource(boost::shared_ptr<MongoDb::Center_StrategicResource> obj)
 	: m_obj(std::move(obj))
 {
 }
