@@ -51,8 +51,9 @@ namespace {
 		std::map<LeagueUuid, TempLeagueElement> temp_account_map;
 
 		LOG_EMPERY_LEAGUE_INFO("Loading Leagues...");
-		conn->execute_sql("SELECT * FROM `League_Info`");
-		while(conn->fetch_row()){
+	//	conn->execute_sql("SELECT * FROM `League_Info`");
+		conn->execute_query("League_Info", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::League_Info>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
@@ -62,8 +63,9 @@ namespace {
 		LOG_EMPERY_LEAGUE_INFO("Loaded ", temp_account_map.size(), " Leagues(s).");
 
 		LOG_EMPERY_LEAGUE_INFO("Loading Leagues attributes...");
-		conn->execute_sql("SELECT * FROM `League_LeagueAttribute`");
-		while(conn->fetch_row()){
+	//	conn->execute_sql("SELECT * FROM `League_LeagueAttribute`");
+	    conn->execute_query("League_LeagueAttribute", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::League_LeagueAttribute>();
 			obj->fetch(conn);
 			const auto league_uuid = LeagueUuid(obj->unlocked_get_league_uuid());
@@ -277,11 +279,16 @@ void LeagueMap::remove(LeagueUuid league_uuid){
 		league_map->erase<0>(it);
 
 		// 从数据库中删掉
+		/*
 		std::string strsql = "DELETE FROM League_Info WHERE league_uuid='";
 		strsql += league_uuid.str();
 		strsql += "';";
+		*/
 
-		Poseidon::MongoDbDaemon::enqueue_for_deleting("League_Info",strsql);
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+        Poseidon::MongoDb::BsonBuilder query;
+        query.append_uuid(sslit("league_uuid"), league_uuid.get());
+		conn->execute_delete("League_Info",query,true);
 	}
 }
 
