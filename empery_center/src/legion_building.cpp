@@ -71,11 +71,19 @@ void LegionBuilding::leave()
 	}
 	
 	// 删除属性表
+	/*
 	std::string strsql = "DELETE FROM Center_LegionBuildingAttribute WHERE legion_building_uuid='";
 	strsql += get_legion_building_uuid().str();
 	strsql += "';";
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuildingAttribute",strsql);
+	*/
+	
+	 const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	 Poseidon::MongoDb::BsonBuilder query;
+	 const auto legion_building_uuid = conn->get_uuid("legion_building_uuid");
+	 query.append_uuid(sslit("legion_building_uuid"), legion_building_uuid);
+	 conn->execute_delete("Center_LegionBuildingAttribute", query, true);
 }
 
 

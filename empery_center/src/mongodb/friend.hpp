@@ -11,7 +11,7 @@ namespace MongoDb {
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (account_uuid)	\
 	FIELD_UUID              (friend_uuid)	\
-	FIELD_SIGNED            (category)	\
+	FIELD_UNSIGNED            (category)	\
 	FIELD_STRING            (metadata)	\
 	FIELD_DATETIME          (updated_time)
 #include <poseidon/mongodb/object_generator.hpp>

@@ -13,10 +13,10 @@ namespace MongoDb {
 	FIELD_UUID              (account_uuid)	\
 	FIELD_DATETIME          (timestamp)	\
 	FIELD_UUID              (from_account_uuid)	\
-	FIELD_SIGNED            (reason)	\
-	FIELD_SIGNED            (old_amount)	\
-	FIELD_SIGNED            (new_amount)	\
-	FIELD_SIGNED            (delta_amount)	\
+	FIELD_UNSIGNED            (reason)	\
+	FIELD_UNSIGNED            (old_amount)	\
+	FIELD_UNSIGNED            (new_amount)	\
+	FIELD_UNSIGNED            (delta_amount)	\
 	FIELD_BOOLEAN           (deleted)
 #include <poseidon/mongodb/object_generator.hpp>
 

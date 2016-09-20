@@ -279,11 +279,50 @@ void Legion::disband()
 	}
 
 	// 从数据库中删除军团属性
+	/*
 	std::string strsql = "DELETE FROM Center_LegionAttribute WHERE legion_uuid='";
 	strsql += get_legion_uuid().str();
 	strsql += "';";
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionAttribute",strsql);
+	*/
+	
+	
+	
+	
+	
+	
+	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	Poseidon::MongoDb::BsonBuilder query;
+	const auto legion_uuid = conn->get_uuid("legion_uuid");
+	query.append_uuid(sslit("legion_uuid"), legion_uuid);
+    conn->execute_delete("Center_LegionAttribute", query, true);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
 	// 设置对应的联盟信息为空
 	set_member_league_uuid("");

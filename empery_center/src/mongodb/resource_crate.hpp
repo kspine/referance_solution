@@ -8,13 +8,13 @@ namespace EmperyCenter {
 #define MONGODB_OBJECT_NAME   Center_ResourceCrate
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (resource_crate_uuid)	\
-	FIELD_SIGNED            (resource_id)	\
-	FIELD_SIGNED            (amount_max)	\
+	FIELD_UNSIGNED            (resource_id)	\
+	FIELD_UNSIGNED            (amount_max)	\
 	FIELD_SIGNED			(x)	\
 	FIELD_SIGNED			(y)	\
 	FIELD_DATETIME          (created_time)	\
 	FIELD_DATETIME          (expiry_time)	\
-	FIELD_SIGNED            (amount_remaining)
+	FIELD_UNSIGNED            (amount_remaining)
 #include <poseidon/mongodb/object_generator.hpp>
 	}
 }

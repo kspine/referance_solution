@@ -13,8 +13,8 @@ namespace MongoDb {
 	FIELD_UUID              (account_uuid)	\
 	FIELD_DATETIME          (created_time)	\
 	FIELD_DATETIME          (expiry_time)	\
-	FIELD_SIGNED            (item_id)	\
-	FIELD_SIGNED            (item_count)	\
+	FIELD_UNSIGNED            (item_id)	\
+	FIELD_UNSIGNED            (item_count)	\
 	FIELD_STRING            (remarks)	\
 	FIELD_DATETIME          (last_updated_time)	\
 	FIELD_BOOLEAN           (committed)	\

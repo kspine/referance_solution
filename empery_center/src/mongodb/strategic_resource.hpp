@@ -11,11 +11,11 @@ namespace MongoDb {
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (x)	\
 	FIELD_SIGNED            (y)	\
-	FIELD_SIGNED            (resource_id)	\
-	FIELD_SIGNED            (resource_amount)	\
+	FIELD_UNSIGNED            (resource_id)	\
+	FIELD_UNSIGNED            (resource_amount)	\
 	FIELD_DATETIME          (created_time)	\
 	FIELD_DATETIME          (expiry_time)	\
-	FIELD_SIGNED            (map_event_id)
+	FIELD_UNSIGNED            (map_event_id)
 #include <poseidon/mongodb/object_generator.hpp>
 
 }

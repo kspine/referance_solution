@@ -98,13 +98,22 @@ void LegionMember::leave()
 	}
 
 	// 删除属性表
+	/*
 	std::string strsql = "DELETE FROM Center_LegionMemberAttribute WHERE account_uuid='";
 	strsql += get_account_uuid().str();
 	strsql += "';";
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionMemberAttribute",strsql);
-
-	set_league_uuid("");
+	*/
+	
+	
+	 const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	 Poseidon::MongoDb::BsonBuilder query;
+	 const auto account_uuid = conn->get_uuid("account_uuid");
+	 query.append_uuid(sslit("account_uuid"), account_uuid);
+	 conn->execute_delete("Center_LegionMemberAttribute", query, true);
+	 
+	 set_league_uuid("");
 }
 
 std::uint64_t LegionMember::get_created_time() const {
