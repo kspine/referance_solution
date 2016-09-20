@@ -60,11 +60,8 @@ namespace EmperyCenter
 
 			std::map<LegionPackageShareUuid, TempLegionPackagePickShareElement> temp_map;
 
-			LOG_EMPERY_CENTER_INFO("Loading Center_Legion_Package_Pick_Share...");
-
-			conn->execute_sql("SELECT * FROM `Center_Legion_Package_Pick_Share`");
-
-			while (conn->fetch_row())
+			conn->execute_query("Center_Legion_Package_Pick_Share", { }, 0, UINT32_MAX);
+			while (conn->fetch_next())
 			{
 				auto obj = boost::make_shared<MongoDb::Center_Legion_Package_Pick_Share>();
 				obj->fetch(conn);

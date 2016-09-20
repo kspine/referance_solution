@@ -107,15 +107,19 @@ boost::shared_ptr<AuctionCenter> AuctionCenterMap::get(AccountUuid account_uuid)
 		do {
 			if(!it->promise){
 				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_AuctionTransfer>>>();
+				/*
 				std::ostringstream oss;
 				oss <<"SELECT * FROM `Center_AuctionTransfer` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid.get());
+				*/
+				Poseidon::MongoDb::BsonBuilder query;
+				query.append_uuid(sslit("account_uuid"), account_uuid.get());
 				auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 						auto obj = boost::make_shared<MongoDb::Center_AuctionTransfer>();
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));
-					}, "Center_AuctionTransfer", oss.str());
+					}, "Center_AuctionTransfer", /*oss.str()*/std::move(query), 0, UINT32_MAX);
 				it->promise = std::move(promise);
 				it->sink    = std::move(sink);
 			}

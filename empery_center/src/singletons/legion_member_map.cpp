@@ -113,8 +113,12 @@ namespace {
 
 
 		LOG_EMPERY_CENTER_INFO("Loading LegionMembers...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_Legion_Member`");
 		while(conn->fetch_row()){
+		*/
+		conn->execute_query("Center_Legion_Member", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_Legion_Member>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
@@ -128,8 +132,12 @@ namespace {
 	//	sleep(5000);
 
 		LOG_EMPERY_CENTER_INFO("Loading LegionMember attributes...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_LegionMemberAttribute`");
 		while(conn->fetch_row()){
+		*/
+		conn->execute_query("Center_LegionMemberAttribute", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionMemberAttribute>();
 			obj->fetch(conn);
 			const auto legion_uuid = AccountUuid(obj->unlocked_get_account_uuid());
@@ -177,16 +185,15 @@ namespace {
 
 #define RELOAD_PART_(sink_, table_)	\
 		{	\
-			std::ostringstream oss;	\
-			const auto account_uuid = obj->unlocked_get_account_uuid();	\
-			oss <<"SELECT * FROM `" #table_ "` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid);	\
+			Poseidon::MongoDb::BsonBuilder query; \
+			query.append_uuid(sslit("account_uuid"), account_uuid.get()); \
 			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
 				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
 					auto obj = boost::make_shared<MongoDb:: table_ >();	\
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, oss.str());	\
+				}, #table_, std::move(query), 0, UINT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
 //=============================================================================
@@ -630,12 +637,17 @@ void LegionMemberMap::deletemember(AccountUuid account_uuid,bool bdeletemap)
 		LOG_EMPERY_CENTER_INFO("deletemember members size==============================================",get_legion_member_count(legion_uuid));
 
 		// 从数据库中删除该成员
+		/*
 		std::string strsql = "DELETE FROM Center_Legion_Member WHERE account_uuid='";
 		strsql += account_uuid.str();
 		strsql += "';";
 
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Legion_Member",strsql);
-
+		*/
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_uuid(sslit("account_uuid"), account_uuid.get());
+		conn->execute_delete("Center_Legion_Member",query,true);
 
 		// 个人贡献移动到账号身上
 		const auto account = AccountMap::require(account_uuid);

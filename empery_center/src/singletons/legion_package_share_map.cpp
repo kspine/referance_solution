@@ -69,16 +69,11 @@ namespace EmperyCenter
 			};
 
 			std::map<LegionPackageShareUuid, TempLegionPackageShareElement> temp_map;
+                     
+                            
+			conn->execute_query("Center_Legion_Package_Share", { }, 0, UINT32_MAX);
 
-			LOG_EMPERY_CENTER_INFO("Loading Center_Legion_Package_Share...");
-
-			std::string str_query = "SELECT * FROM `Center_Legion_Package_Share` ";
-			//std::string str_condition = " WHERE DATE(share_package_time) = CURDATE()";
-			//str_query += str_condition;
-
-			conn->execute_sql(str_query);
-
-			while (conn->fetch_row())
+			while (conn->fetch_next())
 			{
 				auto obj = boost::make_shared<MongoDb::Center_Legion_Package_Share>();
 				obj->fetch(conn);

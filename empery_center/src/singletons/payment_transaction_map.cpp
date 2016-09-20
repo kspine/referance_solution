@@ -71,11 +71,18 @@ namespace {
 		const auto payment_transaction_map = boost::make_shared<PaymentTransactionContainer>();
 		LOG_EMPERY_CENTER_INFO("Loading payment transactions...");
 		const auto utc_now = Poseidon::get_utc_time();
+		/*
 		std::ostringstream oss;
 		oss <<"SELECT * FROM `Center_PaymentTransaction` WHERE `expiry_time` > " <<Poseidon::MongoDb::DateTimeFormatter(utc_now)
 		    <<"  AND `cancelled` = 0";
 		conn->execute_sql(oss.str());
 		while(conn->fetch_row()){
+		*/
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$gt"), utc_now));
+		query.append_boolean(sslit("cancelled"), true);
+		conn->execute_query("Center_PaymentTransaction", std::move(query), 0, UINT32_MAX);
+		while(conn->fetch_next()){	
 			auto obj = boost::make_shared<MongoDb::Center_PaymentTransaction>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();

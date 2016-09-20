@@ -54,9 +54,9 @@ namespace EmperyCenter {
     FIELD_UUID              (share_uuid)	\
     FIELD_UUID              (legion_uuid)	\
     FIELD_UUID              (account_uuid)	\
-    FIELD_SIGNED            (task_id)	\
-    FIELD_SIGNED            (task_package_item_id)	\
-    FIELD_SIGNED            (share_package_item_id)	\
+    FIELD_UNSIGNED            (task_id)	\
+    FIELD_UNSIGNED            (task_package_item_id)	\
+    FIELD_UNSIGNED            (share_package_item_id)	\
     FIELD_DATETIME          (share_package_time) \
     FIELD_DATETIME          (share_package_expire_time)
 
@@ -66,7 +66,7 @@ namespace EmperyCenter {
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (share_uuid)	\
     FIELD_UUID              (account_uuid)	\
-    FIELD_SIGNED            (share_package_status) \
+    FIELD_UNSIGNED            (share_package_status) \
     FIELD_DATETIME          (share_package_pick_time)
 #include <poseidon/mongodb/object_generator.hpp>
 

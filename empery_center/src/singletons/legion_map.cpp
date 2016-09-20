@@ -87,8 +87,12 @@ namespace {
 		std::map<LegionUuid, TempLegionElement> temp_account_map;
 
 		LOG_EMPERY_CENTER_INFO("Loading Legions...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_Legion`");
 		while(conn->fetch_row()){
+		*/
+		conn->execute_query("Center_Legion", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_Legion>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
@@ -98,8 +102,12 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loaded ", temp_account_map.size(), " Legion(s).");
 
 		LOG_EMPERY_CENTER_INFO("Loading Legion attributes...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_LegionAttribute`");
 		while(conn->fetch_row()){
+		*/
+		conn->execute_query("Center_LegionAttribute", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionAttribute>();
 			obj->fetch(conn);
 			const auto legion_uuid = LegionUuid(obj->unlocked_get_legion_uuid());
@@ -159,16 +167,15 @@ namespace {
 
 #define RELOAD_PART_(sink_, table_)	\
 		{	\
-			std::ostringstream oss;	\
-			const auto account_uuid = obj->unlocked_get_account_uuid();	\
-			oss <<"SELECT * FROM `" #table_ "` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid);	\
+			Poseidon::MongoDb::BsonBuilder query; \
+			query.append_uuid(sslit("account_uuid"), account_uuid.get()); \
 			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
 				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
 					auto obj = boost::make_shared<MongoDb:: table_ >();	\
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, oss.str());	\
+				}, #table_, std::move(query), 0, UINT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
 //=============================================================================
@@ -419,15 +426,19 @@ boost::shared_ptr<Legion> LegionMap::forced_reload(LegionUuid account_uuid){
 
 	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Legion>>>();
 	{
+		/*
 		std::ostringstream oss;
 		oss <<"SELECT * FROM `Center_Legion` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid.get());
+		*/
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_uuid(sslit("account_uuid"), account_uuid.get());
 		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 				auto obj = boost::make_shared<MongoDb::Center_Legion>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Legion", oss.str());
+			}, "Center_Legion", /*oss.str()*/std::move(query), 0, UINT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){
@@ -480,16 +491,21 @@ boost::shared_ptr<Legion> LegionMap::forced_reload_by_login_name(PlatformId plat
 
 	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Legion>>>();
 	{
+		/*
 		std::ostringstream oss;
 		oss <<"SELECT * FROM `Center_Legion` WHERE `platform_id` = " <<platform_id
 		    <<" AND `login_name` = " <<Poseidon::MongoDb::StringEscaper(login_name);
+		*/
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_unsigned(sslit("platform_id"), platform_id.get());
+		query.append_string(sslit("login_name"), login_name);
 		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 				auto obj = boost::make_shared<MongoDb::Center_Legion>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Legion", oss.str());
+			}, "Center_Legion", std::move(query), 0, UINT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){
@@ -688,6 +704,7 @@ void LegionMap::deletelegion(LegionUuid legion_uuid)
 
 		// 先从内存中删除
 		legion_map->erase<0>(it);
+		/*
 		LOG_EMPERY_CENTER_INFO("deletemember legion size==============================================",get_count());
 		// 从数据库中删除该军团
 		std::string strsql = "DELETE FROM Center_Legion WHERE legion_uuid='";
@@ -696,6 +713,11 @@ void LegionMap::deletelegion(LegionUuid legion_uuid)
 
 		LOG_EMPERY_CENTER_INFO("LegionMap::deletelegion==============================================",strsql);
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Legion",strsql);
+		*/
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+		conn->execute_delete("Center_Legion",query,true);
 	}
 }
 

@@ -110,10 +110,17 @@ namespace {
 			horn_message->delete_from_game();
 		}
 
+		/*
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_HornMessage",
 			"DELETE QUICK `m`.* "
 			"  FROM `Center_HornMessage` AS `m` "
 			"  WHERE `m`.`expiry_time` = '0000-00-00 00:00:00'");
+
+		*/
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_datetime(sslit("expiry_time"), 0);
+		conn->execute_delete("Center_HornMessage",query,true);
 	}
 
 	MODULE_RAII_PRIORITY(handles, 5000){
@@ -125,8 +132,12 @@ namespace {
 
 		const auto horn_map = boost::make_shared<HornContainer>();
 		LOG_EMPERY_CENTER_INFO("Loading horn messages...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_HornMessage`");
 		while(conn->fetch_row()){
+		*/
+		conn->execute_query("Center_HornMessage", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_HornMessage>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
@@ -290,17 +301,23 @@ boost::shared_ptr<HornMessage> ChatBoxMap::forced_reload_horn_message(HornMessag
 
 	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_HornMessage>>>();
 	{
+		/*
 		std::ostringstream oss;
 		oss <<"SELECT * FROM `Center_HornMessage` "
 		    <<"  WHERE `horn_message_uuid` = " <<Poseidon::MongoDb::UuidFormatter(horn_message_uuid.get())
 		    <<"    AND `expiry_time` > 0";
+		*/
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_uuid(sslit("horn_message_uuid"), horn_message_uuid.get());
+		query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$gt"), 0));
 		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 				auto obj = boost::make_shared<MongoDb::Center_HornMessage>();
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_HornMessage", oss.str());
+			}, "Center_HornMessage", /*oss.str()*/std::move(query), 0, UINT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){

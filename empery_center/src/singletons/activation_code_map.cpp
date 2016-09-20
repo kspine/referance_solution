@@ -65,9 +65,15 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loading activation codes...");
 		std::ostringstream oss;
 		const auto utc_now = Poseidon::get_utc_time();
+		/*
 		oss <<"SELECT * FROM `Center_ActivationCode` WHERE `expiry_time` > " <<Poseidon::MongoDb::DateTimeFormatter(utc_now);
 		conn->execute_sql(oss.str());
 		while(conn->fetch_row()){
+		*/
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$gt"), utc_now));
+		conn->execute_query("Center_ActivationCode", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_ActivationCode>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();

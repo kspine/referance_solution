@@ -36,8 +36,12 @@ namespace {
 
 		const auto announcement_map = boost::make_shared<AnnouncementContainer>();
 		LOG_EMPERY_CENTER_INFO("Loading announcements...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_Announcement`");
 		while(conn->fetch_row()){
+		*/
+		conn->execute_query("Center_Announcement", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_Announcement>();
 			obj->fetch(conn);
 			if(obj->get_expiry_time() < utc_now){

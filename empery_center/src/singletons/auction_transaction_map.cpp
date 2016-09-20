@@ -71,11 +71,18 @@ namespace {
 		const auto auction_transaction_map = boost::make_shared<AuctionTransactionContainer>();
 		LOG_EMPERY_CENTER_INFO("Loading auction transactions...");
 		const auto utc_now = Poseidon::get_utc_time();
+		/*
 		std::ostringstream oss;
 		oss <<"SELECT * FROM `Center_AuctionTransaction` WHERE `expiry_time` > " <<Poseidon::MongoDb::DateTimeFormatter(utc_now)
 		    <<"  AND `cancelled` = 0";
 		conn->execute_sql(oss.str());
 		while(conn->fetch_row()){
+		*/
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$gt"), utc_now));
+		query.append_unsigned(sslit("cancelled"), 0);
+		conn->execute_query("Center_AuctionTransaction", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_AuctionTransaction>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();

@@ -4,9 +4,7 @@
 #include <poseidon/mongodb/object_base.hpp>
 
 namespace EmperyCenter {
-
-namespace MongoDb {
-
+	namespace MongoDb {
 #define MONGODB_OBJECT_NAME   Center_MapObject
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
@@ -24,7 +22,7 @@ namespace MongoDb {
 #define MONGODB_OBJECT_NAME   Center_MapObjectAttribute
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
-	FIELD_SIGNED            (attribute_id)	\
+	FIELD_UNSIGNED          (attribute_id)	\
 	FIELD_SIGNED            (value)
 #include <poseidon/mongodb/object_generator.hpp>
 
@@ -32,13 +30,11 @@ namespace MongoDb {
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_SIGNED            (buff_id)	\
-	FIELD_SIGNED            (duration)	\
+	FIELD_UNSIGNED          (duration)	\
 	FIELD_DATETIME          (time_begin)	\
 	FIELD_DATETIME          (time_end)
 #include <poseidon/mongodb/object_generator.hpp>
-
-}
-
+	}
 }
 
 #endif

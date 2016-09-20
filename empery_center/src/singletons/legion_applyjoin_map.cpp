@@ -51,8 +51,12 @@ namespace {
 		std::map<LegionUuid, TempLegionElement> temp_account_map;
 
 		LOG_EMPERY_CENTER_INFO("Loading Center_LegionApplyJoin...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_LegionApplyJoin`");
 		while(conn->fetch_row()){
+			*/
+		conn->execute_query("Center_LegionApplyJoin", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionApplyJoin>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
@@ -185,7 +189,9 @@ void LegionApplyJoinMap::deleteInfo(LegionUuid legion_uuid,AccountUuid account_u
 		return;
 	}
 
-	std::string strsql = "";
+//	std::string strsql = "";
+	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	Poseidon::MongoDb::BsonBuilder query;
 	if(bAll)
 	{
 		// 全部删除该军团的数据,先删除内存中的,因为访问的是内存中的数据
@@ -196,9 +202,12 @@ void LegionApplyJoinMap::deleteInfo(LegionUuid legion_uuid,AccountUuid account_u
 
 
 		// 再删除数据库中的
+		/*
 		strsql = "DELETE FROM Center_LegionApplyJoin WHERE account_uuid='";
 		strsql += account_uuid.str();
 		strsql += "';";
+		*/
+		query.append_uuid(sslit("account_uuid"), account_uuid.get());
 
 	}
 	else
@@ -209,21 +218,26 @@ void LegionApplyJoinMap::deleteInfo(LegionUuid legion_uuid,AccountUuid account_u
 			if(AccountUuid(it->account->unlocked_get_account_uuid()) == account_uuid && LegionUuid(it->account->unlocked_get_legion_uuid()) == legion_uuid)
 			{
 				account_map->erase<1>(it);
+				/*
 				strsql = "DELETE FROM Center_LegionApplyJoin WHERE account_uuid='";
 				strsql += account_uuid.str();
 				strsql += "' AND legion_uuid='";
 				strsql += legion_uuid.str();
 				strsql += "';";
-
+				*/
+				query.append_uuid(sslit("account_uuid"), account_uuid.get());
+				query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
 				break;
 
 			}
 		}
 	}
 
-	LOG_EMPERY_CENTER_DEBUG("Reclaiming legion apply join map strsql = ", strsql);
+//	LOG_EMPERY_CENTER_DEBUG("Reclaiming legion apply join map strsql = ", strsql);
 
-	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionApplyJoin",strsql);
+//	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionApplyJoin",strsql);
+
+	conn->execute_delete("Center_LegionApplyJoin",query,true);
 }
 
 void LegionApplyJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
@@ -244,12 +258,18 @@ void LegionApplyJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 
 
 	// 再删除数据库中的
+	/*
 	std::string strsql = "DELETE FROM Center_LegionApplyJoin WHERE legion_uuid='";
 	strsql += legion_uuid.str();
 	strsql += "';";
 
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionApplyJoin",strsql);
+	*/
+	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	Poseidon::MongoDb::BsonBuilder query;
+	query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+	conn->execute_delete("Center_LegionApplyJoin",query,true);
 
 }
 

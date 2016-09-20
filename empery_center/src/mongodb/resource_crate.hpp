@@ -4,9 +4,7 @@
 #include <poseidon/mongodb/object_base.hpp>
 
 namespace EmperyCenter {
-
-namespace MongoDb {
-
+	namespace MongoDb {
 #define MONGODB_OBJECT_NAME   Center_ResourceCrate
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (resource_crate_uuid)	\
@@ -18,9 +16,7 @@ namespace MongoDb {
 	FIELD_DATETIME          (expiry_time)	\
 	FIELD_SIGNED            (amount_remaining)
 #include <poseidon/mongodb/object_generator.hpp>
-
-}
-
+	}
 }
 
 #endif

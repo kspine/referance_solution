@@ -13,10 +13,10 @@ namespace MongoDb {
 	FIELD_SIGNED            (y)	\
 	FIELD_UUID              (parent_object_uuid)	\
 	FIELD_BOOLEAN           (acceleration_card_applied)	\
-	FIELD_SIGNED            (ticket_item_id)	\
-	FIELD_SIGNED            (production_resource_id)	\
+	FIELD_UNSIGNED          (ticket_item_id)	\
+	FIELD_UNSIGNED          (production_resource_id)	\
 	FIELD_DATETIME          (last_production_time)	\
-	FIELD_SIGNED            (resource_amount)	\
+	FIELD_UNSIGNED          (resource_amount)	\
 	FIELD_UUID              (occupier_object_uuid)	\
 	FIELD_UUID              (occupier_owner_uuid)	\
 	FIELD_DATETIME          (last_self_healed_time)
@@ -26,7 +26,7 @@ namespace MongoDb {
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (x)	\
 	FIELD_SIGNED            (y)	\
-	FIELD_SIGNED            (attribute_id)	\
+	FIELD_UNSIGNED          (attribute_id)	\
 	FIELD_SIGNED            (value)
 #include <poseidon/mongodb/object_generator.hpp>
 
@@ -34,8 +34,8 @@ namespace MongoDb {
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (x)	\
 	FIELD_SIGNED            (y)	\
-	FIELD_SIGNED            (buff_id)   \
-	FIELD_SIGNED            (duration)  \
+	FIELD_UNSIGNED          (buff_id)   \
+	FIELD_UNSIGNED          (duration)  \
 	FIELD_DATETIME          (time_begin)    \
 	FIELD_DATETIME          (time_end)
 #include <poseidon/mongodb/object_generator.hpp>

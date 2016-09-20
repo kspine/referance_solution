@@ -64,10 +64,10 @@ namespace {
 			}
 		}
 
-		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_TaxRecord",
-			"DELETE QUICK `r`.* "
-			"  FROM `Center_TaxRecord` AS `r` "
-			"  WHERE `r`.`deleted` > 0");
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_boolean(sslit("deleted"), true);
+		conn->execute_delete("Center_HornMessage",query,true);
 	}
 
 	MODULE_RAII_PRIORITY(handles, 5000){
@@ -111,16 +111,16 @@ boost::shared_ptr<TaxRecordBox> TaxRecordBoxMap::get(AccountUuid account_uuid){
 		do {
 			if(!it->promise){
 				auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_TaxRecord>>>();
-				std::ostringstream oss;
-				oss <<"SELECT * FROM `Center_TaxRecord` WHERE `account_uuid` = " <<Poseidon::MongoDb::UuidFormatter(account_uuid.get())
-				    <<"  AND `deleted` = 0";
+				Poseidon::MongoDb::BsonBuilder query;
+				query.append_uuid(sslit("account_uuid"), account_uuid.get());
+				query.append_boolean(sslit("deleted"), false);
 				auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 						auto obj = boost::make_shared<MongoDb::Center_TaxRecord>();
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));
-					}, "Center_TaxRecord", oss.str());
+					}, "Center_TaxRecord", std::move(query), 0, UINT32_MAX);
 				it->promise = std::move(promise);
 				it->sink    = std::move(sink);
 			}

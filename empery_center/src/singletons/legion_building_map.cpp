@@ -56,8 +56,12 @@ namespace {
 		std::map<LegionBuildingUuid, TempLegionBuildingElement> temp_account_map;
 
 		LOG_EMPERY_CENTER_INFO("Loading Center_LegionBuilding...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_LegionBuilding`");
 		while(conn->fetch_row()){
+		*/
+		conn->execute_query("Center_LegionBuilding", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionBuilding>();
 			obj->fetch(conn);
 			obj->enable_auto_saving();
@@ -67,8 +71,12 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loaded ", temp_account_map.size(), " Legion(s).");
 
 		LOG_EMPERY_CENTER_INFO("Loading LegionBuilding attributes...");
+		/*
 		conn->execute_sql("SELECT * FROM `Center_LegionBuildingAttribute`");
 		while(conn->fetch_row()){
+		*/
+		conn->execute_query("Center_LegionBuildingAttribute", { }, 0, UINT32_MAX);
+		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionBuildingAttribute>();
 			obj->fetch(conn);
 			const auto legion_building_uuid = LegionBuildingUuid(obj->unlocked_get_legion_building_uuid());
@@ -291,12 +299,18 @@ void LegionBuildingMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 
 
 	// 再删除数据库中的
+	/*
 	std::string strsql = "DELETE FROM Center_LegionBuilding WHERE legion_uuid='";
 	strsql += legion_uuid.str();
 	strsql += "';";
 
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuilding",strsql);
+	*/
+	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	Poseidon::MongoDb::BsonBuilder query;
+	query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+	conn->execute_delete("Center_LegionBuilding",query,true);
 }
 
 void  LegionBuildingMap::find_by_type(std::vector<boost::shared_ptr<LegionBuilding>> &buildings,LegionUuid legion_uuid,std::uint64_t ntype)
@@ -389,12 +403,18 @@ void LegionBuildingMap::deleteInfo_by_legion_building_uuid(LegionBuildingUuid le
 		building_map->erase<0>(it);
 
 		// 再删除数据库中的
+		/*
 		std::string strsql = "DELETE FROM Center_LegionBuilding WHERE legion_building_uuid='";
 		strsql += legion_building_uuid.str();
 		strsql += "';";
 
 
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuilding",strsql);
+		*/
+		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		Poseidon::MongoDb::BsonBuilder query;
+		query.append_uuid(sslit("legion_building_uuid"), legion_building_uuid.get());
+		conn->execute_delete("Center_LegionBuilding",query,true);
 	}
 }
 
