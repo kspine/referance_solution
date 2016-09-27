@@ -60,7 +60,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_LegionBuilding`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_LegionBuilding", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_LegionBuilding", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionBuilding>();
 			obj->fetch(conn);
@@ -75,7 +75,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_LegionBuildingAttribute`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_LegionBuildingAttribute", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_LegionBuildingAttribute", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionBuildingAttribute>();
 			obj->fetch(conn);

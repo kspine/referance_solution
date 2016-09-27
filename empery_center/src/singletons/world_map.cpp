@@ -253,7 +253,7 @@ namespace EmperyCenter {
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_DefenseBuilding", del_query, true);
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_WarehouseBuilding", del_query, true);
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query, true);
-			}, "Center_MapObject", std::move(query), 0, UINT32_MAX);
+			}, "Center_MapObject", std::move(query), 0, INT32_MAX);
 		}
 
 		void castle_activity_check_proc(std::uint64_t now) {
@@ -588,7 +588,7 @@ namespace EmperyCenter {
 			std::deque<boost::shared_ptr<const Poseidon::JobPromise>> promises;
 
 			const auto attributes = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_MapCellAttribute>>>();
-			const auto buffs = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_MapCellBuff>>>();
+            const auto buffs = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_MapCellBuff>>>();
 
 #define RELOAD_PART_(sink_, table_)	\
 		{	\
@@ -603,7 +603,7 @@ namespace EmperyCenter {
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, std::move(query), 0, UINT32_MAX);	\
+				}, #table_, std::move(query), 0, INT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
 			//=============================================================================
@@ -617,10 +617,11 @@ namespace EmperyCenter {
 
 			return boost::make_shared<MapCell>(std::move(obj), *attributes, *buffs);
 		}
-		boost::shared_ptr<MapObject> reload_map_object_aux(boost::shared_ptr<MongoDb::Center_MapObject> obj) {
+
+        boost::shared_ptr<MapObject> reload_map_object_aux(boost::shared_ptr<MongoDb::Center_MapObject> obj) {
 			PROFILE_ME;
 
-			std::deque<boost::shared_ptr<const Poseidon::JobPromise>> promises;
+			 std::deque<boost::shared_ptr<const Poseidon::JobPromise>> promises;
 
 			// MapObject
 			const auto attributes = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_MapObjectAttribute>>>();
@@ -669,11 +670,12 @@ namespace EmperyCenter {
 				RELOAD_PART_(warehouse_objs, Center_WarehouseBuilding)
 			default:
 				RELOAD_PART_(attributes, Center_MapObjectAttribute)
-					RELOAD_PART_(buffs, Center_MapObjectBuff)
+
 			}
 			//=============================================================================
 			for (const auto &promise : promises) {
-				Poseidon::JobDispatcher::yield(promise, true);
+
+			  Poseidon::JobDispatcher::yield(promise, true);
 			}
 #undef RELOAD_PART_
 
@@ -695,6 +697,9 @@ namespace EmperyCenter {
 				return boost::make_shared<MapObject>(std::move(obj), *attributes, *buffs);
 			}
 		}
+
+
+
 		boost::shared_ptr<MapEventBlock> reload_map_event_block_aux(boost::shared_ptr<MongoDb::Center_MapEventBlock> obj) {
 			PROFILE_ME;
 
@@ -707,7 +712,7 @@ namespace EmperyCenter {
 			const auto block_x = obj->get_block_x();	\
 			const auto block_y = obj->get_block_y();	\
 			Poseidon::MongoDb::BsonBuilder query;	\
-			query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lte"), block_x));	\
+			query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), block_x));	\
 			query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), block_x + EVENT_BLOCK_WIDTH));	\
 			query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lte"), block_y));	\
 			query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), block_y + EVENT_BLOCK_HEIGHT));	\
@@ -717,7 +722,7 @@ namespace EmperyCenter {
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, std::move(query), 0, UINT32_MAX);	\
+				}, #table_, std::move(query), 0, INT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
 			//=============================================================================
@@ -1176,7 +1181,7 @@ namespace EmperyCenter {
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_MapObject", std::move(query), 0, UINT32_MAX);
+			}, "Center_MapObject", std::move(query), 0, INT32_MAX);
 			Poseidon::JobDispatcher::yield(promise, true);
 		}
 		if (sink->empty()) {
@@ -1311,7 +1316,7 @@ namespace EmperyCenter {
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_MapObject", std::move(query), 0, UINT32_MAX);
+			}, "Center_MapObject", std::move(query), 0, INT32_MAX);
 			Poseidon::JobDispatcher::yield(promise, true);
 		}
 		for (const auto &obj : *sink) {
@@ -1396,7 +1401,7 @@ namespace EmperyCenter {
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_MapObject", std::move(query), 0, UINT32_MAX);
+			}, "Center_MapObject", std::move(query), 0, INT32_MAX);
 			Poseidon::JobDispatcher::yield(promise, true);
 		}
 		for (const auto &obj : *sink) {
@@ -2204,7 +2209,7 @@ namespace EmperyCenter {
 					obj->fetch(conn);
 					obj->enable_auto_saving();
 					sink->emplace_back(std::move(obj));
-				}, "Center_MapCell", std::move(query), 0, UINT32_MAX);
+				}, "Center_MapCell", std::move(query), 0, INT32_MAX);
 				Poseidon::JobDispatcher::yield(promise, true);
 			}
 			for (const auto &obj : *sink) {
@@ -2237,7 +2242,7 @@ namespace EmperyCenter {
 					obj->fetch(conn);
 					obj->enable_auto_saving();
 					sink->emplace_back(std::move(obj));
-				}, "Center_MapObject", std::move(query), 0, UINT32_MAX);
+				}, "Center_MapObject", std::move(query), 0, INT32_MAX);
 				Poseidon::JobDispatcher::yield(promise, true);
 			}
 			for (const auto &obj : *sink) {
@@ -2271,7 +2276,7 @@ namespace EmperyCenter {
 					obj->fetch(conn);
 					obj->enable_auto_saving();
 					sink->emplace_back(std::move(obj));
-				}, "Center_StrategicResource", std::move(query), 0, UINT32_MAX);
+				}, "Center_StrategicResource", std::move(query), 0, INT32_MAX);
 				Poseidon::JobDispatcher::yield(promise, true);
 			}
 			for (const auto &obj : *sink) {
@@ -2299,11 +2304,12 @@ namespace EmperyCenter {
 				query.append_object(sslit("block_y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
 				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
+LOG_EMPERY_CENTER_DEBUG("Load Center_MapEventBlock");
 					auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_MapEventBlock>();
 					obj->fetch(conn);
 					obj->enable_auto_saving();
 					sink->emplace_back(std::move(obj));
-				}, "Center_MapEventBlock", std::move(query), 0, UINT32_MAX);
+				}, "Center_MapEventBlock", std::move(query), 0, INT32_MAX);
 				Poseidon::JobDispatcher::yield(promise, true);
 			}
 			for (const auto &obj : *sink) {
@@ -2349,7 +2355,7 @@ namespace EmperyCenter {
 			const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_ResourceCrate>>>();
 			{
 				Poseidon::MongoDb::BsonBuilder query;
-				query.append_object(sslit("amount_remaining"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gt"), 0));
+				// query.append_object(sslit("amount_remaining"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gt"), 0));
 				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
 				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
 				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
@@ -2360,7 +2366,7 @@ namespace EmperyCenter {
 					obj->fetch(conn);
 					obj->enable_auto_saving();
 					sink->emplace_back(std::move(obj));
-				}, "Center_ResourceCrate", std::move(query), 0, UINT32_MAX);
+				}, "Center_ResourceCrate", std::move(query), 0, INT32_MAX);
 				Poseidon::JobDispatcher::yield(promise, true);
 			}
 			for (const auto &obj : *sink) {

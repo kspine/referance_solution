@@ -8,6 +8,7 @@ namespace EmperyCenter {
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_ActivationCode
+#define MONGODB_OBJECT_PRIMARY_KEY code
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_STRING            (code)	\
 	FIELD_DATETIME          (created_time)	\

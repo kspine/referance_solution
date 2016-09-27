@@ -71,7 +71,7 @@ namespace EmperyCenter
 			std::map<LegionPackageShareUuid, TempLegionPackageShareElement> temp_map;
                      
                             
-			conn->execute_query("Center_Legion_Package_Share", { }, 0, UINT32_MAX);
+			conn->execute_query("Center_Legion_Package_Share", { }, 0, INT32_MAX);
 
 			while (conn->fetch_next())
 			{

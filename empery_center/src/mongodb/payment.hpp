@@ -8,6 +8,7 @@ namespace EmperyCenter {
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_PaymentTransaction
+#define MONGODB_OBJECT_PRIMARY_KEY serial
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_STRING            (serial)	\
 	FIELD_UUID              (account_uuid)	\

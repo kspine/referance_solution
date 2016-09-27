@@ -81,7 +81,7 @@ namespace {
 		Poseidon::MongoDb::BsonBuilder query;
 		query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$gt"), utc_now));
 		query.append_unsigned(sslit("cancelled"), 0);
-		conn->execute_query("Center_AuctionTransaction", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_AuctionTransaction", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_AuctionTransaction>();
 			obj->fetch(conn);

@@ -201,7 +201,7 @@ boost::shared_ptr<BattleRecordBox> BattleRecordBoxMap::get(AccountUuid account_u
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));
-					}, "Center_BattleRecord", /*oss.str()*/std::move(query), 0, UINT32_MAX);
+					}, "Center_BattleRecord", /*oss.str()*/std::move(query), 0, INT32_MAX);
 				it->promise = std::move(promise);
 				it->sink    = std::move(sink);
 			}
@@ -301,7 +301,7 @@ boost::shared_ptr<CrateRecordBox> BattleRecordBoxMap::get_crate(AccountUuid acco
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));
-					}, "Center_BattleRecordCrate", /*oss.str()*/std::move(query), 0, UINT32_MAX);
+					}, "Center_BattleRecordCrate", /*oss.str()*/std::move(query), 0, INT32_MAX);
 				it->promise = std::move(promise);
 				it->sink    = std::move(sink);
 			}

@@ -106,7 +106,7 @@ boost::shared_ptr<TaxBox> TaxBoxMap::get(AccountUuid account_uuid){
 					obj->fetch(conn);
 					obj->enable_auto_saving();
 					sink->emplace_back(std::move(obj));
-				}, "Center_TaxRecord", std::move(query), 0, UINT32_MAX);
+				}, "Center_TaxRecord", std::move(query), 0, INT32_MAX);
 			it->promise = std::move(promise);
 			it->sink    = std::move(sink);
 		}

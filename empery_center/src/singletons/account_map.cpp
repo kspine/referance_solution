@@ -94,7 +94,7 @@ namespace {
 		std::map<AccountUuid, TempAccountElement> temp_account_map;
 
 		LOG_EMPERY_CENTER_INFO("Loading accounts...");
-		conn->execute_query("Center_Account", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_Account", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_Account>();
 			obj->fetch(conn);
@@ -105,7 +105,7 @@ namespace {
 		LOG_EMPERY_CENTER_INFO("Loaded ", temp_account_map.size(), " account(s).");
 
 		LOG_EMPERY_CENTER_INFO("Loading account attributes...");
-		conn->execute_query("Center_AccountAttribute", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_AccountAttribute", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_AccountAttribute>();
 			obj->fetch(conn);
@@ -151,7 +151,7 @@ namespace {
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, std::move(query), 0, UINT32_MAX);	\
+				}, #table_, std::move(query), 0, INT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
 //=============================================================================
@@ -401,7 +401,7 @@ boost::shared_ptr<Account> AccountMap::forced_reload(AccountUuid account_uuid){
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Account", std::move(query), 0, UINT32_MAX);
+			}, "Center_Account", std::move(query), 0, INT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){
@@ -460,7 +460,7 @@ boost::shared_ptr<Account> AccountMap::forced_reload_by_login_name(PlatformId pl
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Account", std::move(query), 0, UINT32_MAX);
+			}, "Center_Account", std::move(query), 0, INT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){

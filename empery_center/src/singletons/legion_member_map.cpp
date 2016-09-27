@@ -117,7 +117,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_Legion_Member`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_Legion_Member", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_Legion_Member", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_Legion_Member>();
 			obj->fetch(conn);
@@ -136,7 +136,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_LegionMemberAttribute`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_LegionMemberAttribute", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_LegionMemberAttribute", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionMemberAttribute>();
 			obj->fetch(conn);
@@ -193,7 +193,7 @@ namespace {
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, std::move(query), 0, UINT32_MAX);	\
+				}, #table_, std::move(query), 0, INT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
 //=============================================================================

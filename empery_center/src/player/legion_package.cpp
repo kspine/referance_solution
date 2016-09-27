@@ -133,8 +133,6 @@ namespace EmperyCenter
 
 			if (member->get_created_time() > info->unlocked_get_share_package_time())
 			{
-				//LOG_EMPERY_CENTER_ERROR("Share After Join Legion ;");
-				continue;
 			}
 
 			count++;

@@ -58,7 +58,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_LegionInviteJoin`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_LegionInviteJoin", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_LegionInviteJoin", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionInviteJoin>();
 			obj->fetch(conn);

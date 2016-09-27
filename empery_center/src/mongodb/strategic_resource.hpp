@@ -8,6 +8,7 @@ namespace EmperyCenter {
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_StrategicResource
+#define MONGODB_OBJECT_PRIMARY_KEY x y
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (x)	\
 	FIELD_SIGNED            (y)	\

@@ -136,7 +136,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_HornMessage`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_HornMessage", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_HornMessage", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_HornMessage>();
 			obj->fetch(conn);
@@ -317,7 +317,7 @@ boost::shared_ptr<HornMessage> ChatBoxMap::forced_reload_horn_message(HornMessag
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_HornMessage", /*oss.str()*/std::move(query), 0, UINT32_MAX);
+			}, "Center_HornMessage", /*oss.str()*/std::move(query), 0, INT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){

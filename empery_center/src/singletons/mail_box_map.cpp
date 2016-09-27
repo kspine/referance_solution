@@ -194,7 +194,7 @@ namespace EmperyCenter {
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));
-					}, "Center_Mail", std::move(query), 0, UINT32_MAX);
+					}, "Center_Mail", std::move(query), 0, INT32_MAX);
 					it->promise = std::move(promise);
 					it->sink = std::move(sink);
 				}
@@ -306,7 +306,7 @@ namespace EmperyCenter {
 					obj->enable_auto_saving();
 					const auto language_id = LanguageId(obj->get_language_id());
 					sink->emplace(language_id, std::move(obj));
-				}, "Center_MailData", std::move(query), 0, UINT32_MAX);
+				}, "Center_MailData", std::move(query), 0, INT32_MAX);
 				it->promise = std::move(promise);
 				it->sink = std::move(sink);
 			}

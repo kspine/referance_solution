@@ -119,7 +119,7 @@ boost::shared_ptr<DungeonBox> DungeonBoxMap::get(AccountUuid account_uuid){
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));
-					}, "Center_Dungeon", /*oss.str()*/std::move(query), 0, UINT32_MAX);
+					}, "Center_Dungeon", /*oss.str()*/std::move(query), 0, INT32_MAX);
 				it->promise = std::move(promise);
 				it->sink    = std::move(sink);
 			}

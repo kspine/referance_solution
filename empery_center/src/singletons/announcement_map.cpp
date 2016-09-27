@@ -40,7 +40,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_Announcement`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_Announcement", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_Announcement", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_Announcement>();
 			obj->fetch(conn);

@@ -60,7 +60,7 @@ namespace EmperyCenter
 
 			std::map<LegionPackageShareUuid, TempLegionPackagePickShareElement> temp_map;
 
-			conn->execute_query("Center_Legion_Package_Pick_Share", { }, 0, UINT32_MAX);
+			conn->execute_query("Center_Legion_Package_Pick_Share", { }, 0, INT32_MAX);
 			while (conn->fetch_next())
 			{
 				auto obj = boost::make_shared<MongoDb::Center_Legion_Package_Pick_Share>();

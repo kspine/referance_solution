@@ -6,6 +6,7 @@
 namespace EmperyCenter {
 	namespace MongoDb {
 #define MONGODB_OBJECT_NAME   Center_Legion
+#define MONGODB_OBJECT_PRIMARY_KEY legion_uuid
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (legion_uuid)	\
     FIELD_STRING            (name)	\
@@ -14,6 +15,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionAttribute
+#define MONGODB_OBJECT_PRIMARY_KEY legion_uuid legion_attribute_id
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (legion_uuid)	\
     FIELD_SIGNED            (legion_attribute_id)	\
@@ -21,6 +23,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_Legion_Member
+#define MONGODB_OBJECT_PRIMARY_KEY account_uuid
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID            	(account_uuid)	\
     FIELD_UUID              (legion_uuid)	\
@@ -28,6 +31,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionMemberAttribute
+#define MONGODB_OBJECT_PRIMARY_KEY account_uuid legion_member_attribute_id
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (account_uuid)	\
     FIELD_SIGNED            (legion_member_attribute_id)	\
@@ -35,6 +39,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionApplyJoin
+#define MONGODB_OBJECT_PRIMARY_KEY account_uuid legion_uuid
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (account_uuid)	\
     FIELD_UUID  			(legion_uuid)	\
@@ -42,6 +47,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionInviteJoin
+#define MONGODB_OBJECT_PRIMARY_KEY legion_uuid account_uuid invited_uuid
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (legion_uuid)	\
     FIELD_UUID              (account_uuid)	\
@@ -50,6 +56,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_Legion_Package_Share
+#define MONGODB_OBJECT_PRIMARY_KEY share_uuid
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (share_uuid)	\
     FIELD_UUID              (legion_uuid)	\
@@ -63,6 +70,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_Legion_Package_Pick_Share
+#define MONGODB_OBJECT_PRIMARY_KEY share_uuid account_uuid
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (share_uuid)	\
     FIELD_UUID              (account_uuid)	\
@@ -71,6 +79,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionBuilding
+#define MONGODB_OBJECT_PRIMARY_KEY legion_building_uuid legion_uuid
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (legion_building_uuid)	\
     FIELD_UUID              (legion_uuid)	\
@@ -79,6 +88,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionBuildingAttribute
+#define MONGODB_OBJECT_PRIMARY_KEY legion_building_uuid legion_building_attribute_id
 #define MONGODB_OBJECT_FIELDS \
     FIELD_UUID              (legion_building_uuid)	\
     FIELD_SIGNED            (legion_building_attribute_id)	\

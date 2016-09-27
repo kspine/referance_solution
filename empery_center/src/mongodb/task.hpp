@@ -8,6 +8,7 @@ namespace EmperyCenter {
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_Task
+#define MONGODB_OBJECT_PRIMARY_KEY account_uuid task_id
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (account_uuid)	\
 	FIELD_UNSIGNED          (task_id)	\
@@ -19,6 +20,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionTask
+#define MONGODB_OBJECT_PRIMARY_KEY legion_uuid task_id
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (legion_uuid) \
 	FIELD_UNSIGNED          (task_id)	\
@@ -30,6 +32,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionTaskReward
+#define MONGODB_OBJECT_PRIMARY_KEY account_uuid task_type_id
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (account_uuid) \
 	FIELD_UNSIGNED          (task_type_id)	\
@@ -39,6 +42,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_LegionTaskContribution
+#define MONGODB_OBJECT_PRIMARY_KEY legion_uuid account_uuid 
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (legion_uuid) \
 	FIELD_UUID              (account_uuid) \

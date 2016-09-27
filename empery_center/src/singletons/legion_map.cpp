@@ -91,7 +91,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_Legion`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_Legion", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_Legion", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_Legion>();
 			obj->fetch(conn);
@@ -106,7 +106,7 @@ namespace {
 		conn->execute_sql("SELECT * FROM `Center_LegionAttribute`");
 		while(conn->fetch_row()){
 		*/
-		conn->execute_query("Center_LegionAttribute", { }, 0, UINT32_MAX);
+		conn->execute_query("Center_LegionAttribute", { }, 0, INT32_MAX);
 		while(conn->fetch_next()){
 			auto obj = boost::make_shared<MongoDb::Center_LegionAttribute>();
 			obj->fetch(conn);
@@ -175,7 +175,7 @@ namespace {
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, std::move(query), 0, UINT32_MAX);	\
+				}, #table_, std::move(query), 0, INT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
 //=============================================================================
@@ -438,7 +438,7 @@ boost::shared_ptr<Legion> LegionMap::forced_reload(LegionUuid account_uuid){
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Legion", /*oss.str()*/std::move(query), 0, UINT32_MAX);
+			}, "Center_Legion", /*oss.str()*/std::move(query), 0, INT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){
@@ -505,7 +505,7 @@ boost::shared_ptr<Legion> LegionMap::forced_reload_by_login_name(PlatformId plat
 				obj->fetch(conn);
 				obj->enable_auto_saving();
 				sink->emplace_back(std::move(obj));
-			}, "Center_Legion", std::move(query), 0, UINT32_MAX);
+			}, "Center_Legion", std::move(query), 0, INT32_MAX);
 		Poseidon::JobDispatcher::yield(promise, true);
 	}
 	if(sink->empty()){

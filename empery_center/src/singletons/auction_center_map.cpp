@@ -119,7 +119,7 @@ boost::shared_ptr<AuctionCenter> AuctionCenterMap::get(AccountUuid account_uuid)
 						obj->fetch(conn);
 						obj->enable_auto_saving();
 						sink->emplace_back(std::move(obj));
-					}, "Center_AuctionTransfer", /*oss.str()*/std::move(query), 0, UINT32_MAX);
+					}, "Center_AuctionTransfer", /*oss.str()*/std::move(query), 0, INT32_MAX);
 				it->promise = std::move(promise);
 				it->sink    = std::move(sink);
 			}
