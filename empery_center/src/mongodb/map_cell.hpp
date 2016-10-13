@@ -3,12 +3,14 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_MapCell
-#define MONGODB_OBJECT_PRIMARY_KEY x y
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenCID(x,y);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (x)	\
 	FIELD_SIGNED            (y)	\
@@ -24,7 +26,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_MapCellAttribute
-#define MONGODB_OBJECT_PRIMARY_KEY x y attribute_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenCID(x,y,attribute_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (x)	\
 	FIELD_SIGNED            (y)	\
@@ -33,7 +35,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_MapCellBuff
-#define MONGODB_OBJECT_PRIMARY_KEY x y buff_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenCID(x,y,buff_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (x)	\
 	FIELD_SIGNED            (y)	\

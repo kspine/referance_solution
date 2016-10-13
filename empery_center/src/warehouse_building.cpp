@@ -150,6 +150,7 @@ WarehouseBuilding::WarehouseBuilding(boost::shared_ptr<MongoDb::Center_MapObject
 	const std::vector<boost::shared_ptr<MongoDb::Center_MapObjectBuff>> &buffs,
 	const std::vector<boost::shared_ptr<MongoDb::Center_WarehouseBuilding>> &defense_objs)
 	: MapObject(std::move(obj), attributes, buffs)
+	//, m_defense_obj(defense_objs.empty() ? create_default_warehouse_obj(map_object_uuid,??) : std::move(defense_objs.front()))
 	, m_defense_obj(std::move(defense_objs.front()))
 {
 //	LOG_EMPERY_CENTER_ERROR("WarehouseBuilding 构造函数 attributes size*******************",attributes.size(), " buffs size:",buffs.size()," defense_objs size:",defense_objs.size());

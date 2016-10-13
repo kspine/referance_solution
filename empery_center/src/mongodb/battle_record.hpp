@@ -3,12 +3,14 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_BattleRecord
-#define MONGODB_OBJECT_PRIMARY_KEY auto_uuid
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(auto_uuid);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (auto_uuid)	\
 	FIELD_UUID              (first_account_uuid)	\
@@ -29,7 +31,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_BattleRecordCrate
-#define MONGODB_OBJECT_PRIMARY_KEY auto_uuid
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(auto_uuid);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (auto_uuid)	\
 	FIELD_UUID              (first_account_uuid)	\

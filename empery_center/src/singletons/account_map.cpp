@@ -394,7 +394,9 @@ boost::shared_ptr<Account> AccountMap::forced_reload(AccountUuid account_uuid){
 	const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Account>>>();
 	{
 		Poseidon::MongoDb::BsonBuilder query;
-		query.append_uuid(sslit("account_uuid"), account_uuid.get());
+		//query.append_uuid(sslit("account_uuid"), account_uuid.get());
+		
+		query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(account_uuid.get()));
 		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 				auto obj = boost::make_shared<MongoDb::Center_Account>();

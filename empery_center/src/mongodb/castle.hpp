@@ -3,12 +3,14 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_CastleBuildingBase
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid building_base_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,building_base_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED            (building_base_id)	\
@@ -21,7 +23,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_CastleTech
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid tech_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,tech_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED            (tech_id)	\
@@ -33,7 +35,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_CastleResource
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid resource_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,resource_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED            (resource_id)	\
@@ -42,7 +44,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_CastleBattalion
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid map_object_type_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,map_object_type_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED            (map_object_type_id)	\
@@ -51,7 +53,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_CastleBattalionProduction
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid building_base_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,building_base_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED            (building_base_id)	\
@@ -63,7 +65,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_CastleWoundedSoldier
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid map_object_type_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,map_object_type_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED            (map_object_type_id)	\
@@ -71,7 +73,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_CastleTreatment
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid map_object_type_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId( map_object_uuid,map_object_type_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED            (map_object_type_id)	\

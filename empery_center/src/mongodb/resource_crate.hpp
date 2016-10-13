@@ -3,10 +3,12 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 	namespace MongoDb {
 #define MONGODB_OBJECT_NAME   Center_ResourceCrate
-#define MONGODB_OBJECT_PRIMARY_KEY resource_crate_uuid
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(resource_crate_uuid);} 
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (resource_crate_uuid)	\
 	FIELD_UNSIGNED            (resource_id)	\

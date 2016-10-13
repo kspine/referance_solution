@@ -289,6 +289,9 @@ Castle::Castle(boost::shared_ptr<MongoDb::Center_MapObject> obj,
 	for(auto it = buildings.begin(); it != buildings.end(); ++it){
 		const auto &obj = *it;
 		m_buildings.emplace(BuildingBaseId(obj->get_building_base_id()), obj);
+		
+		LOG_EMPERY_CENTER_ERROR("BuildingId:",obj->get_building_id());
+
 	}
 	for(auto it = techs.begin(); it != techs.end(); ++it){
 		const auto &obj = *it;

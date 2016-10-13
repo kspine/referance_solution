@@ -3,12 +3,14 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_HornMessage
-#define MONGODB_OBJECT_PRIMARY_KEY horn_message_uuid
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(horn_message_uuid);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (horn_message_uuid)	\
 	FIELD_SIGNED            (item_id)	\

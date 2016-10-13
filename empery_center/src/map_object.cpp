@@ -58,12 +58,21 @@ const std::initializer_list<AttributeId> MapObject::COMBAT_ATTRIBUTES = {
 	AttributeIds::ID_HARVEST_SPEED_ADD,
 };
 
+
+// need modify add param and cionvert string 
 MapObject::MapObject(MapObjectUuid map_object_uuid, MapObjectTypeId map_object_type_id, AccountUuid owner_uuid,
 	MapObjectUuid parent_object_uuid, std::string name, Coord coord, std::uint64_t created_time, std::uint64_t expiry_time, bool garrisoned)
 	: m_obj(
 		[&]{
 			auto obj = boost::make_shared<MongoDb::Center_MapObject>(map_object_uuid.get(), map_object_type_id.get(), owner_uuid.get(),
-				parent_object_uuid.get(), std::move(name), coord.x(), coord.y(), created_time, expiry_time, garrisoned);
+				parent_object_uuid.get(), std::move(name), coord.x(), coord.y(), created_time, expiry_time, garrisoned,
+				WorldMap::make_cluster_coord_string(WorldMap::get_cluster_scope(coord).bottom_left()));
+            
+
+//		    LOG_EMPERY_CENTER_FATAL("make cluster coord.x", coord.x());
+			
+//		    LOG_EMPERY_CENTER_FATAL("make cluster coord.y", coord.y());
+			
 			obj->async_save(true, true);
 			return obj;
 		}())
@@ -249,11 +258,15 @@ MapObjectUuid MapObject::get_parent_object_uuid() const {
 Coord MapObject::get_coord() const {
 	return Coord(m_obj->get_x(), m_obj->get_y());
 }
+
 void MapObject::set_coord(Coord coord) noexcept {
 	PROFILE_ME;
 
 	m_obj->set_x(coord.x());
 	m_obj->set_y(coord.y());
+
+	/*Apend coord_hint*/
+	m_obj->set_coord_hint(WorldMap::make_cluster_coord_string(WorldMap::get_cluster_scope(coord).bottom_left()));
 
 	++m_stamp;
 

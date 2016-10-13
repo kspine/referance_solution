@@ -108,7 +108,8 @@ namespace EmperyCenter {
 				if (!it->promise) {
 					auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_Task>>>();
 					Poseidon::MongoDb::BsonBuilder query;
-					query.append_uuid(sslit("account_uuid"), account_uuid.get());
+					//query.append_uuid(sslit("account_uuid"), account_uuid.get());
+					query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenId(account_uuid.get()) + ","));
 					auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 						[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 						auto obj = boost::make_shared<MongoDb::Center_Task>();

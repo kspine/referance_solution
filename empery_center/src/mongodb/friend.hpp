@@ -3,12 +3,14 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_Friend
-#define MONGODB_OBJECT_PRIMARY_KEY account_uuid friend_uuid
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(account_uuid,friend_uuid);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (account_uuid)	\
 	FIELD_UUID              (friend_uuid)	\

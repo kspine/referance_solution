@@ -239,21 +239,27 @@ namespace EmperyCenter {
 				}
 			}
 
+			
 			const auto conn = Poseidon::MongoDbDaemon::create_connection();
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_datetime(sslit("expiry_time"), 0);
 			Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 				[](const boost::shared_ptr<Poseidon::MongoDb::Connection>&conn)
 			{
-				Poseidon::MongoDb::BsonBuilder del_query;
+				Poseidon::MongoDb::BsonBuilder del_query,del_query_ex;
 				const auto map_object_uuid = conn->get_uuid("map_object_uuid");
-				del_query.append_uuid(sslit("map_object_uuid"), map_object_uuid);
+
+			    del_query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid));
+				del_query_ex.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid) + ","));
+		
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObject", del_query, true);
-				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectAttribute", del_query, true);
+				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectAttribute", del_query_ex, true);
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_DefenseBuilding", del_query, true);
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_WarehouseBuilding", del_query, true);
-				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query, true);
+				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query_ex, true);
+
 			}, "Center_MapObject", std::move(query), 0, INT32_MAX);
+		
 		}
 
 		void castle_activity_check_proc(std::uint64_t now) {
@@ -557,7 +563,7 @@ namespace EmperyCenter {
 			handles.push(timer);
 
 			const auto map_object_refresh_interval = get_config<std::uint64_t>("map_object_refresh_interval", 300000);
-			timer = Poseidon::TimerDaemon::register_timer(0, map_object_refresh_interval,
+		    timer = Poseidon::TimerDaemon::register_timer(0, map_object_refresh_interval,
 				std::bind(&map_object_refresh_timer_proc, std::placeholders::_2));
 			handles.push(timer);
 
@@ -595,8 +601,7 @@ namespace EmperyCenter {
 			const auto x = obj->get_x();	\
 			const auto y = obj->get_y();	\
 		    Poseidon::MongoDb::BsonBuilder query;	\
-		    query.append_signed(sslit("x"), x);	\
-		    query.append_signed(sslit("y"), y);	\
+		    query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenCID(x,y) + ","));\
 			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
 				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
 					auto obj = boost::make_shared<MongoDb:: table_ >();	\
@@ -643,16 +648,34 @@ namespace EmperyCenter {
 		{	\
 			const auto &map_object_uuid = obj->unlocked_get_map_object_uuid();	\
 		    Poseidon::MongoDb::BsonBuilder query;	\
-		    query.append_uuid(sslit("map_object_uuid"), map_object_uuid);	\
+		    query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid) + ","));	\
 			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
 				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
 					auto obj = boost::make_shared<MongoDb:: table_ >();	\
 					obj->fetch(conn);	\
 					obj->enable_auto_saving();	\
 					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, std::move(query), 0, UINT32_MAX);	\
+				}, #table_, std::move(query), 0, INT32_MAX);	\
 			promises.emplace_back(std::move(promise));	\
 		}
+			//-----------------------------------------------------------------------------
+
+#define RELOAD_PART_Ex(sink_, table_)	\
+					{	\
+									const auto &map_object_uuid = obj->unlocked_get_map_object_uuid();	\
+								    Poseidon::MongoDb::BsonBuilder query;	\
+								    query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid));	\
+									auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
+																[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
+																	auto obj = boost::make_shared<MongoDb:: table_ >();	\
+																	obj->fetch(conn);	\
+																	obj->enable_auto_saving();	\
+																	(sink_)->emplace_back(std::move(obj));	\
+																}, #table_, std::move(query), 0, INT32_MAX);	\
+									promises.emplace_back(std::move(promise));	\
+								}
+			//-----------------------------------------------------------------------------
+			
 			//=============================================================================
 			switch (obj->get_map_object_type_id()) {
 			case MapObjectTypeIds::ID_CASTLE.get():
@@ -665,9 +688,9 @@ namespace EmperyCenter {
 					RELOAD_PART_(treatment, Center_CastleTreatment)
 			case MapObjectTypeIds::ID_DEFENSE_TOWER.get():
 			case MapObjectTypeIds::ID_BATTLE_BUNKER.get():
-				RELOAD_PART_(defense_objs, Center_DefenseBuilding)
+				RELOAD_PART_Ex(defense_objs, Center_DefenseBuilding)
 			case MapObjectTypeIds::ID_LEGION_WAREHOUSE.get():
-				RELOAD_PART_(warehouse_objs, Center_WarehouseBuilding)
+				RELOAD_PART_Ex(warehouse_objs, Center_WarehouseBuilding)
 			default:
 				RELOAD_PART_(attributes, Center_MapObjectAttribute)
 
@@ -712,10 +735,7 @@ namespace EmperyCenter {
 			const auto block_x = obj->get_block_x();	\
 			const auto block_y = obj->get_block_y();	\
 			Poseidon::MongoDb::BsonBuilder query;	\
-			query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), block_x));	\
-			query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), block_x + EVENT_BLOCK_WIDTH));	\
-			query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lte"), block_y));	\
-			query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), block_y + EVENT_BLOCK_HEIGHT));	\
+			query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenBID(block_x,block_y) + ","));\
 			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
 				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
 					auto obj = boost::make_shared<MongoDb:: table_ >();	\
@@ -1173,8 +1193,7 @@ namespace EmperyCenter {
 		{
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$ne"), 0));
-			query.append_unsigned(sslit("map_object_type_id"), boost::lexical_cast<boost::uint64_t>(EmperyCenter::MapObjectTypeIds::ID_CASTLE));
-			query.append_uuid(sslit("map_object_uuid"), map_object_uuid.get());
+			query.append_string(sslit("_id"), PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid.get()));
 			const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 				[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 				auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_MapObject>();
@@ -1485,15 +1504,28 @@ namespace EmperyCenter {
 		for (auto it = range.first; it != range.second; ++it) {
 			const auto &map_object = it->map_object;
 			if (map_object->get_map_object_type_id() != MapObjectTypeIds::ID_CASTLE) {
+					
+				LOG_EMPERY_CENTER_ERROR("mongo Test Test Test not Get Castler_1get_map_object_type_id() != MapObjectTypeIds::ID_CASTLE");
+
 				continue;
 			}
 			const auto castle = boost::dynamic_pointer_cast<Castle>(map_object);
 			if (!castle) {
+					
+				LOG_EMPERY_CENTER_ERROR("mongo Test Test Test not Get Castler2.");
+
 				continue;
 			}
 			if (primary_castle && (primary_castle->get_map_object_uuid() <= castle->get_map_object_uuid())) {
+				
+				LOG_EMPERY_CENTER_ERROR("mongo Test Test Test not Get Castler3.");
+
 				continue;
 			}
+
+			
+			LOG_EMPERY_CENTER_ERROR("mongo Test Test Test Get Castler Right.");
+
 			primary_castle = castle;
 		}
 
@@ -1640,8 +1672,8 @@ namespace EmperyCenter {
 		return it->map_event_block;
 	}
 
-	/*
-	void WorldMap::get_cluster_map_event_blocks(Coord cluster_coord, std::vector<boost::shared_ptr<MapEventBlock>> &ret){
+	
+	/*void WorldMap::get_cluster_map_event_blocks(Coord cluster_coord, std::vector<boost::shared_ptr<MapEventBlock>> &ret){
 		PROFILE_ME;
 
 		const auto map_event_block_map = g_map_event_block_map.lock();
@@ -1657,8 +1689,8 @@ namespace EmperyCenter {
 			}
 			ret.emplace_back(it->map_event_block);
 		}
-	}
-	*/
+	
+	
 	boost::shared_ptr<MapEventBlock> WorldMap::require_map_event_block(Coord coord) {
 		PROFILE_ME;
 
@@ -1668,7 +1700,7 @@ namespace EmperyCenter {
 			DEBUG_THROW(Exception, sslit("Map event block map not found"));
 		}
 		return ret;
-	}
+	
 	void WorldMap::insert_map_event_block(const boost::shared_ptr<MapEventBlock> &map_event_block) {
 		PROFILE_ME;
 
@@ -1714,7 +1746,6 @@ namespace EmperyCenter {
 		map_event_block_map->replace<0>(it, MapEventBlockElement(map_event_block));
 	}
 
-	/*
 	void WorldMap::refresh_activity_event(unsigned map_event_type){
 		PROFILE_ME;
 		LOG_EMPERY_CENTER_TRACE("refresh activity event ");
@@ -2090,6 +2121,24 @@ namespace EmperyCenter {
 		return Rectangle(get_cluster_coord_from_world_coord(coord), MAP_WIDTH, MAP_HEIGHT);
 	}
 
+    std::string WorldMap::make_cluster_coord_string(Coord coord)
+    {
+      PROFILE_ME;
+     
+	  std::string coord_string(boost::lexical_cast<std::string>(coord.x()) + "," + boost::lexical_cast<std::string>(coord.y()));
+	  
+	 // LOG_EMPERY_CENTER_ERROR("WorldMap::Cluster: coord_string = ",coord_string);
+      
+	  return coord_string;
+    }
+
+    bool WorldMap::check_primery_key_coord_uuid(std::uint64_t coord_x,std::uint64_t coord_y,std::string coord_uuid)
+    {
+       PROFILE_ME;
+
+       return (coord_uuid.compare(boost::lexical_cast<std::string>(coord_x) + "," + boost::lexical_cast<std::string>(coord_y)) == 0 ? true : false);
+    }
+
 	boost::shared_ptr<ClusterSession> WorldMap::get_cluster(Coord coord) {
 		PROFILE_ME;
 
@@ -2149,16 +2198,16 @@ namespace EmperyCenter {
 		const auto scope = get_cluster_scope(coord);
 		const auto cluster_coord = scope.bottom_left();
 		LOG_EMPERY_CENTER_INFO("Setting up cluster server: cluster_coord = ", cluster_coord);
-		const auto result = cluster_map->insert(ClusterElement(cluster_coord, cluster));
-		if (!result.second) {
-			const auto old_cluster = result.first->cluster.lock();
-			if (old_cluster && (old_cluster != cluster)) {
-				LOG_EMPERY_CENTER_WARNING("Killing old cluster server: cluster_coord = ", cluster_coord);
-				old_cluster->shutdown(Msg::KILL_CLUSTER_SERVER_CONFLICT, "");
+			const auto result = cluster_map->insert(ClusterElement(cluster_coord, cluster));
+			if (!result.second) {
+					const auto old_cluster = result.first->cluster.lock();
+				if (old_cluster && (old_cluster != cluster)) {
+					LOG_EMPERY_CENTER_WARNING("Killing old cluster server: cluster_coord = ", cluster_coord);
+					old_cluster->shutdown(Msg::KILL_CLUSTER_SERVER_CONFLICT, "");
+				}
+				cluster_map->replace(result.first, ClusterElement(cluster_coord, cluster));
 			}
-			cluster_map->replace(result.first, ClusterElement(cluster_coord, cluster));
 		}
-	}
 	void WorldMap::forced_reload_cluster(Coord coord) {
 		PROFILE_ME;
 
@@ -2184,7 +2233,7 @@ namespace EmperyCenter {
 					LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e_.what());	\
 				}	\
 			});	\
-		if(++concurrency_counter >= 1000){	\
+		if(++concurrency_counter >= 50){	\
 			LOG_EMPERY_CENTER_DEBUG("Too many async requests have been enqueued. Yielding...");	\
 			const auto promise_ = Poseidon::MongoDbDaemon::enqueue_for_waiting_for_all_async_operations();	\
 			Poseidon::JobDispatcher::yield(promise_, true);	\
@@ -2199,10 +2248,11 @@ namespace EmperyCenter {
 			const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_MapCell>>>();
 			{
 				Poseidon::MongoDb::BsonBuilder query;
-				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
-				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
-				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
-				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
+				
+
+			query.append_regex(sslit("_id"),("^" + make_cluster_coord_string(cluster_coord)+ ","));
+							
+			//query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenCID(cluster_coord.x(),cluster_coord.y())+ ","));
 				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 					auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_MapCell>();
@@ -2231,11 +2281,16 @@ namespace EmperyCenter {
 			const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_MapObject>>>();
 			{
 				Poseidon::MongoDb::BsonBuilder query;
+				
 				query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$ne"), 0));
-				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
+				
+				query.append_string(sslit("coord_hint"),make_cluster_coord_string(cluster_coord));
+
+				/*query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
 				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
 				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
-				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
+				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));*/
+				
 				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 					auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_MapObject>();
@@ -2245,9 +2300,15 @@ namespace EmperyCenter {
 				}, "Center_MapObject", std::move(query), 0, INT32_MAX);
 				Poseidon::JobDispatcher::yield(promise, true);
 			}
+
 			for (const auto &obj : *sink) {
 				CONCURRENT_LOAD_BEGIN{
-					const auto map_object = reload_map_object_aux(obj);
+
+                    
+					//LOG_EMPERY_CENTER_FATAL("Loading map objects: reloading test coordhint cmp= ", scope.bottom_left().x(),",",scope.bottom_left().y());
+					//LOG_EMPERY_CENTER_FATAL("Loading map objects: reloading test coord cmp= ", coord.x(),",",coord.y());
+
+   					const auto map_object = reload_map_object_aux(obj);
 					const auto elem = MapObjectElement(map_object);
 					const auto result = map_object_map->insert(elem);
 					if (!result.second) {
@@ -2255,8 +2316,12 @@ namespace EmperyCenter {
 					}
 					const auto coord = map_object->get_coord();
 					synchronize_map_object_all(map_object, coord, coord);
+					
+					
 				} CONCURRENT_LOAD_END;
 			}
+
+			LOG_EMPERY_CENTER_ERROR("Loading map objects: reloading exit ");
 		}
 
 		const auto strategic_resource_map = g_strategic_resource_map.lock();
@@ -2266,10 +2331,9 @@ namespace EmperyCenter {
 			const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_StrategicResource>>>();
 			{
 				Poseidon::MongoDb::BsonBuilder query;
-				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
-				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
-				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
-				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
+
+				query.append_regex(sslit("_id"),("^" + make_cluster_coord_string(cluster_coord)+ ","));
+			
 				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 					auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_StrategicResource>();
@@ -2298,10 +2362,8 @@ namespace EmperyCenter {
 			const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_MapEventBlock>>>();
 			{
 				Poseidon::MongoDb::BsonBuilder query;
-				query.append_object(sslit("block_x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
-				query.append_object(sslit("block_x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
-				query.append_object(sslit("block_y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
-				query.append_object(sslit("block_y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
+
+				query.append_regex(sslit("_id"),("^" + make_cluster_coord_string(cluster_coord)+ ","));
 				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 LOG_EMPERY_CENTER_DEBUG("Load Center_MapEventBlock");
@@ -2360,6 +2422,7 @@ LOG_EMPERY_CENTER_DEBUG("Load Center_MapEventBlock");
 				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
 				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
 				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
+				
 				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 					auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_ResourceCrate>();

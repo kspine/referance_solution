@@ -3,12 +3,14 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_DefenseBuilding
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED          (building_level)	\
@@ -22,7 +24,7 @@ namespace MongoDb {
 
 
 #define MONGODB_OBJECT_NAME   Center_WarehouseBuilding
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UUID              (legion_uuid)	\

@@ -3,12 +3,14 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_AuctionTransfer
-#define MONGODB_OBJECT_PRIMARY_KEY account_uuid map_object_uuid item_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(account_uuid,map_object_uuid,item_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (account_uuid)	\
 	FIELD_UUID              (map_object_uuid)	\
@@ -24,7 +26,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_AuctionTransaction
-#define MONGODB_OBJECT_PRIMARY_KEY serial
+#define MONGODB_OBJECT_PRIMARY_KEY {return serial;}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_STRING            (serial)	\
 	FIELD_UUID              (account_uuid)	\

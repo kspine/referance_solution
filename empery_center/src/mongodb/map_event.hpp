@@ -3,12 +3,14 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
 
 namespace MongoDb {
 
 #define MONGODB_OBJECT_NAME   Center_MapEventBlock
-#define MONGODB_OBJECT_PRIMARY_KEY block_x block_y
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenBID(block_x,block_y);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (block_x)	\
 	FIELD_SIGNED            (block_y)	\
@@ -16,7 +18,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_MapEvent
-#define MONGODB_OBJECT_PRIMARY_KEY x y
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenCID(x,y);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_SIGNED            (x)	\
 	FIELD_SIGNED            (y)	\

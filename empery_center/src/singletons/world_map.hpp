@@ -79,6 +79,8 @@ struct WorldMap {
 
 	// ClusterSession
 	static Rectangle get_cluster_scope(Coord coord);
+	static  std::string make_cluster_coord_string(Coord coord);
+	static  bool check_primery_key_coord_uuid(std::uint64_t coord_x,std::uint64_t coord_y,std::string coord_uuid);
 
 	static boost::shared_ptr<ClusterSession> get_cluster(Coord coord);
 	static void get_clusters_all(std::vector<std::pair<Coord, boost::shared_ptr<ClusterSession>>> &ret);

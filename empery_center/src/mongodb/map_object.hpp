@@ -3,10 +3,13 @@
 
 #include <poseidon/mongodb/object_base.hpp>
 
+#include "../primerykeygen.hpp"
+
 namespace EmperyCenter {
-	namespace MongoDb {
+
+namespace MongoDb {
 #define MONGODB_OBJECT_NAME   Center_MapObject
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_SIGNED            (map_object_type_id)	\
@@ -17,11 +20,12 @@ namespace EmperyCenter {
 	FIELD_SIGNED			(y)	\
 	FIELD_DATETIME          (created_time)	\
 	FIELD_DATETIME          (expiry_time)	\
-	FIELD_BOOLEAN           (garrisoned)
+	FIELD_BOOLEAN           (garrisoned)	\
+	FIELD_STRING            (coord_hint)
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_MapObjectAttribute
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid attribute_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,attribute_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED          (attribute_id)	\
@@ -29,7 +33,7 @@ namespace EmperyCenter {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_MapObjectBuff
-#define MONGODB_OBJECT_PRIMARY_KEY map_object_uuid buff_id
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,buff_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_SIGNED            (buff_id)	\
