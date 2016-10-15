@@ -71,10 +71,9 @@ namespace {
 			"  FROM `Center_BattleRecord` AS `r` "
 			"  WHERE `r`.`deleted` > 0");
 			*/
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 		Poseidon::MongoDb::BsonBuilder query;
 		query.append_boolean(sslit("deleted"), true);
-		conn->execute_delete("Center_BattleRecord",query,true);
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_BattleRecord", query, true);	
 	}
 
 	struct CrateRecordBoxElement {
@@ -131,10 +130,11 @@ namespace {
 			"  FROM `Center_BattleRecordCrate` AS `r` "
 			"  WHERE `r`.`deleted` > 0");
 		*/
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		
 		Poseidon::MongoDb::BsonBuilder query;
 		query.append_boolean(sslit("deleted"), true);
-		conn->execute_delete("Center_BattleRecordCrate",query,true);
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_BattleRecordCrate", query, true);
+		
 	}
 
 	MODULE_RAII_PRIORITY(handles, 5000){

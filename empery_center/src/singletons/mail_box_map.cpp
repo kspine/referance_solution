@@ -298,7 +298,8 @@ namespace EmperyCenter {
 			if (!it->promise) {
 				auto sink = boost::make_shared<boost::container::flat_map<LanguageId, boost::shared_ptr<MongoDb::Center_MailData>>>();
 				Poseidon::MongoDb::BsonBuilder query;
-				query.append_uuid(sslit("mail_uuid"), mail_uuid.get());
+				//query.append_uuid(sslit("mail_uuid"), mail_uuid.get());
+				query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenId(mail_uuid.get()) + ","));
 				auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 					auto obj = boost::make_shared<MongoDb::Center_MailData>();

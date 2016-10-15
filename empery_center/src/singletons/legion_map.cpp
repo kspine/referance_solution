@@ -714,10 +714,10 @@ void LegionMap::deletelegion(LegionUuid legion_uuid)
 		LOG_EMPERY_CENTER_INFO("LegionMap::deletelegion==============================================",strsql);
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Legion",strsql);
 		*/
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		
 		Poseidon::MongoDb::BsonBuilder query;
-		query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
-		conn->execute_delete("Center_Legion",query,true);
+		query.append_string(sslit("legion_uuid"), PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get()));
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Legion", query, true);
 	}
 }
 

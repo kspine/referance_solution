@@ -169,27 +169,6 @@ namespace {
 
 		const auto attributes = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::League_MemberAttribute>>>();
 
-#define RELOAD_PART_(sink_, table_)	\
-		{	\
-			Poseidon::MongoDb::BsonBuilder query; \
-			query.append_uuid(sslit("account_uuid"), account_uuid.get()); \
-			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
-				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
-					auto obj = boost::make_shared<MongoDb:: table_ >();	\
-					obj->fetch(conn);	\
-					obj->enable_auto_saving();	\
-					(sink_)->emplace_back(std::move(obj));	\
-				}, #table_, std::move(query), 0, UINT32_MAX);	\
-			promises.emplace_back(std::move(promise));	\
-		}
-//=============================================================================
-	//	RELOAD_PART_(attributes,         League_MemberAttribute)
-//=============================================================================
-		for(const auto &promise : promises){
-			Poseidon::JobDispatcher::yield(promise, true);
-		}
-#undef RELOAD_PART_
-
 		return boost::make_shared<LeagueMember>(std::move(obj), *attributes);
 	}
 
@@ -231,17 +210,6 @@ bool LeagueMemberMap::is_holding_controller_token(LeagueUuid account_uuid){
 		return false;
 	}
 
-	/*
-	const auto controller = ControllerClient::require();
-
-	Msg::ST_LeagueMemberQueryToken treq;
-	treq.account_uuid = account_uuid.str();
-	auto tresult = controller->send_and_wait(treq);
-	LOG_EMPERY_LEAGUE_DEBUG("Controller response: code = ", tresult.first, ", msg = ", tresult.second);
-	if(tresult.first != 0){
-		return false;
-	}
-	*/
 	return true;
 }
 
@@ -415,10 +383,10 @@ void LeagueMemberMap::deletemember(LegionUuid legion_uuid,bool bdeletemap)
 
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("League_Member",strsql);
 		*/
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		
 		Poseidon::MongoDb::BsonBuilder query;
-		query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
-		conn->execute_delete("League_Member",query,true);
+		query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get()));
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("League_Member", query, true);
 	}
 
 }

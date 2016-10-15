@@ -72,10 +72,11 @@ namespace EmperyCenter {
 				"  FROM `Center_Friend` AS `f` "
 				"  WHERE `f`.`category` = 0");
 			*/
-			const auto conn = Poseidon::MongoDbDaemon::create_connection();
+			
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_unsigned(sslit("category"), 0);
-			conn->execute_delete("Center_Friend",query,true);
+		    Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Friend", query, true);
+			
 		}
 
 		boost::weak_ptr<std::vector<AccountUuid>> g_random_pool;

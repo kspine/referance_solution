@@ -3,7 +3,7 @@
 
 #include <string.h>
 #include <vector>
-
+//#include <ostream>
 #include <poseidon/precompiled.hpp>
 
 namespace PRIMERY_KEYGEN
@@ -44,7 +44,13 @@ namespace PRIMERY_KEYGEN
 
         static std::string GenId(const int64_t &key_1,const int64_t &key_2)
 		{
+		    
 			return  (GenId(key_1) + m_split + GenId(key_2));
+			/*std::ostringstream oss;
+			oss <<  key_1;
+			oss <<  m_split;
+			oss <<  key_2;
+			return oss.str();*/
 		}
 
         static std::string GenId(const int64_t &key_1,const int64_t &key_2,const int64_t &key_3)

@@ -285,10 +285,9 @@ void LeagueMap::remove(LeagueUuid league_uuid){
 		strsql += "';";
 		*/
 
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
         Poseidon::MongoDb::BsonBuilder query;
-        query.append_uuid(sslit("league_uuid"), league_uuid.get());
-		conn->execute_delete("League_Info",query,true);
+        query.append_regex(sslit("_id"), ("^" + PRIMERY_KEYGEN::GenIDS::GenId(league_uuid.get()) + ","));
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("League_Info", query, true);
 	}
 }
 

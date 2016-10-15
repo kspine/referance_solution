@@ -370,10 +370,9 @@ namespace EmperyCenter {
 				strategic_resource->delete_from_game();
 			}
 
-			const auto conn = Poseidon::MongoDbDaemon::create_connection();
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_signed(sslit("resource_amount"), 0);
-			conn->execute_delete("Center_StrategicResource", query, true);
+	        Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_StrategicResource", query, true);
 		}
 
 		struct MapEventBlockElement {
@@ -413,10 +412,9 @@ namespace EmperyCenter {
 				}
 			}
 
-			const auto conn = Poseidon::MongoDbDaemon::create_connection();
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_datetime(sslit("expiry_time"), 0);
-			conn->execute_delete("Center_MapEvent", query, true);
+            Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapEvent", query, true);
 		}
 
 		struct ResourceCrateElement {
@@ -465,10 +463,9 @@ namespace EmperyCenter {
 				resource_crate->delete_from_game();
 			}
 
-			const auto conn = Poseidon::MongoDbDaemon::create_connection();
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_signed(sslit("amount_remaining"), 0);
-			conn->execute_delete("Center_ResourceCrate", query, true);
+			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_ResourceCrate", query, true);
 		}
 
 		MULTI_INDEX_MAP(PlayerViewContainer, PlayerViewElement,
@@ -700,6 +697,8 @@ namespace EmperyCenter {
 
 			  Poseidon::JobDispatcher::yield(promise, true);
 			}
+
+#undef RELOAD_PART_Ex
 #undef RELOAD_PART_
 
 			boost::shared_ptr<Castle> castle;
@@ -1079,20 +1078,7 @@ namespace EmperyCenter {
 		synchronize_with_all_clusters(map_cell, coord, coord);
 	}
 
-	/*void WorldMap::get_map_cells_all(std::vector<boost::shared_ptr<MapCell>> &ret){
-		PROFILE_ME;
-
-		const auto map_cell_map = g_map_cell_map.lock();
-		if(!map_cell_map){
-			LOG_EMPERY_CENTER_WARNING("Map cell map not loaded.");
-			return;
-		}
-
-		ret.reserve(ret.size() + map_cell_map->size());
-		for(auto it = map_cell_map->begin<0>(); it != map_cell_map->end<0>(); ++it){
-			ret.emplace_back(it->map_cell);
-		}
-	}*/
+	
 	void WorldMap::get_map_cells_by_parent_object(std::vector<boost::shared_ptr<MapCell>> &ret, MapObjectUuid parent_object_uuid) {
 		PROFILE_ME;
 
@@ -1211,7 +1197,7 @@ namespace EmperyCenter {
 
 		auto map_object = reload_map_object_aux(std::move(sink->front()));
 		map_object->pump_status();
-		// map_object->recalculate_attributes(true);
+		
 
 		const auto elem = MapObjectElement(map_object);
 		const auto result = map_object_map->insert(elem);
@@ -1371,7 +1357,7 @@ namespace EmperyCenter {
 			const auto &castle = *it;
 			try {
 				castle->pump_status();
-				// castle->recalculate_attributes(true);
+				
 			}
 			catch (std::exception &e) {
 				LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
@@ -1440,7 +1426,7 @@ namespace EmperyCenter {
 
 		LOG_EMPERY_CENTER_DEBUG("Recalculating castle attributes...");
 		castle->pump_status();
-		// castle->recalculate_attributes(true);
+		
 	}
 	boost::shared_ptr<MapObject> WorldMap::get_map_object_by_garrisoning_object(MapObjectUuid garrisoning_object_uuid) {
 		PROFILE_ME;
@@ -1505,26 +1491,17 @@ namespace EmperyCenter {
 			const auto &map_object = it->map_object;
 			if (map_object->get_map_object_type_id() != MapObjectTypeIds::ID_CASTLE) {
 					
-				LOG_EMPERY_CENTER_ERROR("mongo Test Test Test not Get Castler_1get_map_object_type_id() != MapObjectTypeIds::ID_CASTLE");
-
 				continue;
 			}
 			const auto castle = boost::dynamic_pointer_cast<Castle>(map_object);
 			if (!castle) {
 					
-				LOG_EMPERY_CENTER_ERROR("mongo Test Test Test not Get Castler2.");
-
 				continue;
 			}
 			if (primary_castle && (primary_castle->get_map_object_uuid() <= castle->get_map_object_uuid())) {
 				
-				LOG_EMPERY_CENTER_ERROR("mongo Test Test Test not Get Castler3.");
-
 				continue;
 			}
-
-			
-			LOG_EMPERY_CENTER_ERROR("mongo Test Test Test Get Castler Right.");
 
 			primary_castle = castle;
 		}
@@ -1673,206 +1650,6 @@ namespace EmperyCenter {
 	}
 
 	
-	/*void WorldMap::get_cluster_map_event_blocks(Coord cluster_coord, std::vector<boost::shared_ptr<MapEventBlock>> &ret){
-		PROFILE_ME;
-
-		const auto map_event_block_map = g_map_event_block_map.lock();
-		if(!map_event_block_map){
-			LOG_EMPERY_CENTER_WARNING("Map event block map not loaded.");
-			return;
-		}
-		ret.reserve(ret.size() + map_event_block_map->size());
-		for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
-			auto temp_cluster_coord = WorldMap::get_cluster_scope(it->map_event_block->get_block_coord()).bottom_left();
-			if(temp_cluster_coord != cluster_coord){
-				continue;
-			}
-			ret.emplace_back(it->map_event_block);
-		}
-	
-	
-	boost::shared_ptr<MapEventBlock> WorldMap::require_map_event_block(Coord coord) {
-		PROFILE_ME;
-
-		auto ret = get_map_event_block(coord);
-		if (!ret) {
-			LOG_EMPERY_CENTER_WARNING("Map event block not found: coord = ", coord);
-			DEBUG_THROW(Exception, sslit("Map event block map not found"));
-		}
-		return ret;
-	
-	void WorldMap::insert_map_event_block(const boost::shared_ptr<MapEventBlock> &map_event_block) {
-		PROFILE_ME;
-
-		const auto map_event_block_map = g_map_event_block_map.lock();
-		if (!map_event_block_map) {
-			LOG_EMPERY_CENTER_WARNING("Map event block map not loaded.");
-			DEBUG_THROW(Exception, sslit("Map event block map not loaded"));
-		}
-
-		const auto block_coord = map_event_block->get_block_coord();
-
-		LOG_EMPERY_CENTER_TRACE("Inserting map event block: block_coord = ", block_coord);
-		const auto result = map_event_block_map->insert(MapEventBlockElement(map_event_block));
-		if (!result.second) {
-			LOG_EMPERY_CENTER_WARNING("Map event block already exists: block_coord = ", block_coord);
-			DEBUG_THROW(Exception, sslit("Map event block already exists"));
-		}
-	}
-	void WorldMap::update_map_event_block(const boost::shared_ptr<MapEventBlock> &map_event_block, bool throws_if_not_exists) {
-		PROFILE_ME;
-
-		const auto map_event_block_map = g_map_event_block_map.lock();
-		if (!map_event_block_map) {
-			LOG_EMPERY_CENTER_WARNING("Map event block map not loaded.");
-			if (throws_if_not_exists) {
-				DEBUG_THROW(Exception, sslit("Map event block map not loaded"));
-			}
-			return;
-		}
-
-		const auto block_coord = map_event_block->get_block_coord();
-
-		const auto it = map_event_block_map->find<0>(block_coord);
-		if (it == map_event_block_map->end<0>()) {
-			LOG_EMPERY_CENTER_WARNING("Map event block map not found: block_coord = ", block_coord);
-			if (throws_if_not_exists) {
-				DEBUG_THROW(Exception, sslit("Map event block map not found"));
-			}
-			return;
-		}
-
-		LOG_EMPERY_CENTER_DEBUG("Updating map event block: block_coord = ", block_coord);
-		map_event_block_map->replace<0>(it, MapEventBlockElement(map_event_block));
-	}
-
-	void WorldMap::refresh_activity_event(unsigned map_event_type){
-		PROFILE_ME;
-		LOG_EMPERY_CENTER_TRACE("refresh activity event ");
-
-		const auto map_event_block_map = g_map_event_block_map.lock();
-		if(!map_event_block_map){
-			return;
-		}
-
-		for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
-			const auto &map_event_block = it->map_event_block;
-			map_event_block->refresh_events(false,map_event_type);
-		}
-	}
-
-	void WorldMap::remove_activity_event(unsigned map_event_type){
-		PROFILE_ME;
-		LOG_EMPERY_CENTER_TRACE("Map event block remove activity" );
-
-		const auto map_event_block_map = g_map_event_block_map.lock();
-		if(!map_event_block_map){
-			return;
-		}
-		const auto utc_now = Poseidon::get_utc_time();
-		for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
-			const auto &map_event_block = it->map_event_block;
-			map_event_block->remove_expired_events(utc_now,map_event_type,true);
-		}
-	}
-
-	void WorldMap::refresh_world_activity_event(Coord cluster_coord,unsigned map_event_type){
-		PROFILE_ME;
-		LOG_EMPERY_CENTER_TRACE("refresh activity event ");
-
-		const auto map_event_block_map = g_map_event_block_map.lock();
-		if(!map_event_block_map){
-			return;
-		}
-
-		for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
-			const auto &map_event_block = it->map_event_block;
-			const auto &temp_cluster_coord = WorldMap::get_cluster_scope(map_event_block->get_block_coord()).bottom_left();
-			if(cluster_coord != temp_cluster_coord){
-				continue;
-			}
-			map_event_block->refresh_events(false,map_event_type);
-		}
-	}
-	void WorldMap::remove_world_activity_event(Coord cluster_coord, unsigned map_event_type){
-		PROFILE_ME;
-		LOG_EMPERY_CENTER_TRACE("Map event block remove activity" );
-
-		const auto map_event_block_map = g_map_event_block_map.lock();
-		if(!map_event_block_map){
-			return;
-		}
-		const auto utc_now = Poseidon::get_utc_time();
-		for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
-			const auto &map_event_block = it->map_event_block;
-			const auto &temp_cluster_coord = WorldMap::get_cluster_scope(map_event_block->get_block_coord()).bottom_left();
-			if(cluster_coord != temp_cluster_coord){
-				continue;
-			}
-			map_event_block->remove_expired_events(utc_now,map_event_type,true);
-		}
-	}
-
-	void WorldMap::refresh_world_activity_boss(Coord cluster_coord,std::uint64_t since){
-		PROFILE_ME;
-		//先查一下有没有存在的boss，有则直接返回
-		WorldActivityBossMap::WorldActivityBossInfo boss_info = WorldActivityBossMap::get(cluster_coord,since);
-		if(boss_info.since == since){
-			return;
-		}
-
-		//不存在则直接开刷
-		const auto map_event_block_map = g_map_event_block_map.lock();
-		if(!map_event_block_map){
-			return;
-		}
-		const auto utc_now = Poseidon::get_utc_time();
-		boost::shared_ptr<MapObject> boss;
-		std::vector<boost::shared_ptr<MapEventBlock>> ret;
-		WorldMap::get_cluster_map_event_blocks(cluster_coord,ret);
-		std::sort(ret.begin(), ret.end(),
-						[](const boost::shared_ptr<MapEventBlock> &lhs, const boost::shared_ptr<MapEventBlock> &rhs){
-							return lhs->get_map_event_cicle_id() < rhs->get_map_event_cicle_id();
-						});
-		for(auto it = ret.begin(); it != ret.end(); ++it){
-			const auto &map_event_block = *it;
-			const auto &temp_cluster_coord = WorldMap::get_cluster_scope(map_event_block->get_block_coord()).bottom_left();
-			if(cluster_coord != temp_cluster_coord){
-				continue;
-			}
-			boss = map_event_block->refresh_boss(utc_now);
-			if(boss){
-				boss_info.cluster_coord = cluster_coord;
-				boss_info.since         = since;
-				boss_info.boss_uuid     = boss->get_map_object_uuid();
-				boss_info.create_date   = utc_now;
-				boss_info.delete_date   = 0;
-				WorldActivityBossMap::update(boss_info);
-				break;
-			}
-		}
-		if(!boss){
-			LOG_EMPERY_CENTER_FATAL("refresh world activity boss Failed,has no enough coord ????");
-		}
-	}
-
-	void WorldMap::remove_world_activity_boss(Coord cluster_coord,std::uint64_t since){
-		PROFILE_ME;
-
-		WorldActivityBossMap::WorldActivityBossInfo boss_info = WorldActivityBossMap::get(cluster_coord,since);
-		if(boss_info.since != since){
-			return;
-		}
-		const auto utc_now = Poseidon::get_utc_time();
-		boost::shared_ptr<MapObject> monster_boss = WorldMap::get_map_object(boss_info.boss_uuid);
-		if(monster_boss){
-			boss_info.delete_date = utc_now;
-			boss_info.hp_die = static_cast<std::uint64_t>(monster_boss->get_attribute(AttributeIds::ID_HP_TOTAL));
-			WorldActivityBossMap::update(boss_info);
-			monster_boss->delete_from_game();
-		}
-	}
-	*/
 	boost::shared_ptr<ResourceCrate> WorldMap::get_resource_crate(ResourceCrateUuid resource_crate_uuid) {
 		PROFILE_ME;
 
@@ -2250,10 +2027,14 @@ namespace EmperyCenter {
 				Poseidon::MongoDb::BsonBuilder query;
 				
 
-			query.append_regex(sslit("_id"),("^" + make_cluster_coord_string(cluster_coord)+ ","));
+			  query.append_regex(sslit("_id"),("^" + make_cluster_coord_string(cluster_coord)+ ","));
+			
+			  //query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
+			  //query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
+			  //query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
+			  //query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
 							
-			//query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenCID(cluster_coord.x(),cluster_coord.y())+ ","));
-				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+			const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
 					auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_MapCell>();
 					obj->fetch(conn);

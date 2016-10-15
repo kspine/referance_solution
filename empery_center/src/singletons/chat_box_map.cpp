@@ -117,10 +117,9 @@ namespace {
 			"  WHERE `m`.`expiry_time` = '0000-00-00 00:00:00'");
 
 		*/
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 		Poseidon::MongoDb::BsonBuilder query;
 		query.append_datetime(sslit("expiry_time"), 0);
-		conn->execute_delete("Center_HornMessage",query,true);
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_HornMessage", query, true);
 	}
 
 	MODULE_RAII_PRIORITY(handles, 5000){

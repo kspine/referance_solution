@@ -307,10 +307,11 @@ void LegionBuildingMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuilding",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	
 	Poseidon::MongoDb::BsonBuilder query;
 	query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
-	conn->execute_delete("Center_LegionBuilding",query,true);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuilding", query, true);
+	
 }
 
 void  LegionBuildingMap::find_by_type(std::vector<boost::shared_ptr<LegionBuilding>> &buildings,LegionUuid legion_uuid,std::uint64_t ntype)
@@ -411,10 +412,12 @@ void LegionBuildingMap::deleteInfo_by_legion_building_uuid(LegionBuildingUuid le
 
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuilding",strsql);
 		*/
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
+		
 		Poseidon::MongoDb::BsonBuilder query;
-		query.append_uuid(sslit("legion_building_uuid"), legion_building_uuid.get());
-		conn->execute_delete("Center_LegionBuilding",query,true);
+		query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenId(legion_building_uuid.get()) + ","));
+
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuilding", query, true);
+		
 	}
 }
 

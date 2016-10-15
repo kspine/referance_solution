@@ -167,7 +167,7 @@ void LeagueApplyJoinMap::deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uui
 		return;
 	}
 
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+
 	Poseidon::MongoDb::BsonBuilder query;
 	std::string strsql = "";
 	if(bAll)
@@ -185,7 +185,7 @@ void LeagueApplyJoinMap::deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uui
 		strsql += legion_uuid.str();
 		strsql += "';";
 		*/
-		query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+		query.append_regex(sslit("_id"), ("^" + PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get()) + ","));
 
 	}
 	else
@@ -203,18 +203,15 @@ void LeagueApplyJoinMap::deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uui
 				strsql += legion_uuid.str();
 				strsql += "';";
 				*/
-                query.append_uuid(sslit("league_uuid"), league_uuid.get());
-				query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+
+				query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get(),league_uuid.get()));
 				break;
 
 			}
 		}
 	}
 
-//	LOG_EMPERY_LEAGUE_DEBUG("Reclaiming league apply join map strsql = ", strsql);
-
-	conn->execute_delete("League_LeagueApplyJoin",query,true);
-	// Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueApplyJoin",strsql);
+    Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueApplyJoin", query, true);
 }
 
 void LeagueApplyJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
@@ -243,10 +240,10 @@ void LeagueApplyJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueApplyJoin",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
-	Poseidon::MongoDb::BsonBuilder query;
-	query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
-	conn->execute_delete("League_LeagueApplyJoin",query,true);
+
+	Poseidon::MongoDb::BsonBuilder query;	
+	query.append_regex(sslit("_id"), ("^" + PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get()) + ","));
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueApplyJoin", query, true);
 
 }
 
@@ -276,10 +273,10 @@ void LeagueApplyJoinMap::deleteInfo_by_league_uuid(LeagueUuid league_uuid)
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueApplyJoin",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	Poseidon::MongoDb::BsonBuilder query;
 	query.append_uuid(sslit("league_uuid"), league_uuid.get());
-	conn->execute_delete("League_LeagueApplyJoin",query,true);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueApplyJoin", query, true);
+
 }
 
 

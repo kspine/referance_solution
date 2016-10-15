@@ -146,8 +146,7 @@ boost::shared_ptr<Castle> WorldMap::forced_reload_castle(MapObjectUuid map_objec
 	{
 		Poseidon::MongoDb::BsonBuilder query;
 		query.append_object(sslit("expiry_time"), Poseidon::MongoDb::bson_scalar_datetime(sslit("$ne"), 0));
-		query.append_unsigned(sslit("map_object_type_id"), EmperyCenter::MapObjectTypeIds::ID_CASTLE.get());
-		query.append_uuid(sslit("map_object_uuid"), map_object_uuid.get());
+		query.append_uuid(sslit("map_object_uuid"),map_object_uuid.get());
 		const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
 			[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){
 				auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_MapObject>();

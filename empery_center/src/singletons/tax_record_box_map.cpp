@@ -64,10 +64,9 @@ namespace {
 			}
 		}
 
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 		Poseidon::MongoDb::BsonBuilder query;
 		query.append_boolean(sslit("deleted"), true);
-		conn->execute_delete("Center_HornMessage",query,true);
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_TaxRecord", query, true);
 	}
 
 	MODULE_RAII_PRIORITY(handles, 5000){

@@ -222,7 +222,6 @@ void LeagueInviteJoinMap::deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uu
 	}
 
 	// std::string strsql = "";
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	Poseidon::MongoDb::BsonBuilder query;
 	if(bAll)
 	{
@@ -240,7 +239,7 @@ void LeagueInviteJoinMap::deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uu
 		strsql += league_uuid.str();
 		strsql += "';";
 		*/
-		query.append_uuid(sslit("league_uuid"), league_uuid.get());
+		query.append_uuid(sslit("league_uuid"),league_uuid.get());
 	}
 	else
 	{
@@ -257,17 +256,14 @@ void LeagueInviteJoinMap::deleteInfo(LegionUuid legion_uuid,LeagueUuid league_uu
 				strsql += legion_uuid.str();
 				strsql += "';";
 */
-                query.append_uuid(sslit("league_uuid"), league_uuid.get());
-                query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+
+				query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get(),league_uuid.get()));
 				break;
 
 			}
 		}
 	}
-	conn->execute_delete("League_LeagueInviteJoin",query,true);
-	//LOG_EMPERY_LEAGUE_DEBUG("Reclaiming legion apply join map strsql = ", strsql);
-
-	//Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin", query, true);
 }
 
 void LeagueInviteJoinMap::deleteInfo_by_invited_uuid(LeagueUuid league_uuid)
@@ -293,10 +289,10 @@ void LeagueInviteJoinMap::deleteInfo_by_invited_uuid(LeagueUuid league_uuid)
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	
 	Poseidon::MongoDb::BsonBuilder query;
 	query.append_uuid(sslit("league_uuid"), league_uuid.get());
-	conn->execute_delete("League_LeagueInviteJoin",query,true);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin", query, true);
 }
 
 void LeagueInviteJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
@@ -322,10 +318,11 @@ void LeagueInviteJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	
 	Poseidon::MongoDb::BsonBuilder query;
-	query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
-	conn->execute_delete("League_LeagueInviteJoin",query,true);
+	query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get()) + ","));
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin", query, true);
+
 }
 
 void LeagueInviteJoinMap::deleteInfo_by_invitedres_uuid(LeagueUuid league_uuid,LegionUuid legion_uuid,bool bAll/* = false*/)
@@ -340,7 +337,6 @@ void LeagueInviteJoinMap::deleteInfo_by_invitedres_uuid(LeagueUuid league_uuid,L
 
 	const auto range = account_map->equal_range<1>(league_uuid);
 //	std::string strsql = "";
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	Poseidon::MongoDb::BsonBuilder query;
 	if(bAll)
 	{
@@ -373,17 +369,14 @@ void LeagueInviteJoinMap::deleteInfo_by_invitedres_uuid(LeagueUuid league_uuid,L
 				strsql += legion_uuid.str();
 				strsql += "';";
 				*/
-                query.append_uuid(sslit("league_uuid"), league_uuid.get());
-                query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+				query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get(),league_uuid.get()));
 				break;
 
 			}
 		}
 	}
-	conn->execute_delete("League_LeagueInviteJoin",query,true);
-	//LOG_EMPERY_LEAGUE_DEBUG("deleteInfo_by_invitedres_uuid strsql = ", strsql);
 
-	//Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin",strsql);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueInviteJoin", query, true);
 }
 
 }

@@ -238,7 +238,6 @@ void LegionInviteJoinMap::deleteInfo(LegionUuid legion_uuid,AccountUuid account_
 	}
 
 //	std::string strsql = "";
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	Poseidon::MongoDb::BsonBuilder query;
 	if(bAll)
 	{
@@ -273,8 +272,10 @@ void LegionInviteJoinMap::deleteInfo(LegionUuid legion_uuid,AccountUuid account_
 				strsql += legion_uuid.str();
 				strsql += "';";
 				*/
-				query.append_uuid(sslit("account_uuid"), account_uuid.get());
-				query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+				//query.append_uuid(sslit("account_uuid"), account_uuid.get());
+				//query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
+
+				query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get(),account_uuid.get()) + ","));
 				break;
 
 			}
@@ -285,7 +286,7 @@ void LegionInviteJoinMap::deleteInfo(LegionUuid legion_uuid,AccountUuid account_
 
 //	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionInviteJoin",strsql);
 
-	conn->execute_delete("Center_LegionInviteJoin",query,true);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionInviteJoin",query, true);
 }
 
 void LegionInviteJoinMap::deleteInfo_by_invited_uuid(AccountUuid account_uuid)
@@ -311,10 +312,10 @@ void LegionInviteJoinMap::deleteInfo_by_invited_uuid(AccountUuid account_uuid)
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionInviteJoin",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	
 	Poseidon::MongoDb::BsonBuilder query;
 	query.append_uuid(sslit("invited_uuid"), account_uuid.get());
-	conn->execute_delete("Center_LegionInviteJoin",query,true);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionInviteJoin", query, true);
 }
 
 void LegionInviteJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
@@ -340,10 +341,10 @@ void LegionInviteJoinMap::deleteInfo_by_legion_uuid(LegionUuid legion_uuid)
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionInviteJoin",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
+
 	Poseidon::MongoDb::BsonBuilder query;
-	query.append_uuid(sslit("legion_uuid"), legion_uuid.get());
-	conn->execute_delete("Center_LegionInviteJoin",query,true);
+	query.append_regex(sslit("_id"), ("^" + PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get()) + ","));
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionInviteJoin", query, true);
 }
 
 void LegionInviteJoinMap::deleteInfo_by_invitedres_uuid(AccountUuid account_uuid,LegionUuid legion_uuid,bool bAll/* = false*/)
@@ -358,7 +359,6 @@ void LegionInviteJoinMap::deleteInfo_by_invitedres_uuid(AccountUuid account_uuid
 
 	const auto range = account_map->equal_range<2>(account_uuid);
 //	std::string strsql = "";
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	Poseidon::MongoDb::BsonBuilder query;
 	if(bAll)
 	{
@@ -403,7 +403,7 @@ void LegionInviteJoinMap::deleteInfo_by_invitedres_uuid(AccountUuid account_uuid
 
 //	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionInviteJoin",strsql);
 
-	conn->execute_delete("Center_LegionInviteJoin",query,true);
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionInviteJoin",query, true);
 }
 
 }
