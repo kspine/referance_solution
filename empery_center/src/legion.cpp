@@ -287,43 +287,11 @@ void Legion::disband()
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionAttribute",strsql);
 	*/
 	
-	
-	
-	
-	
-	
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	Poseidon::MongoDb::BsonBuilder query;
-	const auto legion_uuid = conn->get_uuid("legion_uuid");
-	query.append_uuid(sslit("legion_uuid"), legion_uuid);
-    conn->execute_delete("Center_LegionAttribute", query, true);
+	query.append_regex(sslit("_id"), ("^" + get_legion_uuid().str() + ",")); 
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionAttribute", query, true);
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-
 	// 设置对应的联盟信息为空
 	set_member_league_uuid("");
 

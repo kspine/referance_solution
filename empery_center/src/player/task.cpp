@@ -24,6 +24,7 @@ PLAYER_SERVLET(Msg::CS_ItemGetAllTasks, account, session, /* req */){
 	task_box->pump_status();
 
 	task_box->synchronize_with_player(session);
+	
 	auto member = LegionMemberMap::get_by_account_uuid(account->get_account_uuid());
 	if (member){
 		const auto legion_uuid = LegionUuid(member->get_legion_uuid());

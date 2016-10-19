@@ -621,6 +621,8 @@ void LegionMemberMap::deletemember(AccountUuid account_uuid,bool bdeletemap)
 	const auto it = legion_map->find<1>(account_uuid);
 	if(it != legion_map->end<1>()){
 
+		LOG_EMPERY_CENTER_ERROR("_________LegionMemberMap::delete member Flow__________");
+
 		const auto legion_uuid = it->member->get_legion_uuid();
 
 		const auto donate = it->member->get_attribute(LegionMemberAttributeIds::ID_DONATE);
@@ -632,8 +634,12 @@ void LegionMemberMap::deletemember(AccountUuid account_uuid,bool bdeletemap)
 		it->member->leave();
 
 		if(bdeletemap)
-			legion_map->erase<1>(it);
+		{
+		
 
+		   // LOG_EMPERY_CENTER_ERROR("_________LegionMemberMap::delete flag__________",bdeletemap);
+			legion_map->erase<1>(it);
+        }
 		LOG_EMPERY_CENTER_INFO("deletemember members size==============================================",get_legion_member_count(legion_uuid));
 
 		// 从数据库中删除该成员
@@ -644,10 +650,12 @@ void LegionMemberMap::deletemember(AccountUuid account_uuid,bool bdeletemap)
 
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Legion_Member",strsql);
 		*/
-		const auto conn = Poseidon::MongoDbDaemon::create_connection();
 		Poseidon::MongoDb::BsonBuilder query;
-		query.append_uuid(sslit("account_uuid"), account_uuid.get());
-		conn->execute_delete("Center_Legion_Member",query,true);
+		query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(account_uuid.get()));
+		
+        LOG_EMPERY_CENTER_ERROR("query _id:account_uuid=",account_uuid.get());
+
+		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Legion_Member", query, true);
 
 		// 个人贡献移动到账号身上
 		const auto account = AccountMap::require(account_uuid);

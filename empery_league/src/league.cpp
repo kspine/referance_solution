@@ -222,11 +222,10 @@ void League::disband()
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueAttribute",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	Poseidon::MongoDb::BsonBuilder query;
-	query.append_uuid(sslit("league_uuid"), get_league_uuid().get());
-	conn->execute_delete("League_LeagueAttribute",query,true);
-
+	query.append_regex(sslit("_id"),( "^" + get_league_uuid().str() + ","));
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_LeagueAttributive",query,true);
+	
 	// 联盟解散的成员的善后操作
 	LeagueMemberMap::disband_league(get_league_uuid());
 

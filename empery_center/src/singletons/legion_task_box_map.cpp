@@ -74,6 +74,7 @@ namespace EmperyCenter {
 			auto timer = Poseidon::TimerDaemon::register_timer(0, gc_interval,
 				std::bind(&gc_timer_proc, std::placeholders::_2));
 			handles.push(timer);
+			
 		}
 	}
 

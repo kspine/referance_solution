@@ -62,11 +62,10 @@ void LeagueMember::leave()
 
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_MemberAttribute",strsql);
 	*/
-	const auto conn = Poseidon::MongoDbDaemon::create_connection();
-	Poseidon::MongoDb::BsonBuilder query;
-	query.append_uuid(sslit("legion_uuid"), get_legion_uuid().get());
-	conn->execute_delete("League_MemberAttribute",query,true);
 
+	Poseidon::MongoDb::BsonBuilder query;
+	query.append_regex(sslit("_id"),( "^" + get_legion_uuid().str() + ","));
+	Poseidon::MongoDbDaemon::enqueue_for_deleting("League_MemberAttributive",query,true);
 }
 
 std::uint64_t LeagueMember::get_created_time() const {

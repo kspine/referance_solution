@@ -107,12 +107,10 @@ void LegionMember::leave()
 	*/
 	
 	
-	 const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	 Poseidon::MongoDb::BsonBuilder query;
-	 const auto account_uuid = conn->get_uuid("account_uuid");
-	 query.append_uuid(sslit("account_uuid"), account_uuid);
-	 conn->execute_delete("Center_LegionMemberAttribute", query, true);
-	 
+	 query.append_regex(sslit("_id"), ("^" + get_account_uuid().str() + ","));
+	 Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionMemberAttribute", query, true);
+
 	 set_league_uuid("");
 }
 

@@ -79,11 +79,9 @@ void LegionBuilding::leave()
 	Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuildingAttribute",strsql);
 	*/
 	
-	 const auto conn = Poseidon::MongoDbDaemon::create_connection();
 	 Poseidon::MongoDb::BsonBuilder query;
-	 const auto legion_building_uuid = conn->get_uuid("legion_building_uuid");
-	 query.append_uuid(sslit("legion_building_uuid"), legion_building_uuid);
-	 conn->execute_delete("Center_LegionBuildingAttribute", query, true);
+	 query.append_regex(sslit("_id"),("^" + get_legion_building_uuid().str() + ","));
+	 Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_LegionBuildingAttribute", query, true);
 }
 
 

@@ -716,7 +716,7 @@ void LegionMap::deletelegion(LegionUuid legion_uuid)
 		*/
 		
 		Poseidon::MongoDb::BsonBuilder query;
-		query.append_string(sslit("legion_uuid"), PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get()));
+		query.append_string(sslit("_id"), PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid.get()));
 		Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_Legion", query, true);
 	}
 }
