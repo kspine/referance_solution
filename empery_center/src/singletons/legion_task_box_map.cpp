@@ -29,70 +29,68 @@ namespace EmperyCenter {
 			}
 		};
 
-		MULTI_INDEX_MAP(LegionTaskBoxContainer, LegionTaskBoxElement,
-			UNIQUE_MEMBER_INDEX(legion_uuid)
-			MULTI_MEMBER_INDEX(unload_time)
-		)
+	MULTI_INDEX_MAP(LegionTaskBoxContainer, LegionTaskBoxElement,
+		UNIQUE_MEMBER_INDEX(legion_uuid)
+		MULTI_MEMBER_INDEX(unload_time)
+	)
 
-			boost::weak_ptr<LegionTaskBoxContainer> g_legion_task_box_map;
+	boost::weak_ptr<LegionTaskBoxContainer> g_legion_task_box_map;
 
-		void gc_timer_proc(std::uint64_t now) {
-			PROFILE_ME;
-			LOG_EMPERY_CENTER_TRACE("Task legion box gc timer: now = ", now);
+	void gc_timer_proc(std::uint64_t now){
+		PROFILE_ME;
+		LOG_EMPERY_CENTER_TRACE("Task legion box gc timer: now = ", now);
 
-			const auto legion_task_box_map = g_legion_task_box_map.lock();
-			if (!legion_task_box_map) {
-				return;
-			}
-
-			for (;;) {
-				const auto it = legion_task_box_map->begin<1>();
-				if (it == legion_task_box_map->end<1>()) {
-					break;
-				}
-				if (now < it->unload_time) {
-					break;
-				}
-
-				// 判定 use_count() 为 0 或 1 的情况。参看 require() 中的注释。
-				if ((it->promise.use_count() | it->legion_task_box.use_count()) != 1) { // (a > 1) || (b > 1) || ((a == 0) && b == 0))
-					legion_task_box_map->set_key<1, 1>(it, now + 1000);
-				}
-				else {
-					LOG_EMPERY_CENTER_DEBUG("Reclaiming task legion box: legion_uuid = ", it->legion_uuid);
-					legion_task_box_map->erase<1>(it);
-				}
-			}
+		const auto legion_task_box_map = g_legion_task_box_map.lock();
+		if(!legion_task_box_map){
+			return;
 		}
 
-		MODULE_RAII_PRIORITY(handles, 5000) {
-			const auto legion_task_box_map = boost::make_shared<LegionTaskBoxContainer>();
-			g_legion_task_box_map = legion_task_box_map;
-			handles.push(legion_task_box_map);
+		for(;;){
+			const auto it = legion_task_box_map->begin<1>();
+			if(it == legion_task_box_map->end<1>()){
+				break;
+			}
+			if(now < it->unload_time){
+				break;
+			}
 
-			const auto gc_interval = get_config<std::uint64_t>("object_gc_interval", 300000);
-			auto timer = Poseidon::TimerDaemon::register_timer(0, gc_interval,
-				std::bind(&gc_timer_proc, std::placeholders::_2));
-			handles.push(timer);
-			
+			// 判定 use_count() 为 0 或 1 的情况。参看 require() 中的注释。
+			if((it->promise.use_count() | it->legion_task_box.use_count()) != 1){ // (a > 1) || (b > 1) || ((a == 0) && b == 0))
+				legion_task_box_map->set_key<1, 1>(it, now + 1000);
+			} else {
+				LOG_EMPERY_CENTER_DEBUG("Reclaiming task legion box: legion_uuid = ", it->legion_uuid);
+				legion_task_box_map->erase<1>(it);
+			}
 		}
 	}
 
-	boost::shared_ptr<LegionTaskBox> LegionTaskBoxMap::get(LegionUuid legion_uuid) {
-		PROFILE_ME;
+	MODULE_RAII_PRIORITY(handles, 5000){
+		const auto legion_task_box_map = boost::make_shared<LegionTaskBoxContainer>();
+		g_legion_task_box_map = legion_task_box_map;
+		handles.push(legion_task_box_map);
 
-		const auto legion_task_box_map = g_legion_task_box_map.lock();
-		if (!legion_task_box_map) {
-			LOG_EMPERY_CENTER_WARNING("LegionTaskBoxMap is not loaded.");
-			return{};
-		}
+		const auto gc_interval = get_config<std::uint64_t>("object_gc_interval", 300000);
+		auto timer = Poseidon::TimerDaemon::register_timer(0, gc_interval,
+			std::bind(&gc_timer_proc, std::placeholders::_2));
+		handles.push(timer);
+	}
+}
 
-		auto it = legion_task_box_map->find<0>(legion_uuid);
-		if (it == legion_task_box_map->end<0>()) {
-			it = legion_task_box_map->insert<0>(it, LegionTaskBoxElement(legion_uuid, 0));
-		}
-		if (!it->legion_task_box) {
-			LOG_EMPERY_CENTER_DEBUG("Loading task box: legion_uuid = ", legion_uuid);
+boost::shared_ptr<LegionTaskBox> LegionTaskBoxMap::get(LegionUuid legion_uuid){
+	PROFILE_ME;
+
+	const auto legion_task_box_map = g_legion_task_box_map.lock();
+	if(!legion_task_box_map){
+		LOG_EMPERY_CENTER_WARNING("LegionTaskBoxMap is not loaded.");
+		return { };
+	}
+
+	auto it = legion_task_box_map->find<0>(legion_uuid);
+	if(it == legion_task_box_map->end<0>()){
+		it = legion_task_box_map->insert<0>(it, LegionTaskBoxElement(legion_uuid, 0));
+	}
+	if(!it->legion_task_box){
+		LOG_EMPERY_CENTER_DEBUG("Loading task box: legion_uuid = ", legion_uuid);
 
 			boost::shared_ptr<const Poseidon::JobPromise> promise_tack;
 			do {

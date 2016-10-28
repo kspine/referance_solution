@@ -930,11 +930,8 @@ bool MapObject::is_in_group_view_scope(boost::shared_ptr<MapObject>& target_obje
 
 std::uint64_t MapObject::get_view_range(){
 	PROFILE_ME;
-	const auto map_object_type_data = get_map_object_type_data();
-	if(!map_object_type_data){
-		return 0;
-	}
-	return map_object_type_data->view + get_attribute(EmperyCenter::AttributeIds::ID_SIGHT_RANGE_ADD) / 1000.0;
+
+	return get_shoot_range() + 1 + get_attribute(EmperyCenter::AttributeIds::ID_SIGHT_RANGE_ADD) / 1000.0;
 }
 
 void MapObject::troops_attack(boost::shared_ptr<MapObject> target,bool passive){
@@ -945,7 +942,9 @@ void MapObject::troops_attack(boost::shared_ptr<MapObject> target,bool passive){
 	}
 
 	std::vector<boost::shared_ptr<MapObject>> friendly_map_objects;
-	if(is_legion_warehouse())
+
+	LOG_EMPERY_CLUSTER_ERROR("troops_attack legion_uuid = ", get_legion_uuid());
+	if(!get_legion_uuid().str().empty())
 	{
 		WorldMap::get_map_objects_by_legion_uuid(friendly_map_objects,get_legion_uuid());
 	}
@@ -1093,8 +1092,7 @@ bool    MapObject::find_way_points(std::deque<std::pair<signed char, signed char
 	if(!precise){
 		distance_close_enough = get_shoot_range();
 	}
-	const auto distance_limit = get_config<unsigned>("path_recalculation_radius", 10);
-	if(find_path(path,from_coord, target_coord,get_owner_uuid(), distance_limit, distance_close_enough)){
+	if(find_path(path,from_coord, target_coord,get_owner_uuid(), 20, distance_close_enough)){
 		for(auto it = path.begin(); it != path.end(); ++it){
 			waypoints.emplace_back(it->first, it->second);
 		}
@@ -1550,9 +1548,15 @@ std::uint64_t MapObject::on_action_harvest_legion_resource(std::pair<long, std::
 	if(!cluster){
 		return UINT64_MAX;
 	}
+	const auto map_object_type_data = get_map_object_type_data();
+	if(!map_object_type_data){
+		return UINT64_MAX;
+	}
+	double attack_rate = map_object_type_data->harvest_speed*(1 + get_attribute(EmperyCenter::AttributeIds::ID_HARVEST_SPEED_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_HARVEST_SPEED_ADD) / 1000.0;
 	Msg::KS_MapHarvestLegionResource sreq;
 	sreq.map_object_uuid = get_map_object_uuid().str();
 	sreq.interval        = harvest_interval;
+	sreq.amount_harvested = (std::uint64_t)std::max(harvest_interval / 60000.0 * get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT) * attack_rate, 0.0);
 	if(forced_attack){
 		sreq.forced_attack   = true;
 	}
