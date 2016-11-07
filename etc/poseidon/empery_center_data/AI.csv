@@ -12,3 +12,5 @@ ai_id,ai_class,ai_type,ai_numerical,ai_linkage,ai_Intelligence
 5000503,2,5,1,0,1
 5000504,2,5,1,1,1
 5000601,1,6,"[8,10]",,
+5000701,2,8,,,
+5000801,2,9,,,

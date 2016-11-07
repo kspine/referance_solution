@@ -20,7 +20,8 @@ namespace PRIMERY_KEYGEN
 		// make random uuid string
         static std::string GenId()
 		{
-		   return (Poseidon::Uuid::random().to_string());
+		   //return (Poseidon::Uuid::random().to_string());
+		   return "";
 		}
 
 		// make the uuid string 
