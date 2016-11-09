@@ -733,8 +733,11 @@ namespace EmperyCenter {
 		{	\
 			const auto block_x = obj->get_block_x();	\
 			const auto block_y = obj->get_block_y();	\
+            LOG_EMPERY_CENTER_ERROR("Center_MapEvent block_x:", block_x,"block_y:",block_y);\
+            LOG_EMPERY_CENTER_ERROR("Center Mapevent GenBID:",PRIMERY_KEYGEN::GenIDS::GenBID(block_x,block_y));\
+            LOG_EMPERY_CENTER_ERROR("Center Mapevent GenBID_Prefix:",PRIMERY_KEYGEN::GenIDS::GenBID_Prefix(block_x,block_y));\
 			Poseidon::MongoDb::BsonBuilder query;	\
-			query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenBID(block_x,block_y) + ","));\
+			query.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenBID_Prefix(block_x,block_y) + ","));\
 			auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(	\
 				[sink_](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn){	\
 					auto obj = boost::make_shared<MongoDb:: table_ >();	\
