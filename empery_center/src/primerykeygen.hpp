@@ -118,8 +118,8 @@ namespace PRIMERY_KEYGEN
 		// make coordinate(x,y,dx,dy) string 
         static std::string GenCID(std::int64_t coord_x,std::int64_t coord_y)
 		{
-		   std::int64_t x =(floor(float(coord_x/600)+ 1e-6) * 600);
-		   std::int64_t y =(floor(float(coord_x/640)+ 1e-6) * 600);
+		   std::int64_t x =(floor(double(coord_x/600)+ 1e-6) * 600);
+		   std::int64_t y =(floor(double(coord_y/640)+ 1e-6) * 640);
 		   std::int64_t x_offset =  coord_x - x;
 		   std::int64_t y_offset =  coord_y - y;
  
@@ -131,8 +131,8 @@ namespace PRIMERY_KEYGEN
 
         static std::string GenCID_Prefix(std::int64_t coord_x,std::int64_t coord_y)
 		{
-		   std::int64_t x =(floor(float(coord_x/600)+ 1e-6) * 600);
-		   std::int64_t y =(floor(float(coord_x/640)+ 1e-6) * 600);
+		   std::int64_t x =(floor(double(coord_x/600)+ 1e-6) * 600);
+		   std::int64_t y =(floor(double(coord_y/640)+ 1e-6) * 640);
  
 			return (boost::lexical_cast<std::string>(x)+ m_split 
 						+ boost::lexical_cast<std::string>(y));
@@ -141,8 +141,8 @@ namespace PRIMERY_KEYGEN
 		  // make coordinate(x,y,dx,dy) string 
 	    static std::string GenBID(std::int64_t coord_x,std::int64_t coord_y)
 		{
-		   std::int64_t x =(floor(float(coord_x/30)+ 1e-6) * 30);
-		   std::int64_t y =(floor(float(coord_x/32)+ 1e-6) * 32);
+		   std::int64_t x =(floor(double(coord_x/30)+ 1e-6) * 30);
+		   std::int64_t y =(floor(double(coord_y/32)+ 1e-6) * 32);
 		   std::int64_t x_offset =  coord_x - x;
 		   std::int64_t y_offset =  coord_y - y;
 
@@ -154,8 +154,8 @@ namespace PRIMERY_KEYGEN
 		
 		static std::string GenBID_Prefix(std::int64_t coord_x,std::int64_t coord_y)
 		{
-		   std::int64_t x =(floor(float(coord_x/30)+ 1e-6) * 30);
-		   std::int64_t y =(floor(float(coord_x/32)+ 1e-6) * 32);
+		   std::int64_t x =(floor(double(coord_x/30)+ 1e-6) * 30);
+		   std::int64_t y =(floor(double(coord_y/32)+ 1e-6) * 32);
  
 			return (boost::lexical_cast<std::string>(x)+ m_split 
 						+ boost::lexical_cast<std::string>(y));
