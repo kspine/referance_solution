@@ -239,7 +239,7 @@ namespace EmperyCenter {
 				}
 			}
 
-			
+
 			const auto conn = Poseidon::MongoDbDaemon::create_connection();
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_datetime(sslit("expiry_time"), 0);
@@ -251,7 +251,6 @@ namespace EmperyCenter {
 
 			    del_query.append_string(sslit("_id"),PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid));
 				del_query_ex.append_regex(sslit("_id"),("^" + PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid) + ","));
-		
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObject", del_query, true);
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectAttribute", del_query_ex, true);
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_DefenseBuilding", del_query, true);
@@ -259,7 +258,6 @@ namespace EmperyCenter {
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query_ex, true);
 
 			}, "Center_MapObject", std::move(query), 0, INT32_MAX);
-		
 		}
 
 		void castle_activity_check_proc(std::uint64_t now) {
