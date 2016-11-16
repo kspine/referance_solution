@@ -280,24 +280,57 @@ namespace EmperyCenter {
             //});
 
             LOG_EMPERY_CENTER_TRACE("uuid_vec size = ", uuid_vec->size());
-
-            Poseidon::MongoDb::BsonBuilder array,array_ex;
+/*
+            Poseidon::MongoDb::BsonBuilder array;
             auto it = uuid_vec->begin();
             auto it_end = uuid_vec->end();
-            for(; it != it_end; ++it)
+            static std::uint64_t count = 0;
+            for(std::uint64_t index = 0; it != it_end,index <= uuid_vec->size(); ++it,++index)
             {
                array.append_string({ },*it);
-            }
 
+               if(count == 10000)
+               {
+                  Poseidon::MongoDb::BsonBuilder del_query,del_query_ex;
+			      del_query = bson_scalar_object(sslit("_id"),bson_scalar_array(sslit("$in"),std::move(array)));
+			      del_query_ex = bson_scalar_object(sslit("map_object_uuid"),bson_scalar_array(sslit("$in"),std::move(array)));
+
+			      Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObject", del_query, true);
+			      Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectAttribute", del_query_ex, true);
+			      Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_DefenseBuilding", del_query, true);
+			      Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_WarehouseBuilding", del_query, true);
+			      Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query_ex, true);
+
+			      count = 0;
+			      array.clear();
+			   }
+			   count++;
+			}
+*/
+			Poseidon::MongoDb::BsonBuilder array;
             Poseidon::MongoDb::BsonBuilder del_query,del_query_ex;
-			del_query = bson_scalar_object(sslit("_id"),bson_scalar_array(sslit("$in"),std::move(array)));
-			del_query_ex = bson_scalar_object(sslit("map_object_uuid"),bson_scalar_array(sslit("$in"),std::move(array)));
+            unsigned  count = 0;
+            for(;;){
+                  if (uuid_vec->empty() || (count >= 10000)){
+			             del_query = bson_scalar_object(sslit("_id"),bson_scalar_array(sslit("$in"),std::move(array)));
+			             del_query_ex = bson_scalar_object(sslit("map_object_uuid"),bson_scalar_array(sslit("$in"),std::move(array)));
 
-			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObject", del_query, true);
-			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectAttribute", del_query_ex, true);
-			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_DefenseBuilding", del_query, true);
-			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_WarehouseBuilding", del_query, true);
-			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query_ex, true);
+                         Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObject", del_query, true);
+			             Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectAttribute", del_query_ex, true);
+			             Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_DefenseBuilding", del_query, true);
+			             Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_WarehouseBuilding", del_query, true);
+			             Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query_ex, true);
+
+                         array.clear();
+                         count = 0;
+                         if(uuid_vec->empty()){
+                             break;
+                         }
+                  }
+                  array.append_string({ },uuid_vec->back());
+                  ++count;
+                  uuid_vec->pop_back();
+            }
 		}
 
 		void castle_activity_check_proc(std::uint64_t now) {
