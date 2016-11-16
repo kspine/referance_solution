@@ -239,7 +239,7 @@ namespace EmperyCenter {
 				}
 			}
 
-
+/*
 			const auto conn = Poseidon::MongoDbDaemon::create_connection();
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_datetime(sslit("expiry_time"), 0);
@@ -258,6 +258,46 @@ namespace EmperyCenter {
 				Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query_ex, true);
 
 			}, "Center_MapObject", std::move(query), 0, INT32_MAX);
+*/
+
+            auto uuid_vec = std::make_shared<std::vector<std::string>>();
+
+           // Poseidon::enqueue_async_job([=]{
+              const auto conn = Poseidon::MongoDbDaemon::create_connection();
+	    	  Poseidon::MongoDb::BsonBuilder query;
+			  query.append_datetime(sslit("expiry_time"), 0);
+			  auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+				[=](const boost::shared_ptr<Poseidon::MongoDb::Connection>&conn)
+			  {
+			      auto map_object_uuid = conn->get_uuid("map_object_uuid");
+				  std::string uuid_str = boost::lexical_cast<std::string>(map_object_uuid);
+
+				  uuid_vec->emplace_back(std::move(uuid_str));
+
+			  }, "Center_MapObject", std::move(query), 0, INT32_MAX);
+
+              Poseidon::JobDispatcher::yield(promise,true);
+            //});
+
+            LOG_EMPERY_CENTER_TRACE("uuid_vec size = ", uuid_vec->size());
+
+            Poseidon::MongoDb::BsonBuilder array,array_ex;
+            auto it = uuid_vec->begin();
+            auto it_end = uuid_vec->end();
+            for(; it != it_end; ++it)
+            {
+               array.append_string({ },*it);
+            }
+
+            Poseidon::MongoDb::BsonBuilder del_query,del_query_ex;
+			del_query = bson_scalar_object(sslit("_id"),bson_scalar_array(sslit("$in"),std::move(array)));
+			del_query_ex = bson_scalar_object(sslit("map_object_uuid"),bson_scalar_array(sslit("$in"),std::move(array)));
+
+			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObject", del_query, true);
+			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectAttribute", del_query_ex, true);
+			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_DefenseBuilding", del_query, true);
+			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_WarehouseBuilding", del_query, true);
+			Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapObjectBuff", del_query_ex, true);
 		}
 
 		void castle_activity_check_proc(std::uint64_t now) {
