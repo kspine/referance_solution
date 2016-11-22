@@ -2371,7 +2371,7 @@ LOG_EMPERY_CENTER_DEBUG("Load Center_MapEventBlock");
 				const auto coord = cached_start_points.at(index);
 				LOG_EMPERY_CENTER_DEBUG("Try placing castle: coord = ", coord);
 
-				const auto result = can_deploy_castle_at(coord, {});
+				const auto result = can_deploy_castle_at(coord, {}, true);
 				if (result.first == 0) {
 					castle = factory(coord);
 					if (!castle) {
