@@ -95,7 +95,7 @@ protected:
 			result.first = Poseidon::Cbpp::ST_INTERNAL_ERROR;
 			result.second = e.what();
 		}
-		if(result.first != 0){
+		if((message_id != 0) && (result.first != 0)){
 			LOG_EMPERY_CENTER_DEBUG("Sending response: message_id = ", message_id, ", code = ", result.first, ", message = ", result.second);
 		}
 		if(result.first < 0){
