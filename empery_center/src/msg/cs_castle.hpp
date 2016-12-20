@@ -293,6 +293,21 @@ namespace Msg {
 	FIELD_STRING        (name)
 #include <poseidon/cbpp/message_generator.hpp>
 
+#define MESSAGE_NAME    CS_CastleUnlockTechEra
+#define MESSAGE_ID      439
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (map_object_uuid)	\
+	FIELD_VUINT         (tech_era)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    CS_CastleUseResourceGift
+#define MESSAGE_ID      440
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (map_object_uuid)	\
+	FIELD_VUINT         (item_id)	\
+	FIELD_VUINT         (repeat_count)
+#include <poseidon/cbpp/message_generator.hpp>
+
 #define MESSAGE_NAME    CS_UsePersonalDoateItem
 #define MESSAGE_ID      441
 #define MESSAGE_FIELDS  \
@@ -301,6 +316,19 @@ namespace Msg {
 	FIELD_VUINT         (repeat_count)
 #include <poseidon/cbpp/message_generator.hpp>
 
+#define MESSAGE_NAME    CS_CastleResourceBattalionUnloadReset
+#define MESSAGE_ID      442
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (map_object_uuid)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    CS_CastleNewGuideCreateSolider
+#define MESSAGE_ID      443
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (map_object_uuid)	\
+	FIELD_VUINT         (map_object_type_id)	\
+	FIELD_VUINT         (count)
+#include <poseidon/cbpp/message_generator.hpp>
 }
 
 }

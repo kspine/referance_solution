@@ -46,6 +46,12 @@
 #include "../legion_member_attribute_ids.hpp"
 #include <poseidon/async_job.hpp>
 #include "../legion_log.hpp"
+#include "../singletons/activity_map.hpp"
+#include "../activity.hpp"
+#include "../legion.hpp"
+#include "../msg/sc_legion.hpp"
+#include "../singletons/legion_map.hpp"
+#include "../singletons/castle_offline_upgrade_building_base_map.hpp"
 
 namespace EmperyCenter {
 
@@ -75,6 +81,9 @@ PLAYER_SERVLET(Msg::CS_CastleQueryInfo, account, session, req){
 		child->pump_status();
 		child->synchronize_with_player(session);
 	}
+	
+	//同步离线升级建筑基础信息
+	CastleOfflineUpgradeBuildingBaseMap::Synchronize_with_player(castle->get_owner_uuid(),map_object_uuid,session);
 
 	return Response();
 }
@@ -532,6 +541,7 @@ PLAYER_SERVLET(Msg::CS_CastleHarvestAllResources, account, session, req){
 
 	std::vector<boost::shared_ptr<MapCell>> map_cells;
 	WorldMap::get_map_cells_by_parent_object(map_cells, map_object_uuid);
+	WorldMap::get_map_cells_by_occupier_object(map_cells, map_object_uuid);
 	if(map_cells.empty()){
 		return Response(Msg::ERR_CASTLE_HAS_NO_MAP_CELL) <<map_object_uuid;
 	}
@@ -585,6 +595,7 @@ PLAYER_SERVLET(Msg::CS_CastleQueryMapCells, account, session, req){
 
 	std::vector<boost::shared_ptr<MapCell>> map_cells;
 	WorldMap::get_map_cells_by_parent_object(map_cells, map_object_uuid);
+	WorldMap::get_map_cells_by_occupier_object(map_cells, map_object_uuid);
 	if(map_cells.empty()){
 		return Response(Msg::ERR_CASTLE_HAS_NO_MAP_CELL) <<map_object_uuid;
 	}
@@ -815,6 +826,51 @@ PLAYER_SERVLET(Msg::CS_CastleUseResourceBox, account, session, req){
 			std::vector<ResourceTransactionElement> res_transaction;
 			res_transaction.emplace_back(ResourceTransactionElement::OP_ADD, resource_id, amount_to_add,
 				ReasonIds::ID_UNPACK_INTO_CASTLE, map_object_uuid_head, item_id.get(), count_to_consume);
+			castle->commit_resource_transaction(res_transaction);
+		});
+	if(insuff_item_id){
+		return Response(Msg::ERR_NO_ENOUGH_ITEMS) <<insuff_item_id;
+	}
+
+	return Response();
+}
+
+PLAYER_SERVLET(Msg::CS_CastleUseResourceGift, account, session, req){
+	const auto map_object_uuid = MapObjectUuid(req.map_object_uuid);
+	const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(map_object_uuid));
+	if(!castle){
+		return Response(Msg::ERR_NO_SUCH_CASTLE) <<map_object_uuid;
+	}
+	if(castle->get_owner_uuid() != account->get_account_uuid()){
+		return Response(Msg::ERR_NOT_CASTLE_OWNER) <<castle->get_owner_uuid();
+	}
+
+	const auto item_box = ItemBoxMap::require(account->get_account_uuid());
+
+	const auto item_id = ItemId(req.item_id);
+	const auto item_data = Data::Item::require(item_id);
+	if(item_data->type.first != Data::Item::CAT_RESOURCE_GIFT_BOX){
+		return Response(Msg::ERR_ITEM_TYPE_MISMATCH) <<(unsigned)Data::Item::CAT_RESOURCE_GIFT_BOX;
+	}
+	const auto trade_id = item_data->use_as_trade_id;
+	if(!trade_id){
+		return Response(Msg::ERR_ITEM_NOT_USABLE) <<item_id;
+	}
+	const auto trade_data = Data::ResourceTrade::require(trade_id);
+	const auto count_to_consume = req.repeat_count;
+	const auto map_object_uuid_head = Poseidon::load_be(reinterpret_cast<const std::uint64_t &>(map_object_uuid.get()[0]));
+
+	std::vector<ItemTransactionElement> transaction;
+	transaction.emplace_back(ItemTransactionElement::OP_REMOVE, item_id, count_to_consume,
+		ReasonIds::ID_UNPACK_INTO_CASTLE, map_object_uuid_head, item_id.get(), count_to_consume);
+	const auto insuff_item_id = item_box->commit_transaction_nothrow(transaction, false,
+		[&]{
+			std::vector<ResourceTransactionElement> res_transaction;
+			for(auto it = trade_data->resource_produced.begin(); it != trade_data->resource_produced.end(); ++it){
+				
+				res_transaction.emplace_back(ResourceTransactionElement::OP_ADD, it->first, checked_mul(it->second, count_to_consume),
+				ReasonIds::ID_UNPACK_INTO_CASTLE, map_object_uuid_head, item_id.get(), count_to_consume);
+			}
 			castle->commit_resource_transaction(res_transaction);
 		});
 	if(insuff_item_id){
@@ -1521,6 +1577,15 @@ PLAYER_SERVLET(Msg::CS_CastleRelocate, account, session, req){
 	if(!new_cluster){
 		return Response(Msg::ERR_CLUSTER_CONNECTION_LOST) <<new_castle_coord;
 	}
+	const auto world_activity = ActivityMap::get_world_activity();
+	if(world_activity && world_activity->is_on()){
+		const auto old_cluster_coord = WorldMap::get_cluster_scope(castle->get_coord()).bottom_left();
+		const auto new_cluster_coord = WorldMap::get_cluster_scope(new_castle_coord).bottom_left();
+		if(old_cluster_coord != new_cluster_coord){
+			return Response(Msg::ERR_CANNOT_DEPLOY_IN_WORLD_ACTIVITY);
+		}
+	}
+
 	auto result = can_deploy_castle_at(new_castle_coord, map_object_uuid, false);
 	if(result.first != Msg::ST_OK){
 		return std::move(result);
@@ -2008,6 +2073,34 @@ PLAYER_SERVLET(Msg::CS_CastleSetName, account, session, req){
 	return Response();
 }
 
+PLAYER_SERVLET(Msg::CS_CastleUnlockTechEra, account, session, req){
+	const auto map_object_uuid = MapObjectUuid(req.map_object_uuid);
+	const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(map_object_uuid));
+	if(!castle){
+		return Response(Msg::ERR_NO_SUCH_CASTLE) <<map_object_uuid;
+	}
+	if(castle->get_owner_uuid() != account->get_account_uuid()){
+		return Response(Msg::ERR_NOT_CASTLE_OWNER) <<castle->get_owner_uuid();
+	}
+
+//	const auto task_box = TaskBoxMap::require(account->get_account_uuid());
+
+	const auto tech_era = static_cast<unsigned>(req.tech_era);
+	std::vector<boost::shared_ptr<const Data::CastleTech>> techs_in_era;
+	Data::CastleTech::get_by_era(techs_in_era, tech_era);
+	if(techs_in_era.empty()){
+		return Response(Msg::ERR_TECH_ERA_NOT_FOUND) <<tech_era;
+	}
+	const auto info = castle->get_tech_era(tech_era);
+	if(info.unlocked){
+		return Response(Msg::ERR_TECH_ERA_UNLOCKED) <<tech_era;
+	}
+
+	castle->unlock_tech_era(tech_era);
+
+	return Response();
+}
+
 PLAYER_SERVLET(Msg::CS_UsePersonalDoateItem, account, session, req){
 	const auto map_object_uuid = MapObjectUuid(req.map_object_uuid);
 	const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(map_object_uuid));
@@ -2047,6 +2140,13 @@ PLAYER_SERVLET(Msg::CS_UsePersonalDoateItem, account, session, req){
 					LegionLog::LegionPersonalDonateTrace(account->get_account_uuid(),boost::lexical_cast<uint64_t>(donate),boost::lexical_cast<uint64_t>(donate) + amount_to_add,ReasonIds::ID_LEGION_USE_DONATE_ITEM,item_id.get(),count_to_consume,0);
 				}
 				member->set_attributes(std::move(legion_attributes_modifer));
+				auto legion = LegionMap::require(member->get_legion_uuid());
+				// 广播通知
+				Msg::SC_LegionNoticeMsg msg;
+				msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_TYPE_USE_PERSONAL_DONATE_ITEM;
+				msg.nick = "";
+				msg.ext1 = "";
+				legion->sendNoticeMsg(msg);
 			}else{
 				std::string donate = account->get_attribute(AccountAttributeIds::ID_DONATE);
 				boost::container::flat_map<AccountAttributeId, std::string> account_attributes_modifer;
@@ -2064,6 +2164,41 @@ PLAYER_SERVLET(Msg::CS_UsePersonalDoateItem, account, session, req){
 		return Response(Msg::ERR_NO_ENOUGH_ITEMS) <<insuff_item_id;
 	}
 
+	return Response();
+}
+
+PLAYER_SERVLET(Msg::CS_CastleResourceBattalionUnloadReset, account, session, req){
+	const auto map_object_uuid = MapObjectUuid(req.map_object_uuid);
+	const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(map_object_uuid));
+	if(!castle){
+		return Response(Msg::ERR_NO_SUCH_CASTLE) <<map_object_uuid;
+	}
+	if(castle->get_owner_uuid() != account->get_account_uuid()){
+		return Response(Msg::ERR_NOT_CASTLE_OWNER) <<castle->get_owner_uuid();
+	}
+	castle->reset_resource_battalion_unload();
+	return Response();
+}
+
+PLAYER_SERVLET(Msg::CS_CastleNewGuideCreateSolider, account, session, req){
+	const auto map_object_uuid = MapObjectUuid(req.map_object_uuid);
+	const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(map_object_uuid));
+	if(!castle){
+		return Response(Msg::ERR_NO_SUCH_CASTLE) <<map_object_uuid;
+	}
+	if(castle->get_owner_uuid() != account->get_account_uuid()){
+		return Response(Msg::ERR_NOT_CASTLE_OWNER) <<castle->get_owner_uuid();
+	}
+	const auto map_object_type_id = MapObjectTypeId(req.map_object_type_id);
+	const auto map_object_type_data = Data::MapObjectTypeBattalion::get(map_object_type_id);
+	if(!map_object_type_data){
+		return Response(Msg::ERR_NO_SUCH_MAP_OBJECT_TYPE) <<map_object_type_id;
+	}
+	const auto count = req.count;
+	std::vector<SoldierTransactionElement> res_transaction;
+	res_transaction.emplace_back(SoldierTransactionElement::OP_ADD, map_object_type_id, count,
+		ReasonIds::ID_NEW_GUIDE_CREATE_SOLIDER,map_object_type_id.get(), count, 0);
+	castle->commit_soldier_transaction(res_transaction);
 	return Response();
 }
 

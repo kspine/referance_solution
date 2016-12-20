@@ -18,10 +18,14 @@ constexpr AccountAttributeId
 	ID_DONATE                         ( 102 ),
 	ID_WEEKDONATE					  ( 106 ),
 	ID_LEGION_STORE_EXCHANGE_RECORD	  ( 108 ),
+	ID_BATTLE_RECORDS_UNREAD          ( 120 ),
+	ID_CRATE_RECORDS_UNREAD           ( 121 ),
+	ID_TAX_RECORDS_UNREAD             ( 122 ),
 
 	ID_LAST_LOGGED_IN_TIME            ( 200 ),
 	ID_LAST_LOGGED_OUT_TIME           ( 201 ),
 	ID_AVATAR                         ( 202 ),
+	ID_MAX_ATTACK_MONSTER_LEVEL       ( 203 ),
 
 	ID_LAST_SIGNED_IN_TIME            ( 302 ),
 	ID_SEQUENTIAL_SIGNED_IN_DAYS      ( 303 ),
@@ -46,7 +50,8 @@ constexpr AccountAttributeId
 	ID_SAVED_THIRD_TOKEN              ( 506 ),
 	ID_FIRST_CASTLE_NAME_SET          ( 507 ),
 	ID_NOVICIATE_PROTECTION_EXPIRED   ( 508 ),
-	ID_LEGION_PERSONAL_CONTRIBUTION   ( 509 );
+	ID_LEGION_PERSONAL_CONTRIBUTION   ( 509 ),
+	ID_MAP_COUNTRY                    ( 510 );
 }
 
 }

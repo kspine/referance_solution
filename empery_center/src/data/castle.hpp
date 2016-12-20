@@ -209,14 +209,26 @@ namespace Data {
 	public:
 		//
 	};
+	
+	class CastleUpgradeForge : public CastleUpgradeAbstract {
+	public:
+		static boost::shared_ptr<const CastleUpgradeForge> get(unsigned building_level);
+		static boost::shared_ptr<const CastleUpgradeForge> require(unsigned building_level);
+
+	public:
+		//
+	};
 
 	class CastleTech {
 	public:
 		static boost::shared_ptr<const CastleTech> get(TechId tech_id, unsigned tech_level);
 		static boost::shared_ptr<const CastleTech> require(TechId tech_id, unsigned tech_level);
 
+		static void get_by_era(std::vector<boost::shared_ptr<const CastleTech>> &ret, unsigned era);
+
 	public:
 		std::pair<TechId, unsigned> tech_id_level;
+		unsigned tech_era;
 		double upgrade_duration;
 		boost::container::flat_map<ResourceId, std::uint64_t> upgrade_cost;
 		boost::container::flat_map<BuildingId, unsigned> prerequisite;

@@ -73,7 +73,7 @@ namespace MongoDb {
 #include <poseidon/mongodb/object_generator.hpp>
 
 #define MONGODB_OBJECT_NAME   Center_CastleTreatment
-#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId( map_object_uuid,map_object_type_id);}
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,map_object_type_id);}
 #define MONGODB_OBJECT_FIELDS \
 	FIELD_UUID              (map_object_uuid)	\
 	FIELD_UNSIGNED            (map_object_type_id)	\
@@ -81,6 +81,32 @@ namespace MongoDb {
 	FIELD_UNSIGNED            (duration)	\
 	FIELD_DATETIME          (time_begin)	\
 	FIELD_DATETIME          (time_end)
+#include <poseidon/mongodb/object_generator.hpp>
+
+#define MONGODB_OBJECT_NAME   Center_CastleTechEra
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,tech_era);}
+#define MONGODB_OBJECT_FIELDS \
+	FIELD_UUID              (map_object_uuid)	\
+	FIELD_UNSIGNED          (tech_era)	\
+	FIELD_BOOLEAN           (unlocked)
+#include <poseidon/mongodb/object_generator.hpp>
+
+#define MONGODB_OBJECT_NAME   Center_CastleResourceBattalionUnload
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(map_object_uuid,resource_id);}
+#define MONGODB_OBJECT_FIELDS \
+	FIELD_UUID              (map_object_uuid)	\
+	FIELD_UNSIGNED  (resource_id)	\
+	FIELD_UNSIGNED   (delta)	\
+	FIELD_DATETIME          (updated_time)
+#include <poseidon/mongodb/object_generator.hpp>
+
+#define MONGODB_OBJECT_NAME   Center_CastleOfflineUpgradeBuildingBase
+#define MONGODB_OBJECT_PRIMARY_KEY {return auto_uuid;}
+#define MONGODB_OBJECT_FIELDS \
+  FIELD_STRING            (auto_uuid) \
+	FIELD_UUID              (account_uuid)	\
+	FIELD_UUID              (map_object_uuid)	\
+	FIELD_STRING            (building_base_ids)
 #include <poseidon/mongodb/object_generator.hpp>
 
 }

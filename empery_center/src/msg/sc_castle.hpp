@@ -82,6 +82,28 @@ namespace Msg {
 	FIELD_VUINT         (treatment_time_remaining)
 #include <poseidon/cbpp/message_generator.hpp>
 
+#define MESSAGE_NAME    SC_CastleTechEra
+#define MESSAGE_ID      492
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (map_object_uuid)	\
+	FIELD_VUINT         (tech_era)	\
+	FIELD_VUINT         (unlocked)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    SC_CastleResourceBattalionUnload
+#define MESSAGE_ID      491
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (map_object_uuid)	\
+	FIELD_VUINT         (resource_id)	\
+	FIELD_VUINT         (count)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    SC_CastleOfflineUpgradeBuildingBase
+#define MESSAGE_ID      480
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (map_object_uuid)	\
+	FIELD_STRING        (building_base_ids)
+#include <poseidon/cbpp/message_generator.hpp>
 }
 
 }

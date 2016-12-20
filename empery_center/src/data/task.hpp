@@ -30,7 +30,8 @@ namespace EmperyCenter
 			bool accumulative;
 
 			boost::container::flat_map<std::uint64_t, std::vector<double>> objective;
-			boost::container::flat_map<ResourceId, std::uint64_t> rewards;
+			boost::container::flat_map<ItemId, std::uint64_t> rewards;
+			boost::container::flat_map<ResourceId, std::uint64_t> rewards_resources;
 		};
 
 		class TaskPrimary : public TaskAbstract
@@ -69,6 +70,7 @@ namespace EmperyCenter
 			std::uint64_t task_class_1;
 			unsigned level_limit_min;
 			unsigned level_limit_max;
+			unsigned task_level;
 		};
 
 		class TaskLegion : public TaskAbstract

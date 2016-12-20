@@ -55,6 +55,16 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/singletons/legion_package_pick_share_map.cpp \
 	src/singletons/league_client.cpp \
 	src/singletons/legion_task_box_map.cpp \
+	src/singletons/legion_financial_map.cpp \
+	src/singletons/activity_map.cpp \
+	src/singletons/map_activity_accumulate_map.cpp \
+	src/singletons/activity_http_server.cpp \
+	src/singletons/castle_offline_upgrade_building_base_map.cpp \
+	src/singletons/novice_guide_map.cpp \
+	src/singletons/friend_record_box_map.cpp \
+	src/singletons/friend_private_msg_box_map.cpp \
+  src/singletons/captain_map.cpp \
+	src/singletons/captain_item_map.cpp \
 	src/data/common.cpp	\
 	src/data/global.cpp	\
 	src/data/castle.cpp	\
@@ -74,6 +84,21 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/data/legion_store_config.cpp  \
 	src/data/legion_building_config.cpp  \
 	src/data/league_power.cpp  \
+	src/data/activity.cpp   \
+	src/data/trigger.cpp   \
+	src/data/random_name.cpp \
+	src/data/dungeon_buff.cpp \
+	src/data/skill.cpp \
+	src/data/novice_guide_setup.cpp \
+	src/data/map_country.cpp \
+  src/data/captain_config.cpp  \
+	src/data/captain_level_config.cpp  \
+	src/data/captain_star_config.cpp  \
+	src/data/captain_item_config.cpp  \
+	src/data/captain_quality_config.cpp  \
+	src/data/captain_equipaffix_config.cpp  \
+	src/data/captain_suit_config.cpp  \
+	src/data/captain_equippro_config.cpp  \
 	src/player/account.cpp	\
 	src/player/map.cpp	\
 	src/player/castle.cpp	\
@@ -90,7 +115,12 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/player/legion.cpp	\
 	src/player/legion_package.cpp \
 	src/player/legion_building.cpp \
+	src/player/legion_financial.cpp \
 	src/player/league.cpp \
+	src/player/activity.cpp \
+	src/player/novice_guide.cpp \
+	src/player/map_country.cpp \
+  src/player/captain.cpp \
 	src/admin/account.cpp	\
 	src/admin/item.cpp	\
 	src/admin/castle.cpp	\
@@ -103,6 +133,7 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/admin/auction.cpp	\
 	src/admin/dungeon.cpp	\
 	src/admin/friend.cpp	\
+	src/admin/activity.cpp \
 	src/auction/query.cpp	\
 	src/auction/transfer.cpp	\
 	src/auction/create_bill.cpp	\
@@ -122,6 +153,7 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/event_listeners/map.cpp	\
 	src/event_listeners/dungeon.cpp	\
 	src/event_listeners/legion.cpp	\
+	src/event_listeners/novice_guide.cpp \
 	src/dungeon/dungeon.cpp	\
 	src/league/league.cpp	\
 	src/string_utilities.cpp	\
@@ -173,4 +205,13 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/legion_task_contribution_box.cpp \
 	src/singletons/legion_task_contribution_box_map.cpp \
 	src/legion_log.cpp \
+	src/activity.cpp \
+	src/activity_session.cpp \
+	src/dungeon_buff.cpp \
+	src/novice_guide_log.cpp \
+	src/friend_record_box.cpp \
+	src/friend_private_msg_data.cpp \
+	src/friend_private_msg_box.cpp \
+  src/captain.cpp \
+	src/captain_item.cpp \
 	src/mmain.cpp

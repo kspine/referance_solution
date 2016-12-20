@@ -230,7 +230,7 @@ std::uint64_t MapObject::move(std::pair<long, std::string> &result){
 		const auto to_coord = std::accumulate(m_waypoints.begin(), m_waypoints.end(), coord,
 			[](Coord c, std::pair<signed char, signed char> d){ return Coord(c.x() + d.first, c.y() + d.second); });
 		std::deque<std::pair<signed char, signed char>> new_waypoints;
-		if(find_way_points(new_waypoints, coord, to_coord, true)){
+		if(find_way_points(new_waypoints, coord, to_coord,true) || !new_waypoints.empty()){
 			notify_way_points(new_waypoints, m_action, m_action_param);
 			m_waypoints = std::move(new_waypoints);
 			return 0;
@@ -428,7 +428,6 @@ void MapObject::set_action(Coord from_coord, std::deque<std::pair<signed char, s
 	m_action = ACT_GUARD;
 	m_action_param.clear();
 
-	set_coord(from_coord);
 
 	const auto now = Poseidon::get_fast_mono_clock();
 
@@ -446,6 +445,8 @@ void MapObject::set_action(Coord from_coord, std::deque<std::pair<signed char, s
 	m_waypoints    = std::move(waypoints);
 	m_action       = action;
 	m_action_param = std::move(action_param);
+	//set_coord(from_coord);
+	WorldMap::update_map_object(virtual_shared_from_this<MapObject>(), false);
 	notify_way_points(m_waypoints,action,m_action_param);
 	reset_attack_target_own_uuid();
 }
@@ -510,6 +511,10 @@ std::uint64_t MapObject::attack(std::pair<long, std::string> &result, std::uint6
 	if(result.first != Msg::ST_OK){
 		return UINT64_MAX;
 	}
+	if(is_level_limit(target_object)){
+		result = CbppResponse(Msg::ERR_CANNOT_ATTACK_MONSTER_LEVEL_EXCEPT) << get_owner_uuid();
+		return UINT64_MAX;
+	}
 	const auto cluster = get_cluster();
 	if(!cluster){
 		result = CbppResponse(Msg::ERR_CLUSTER_CONNECTION_LOST) <<get_coord();
@@ -531,17 +536,28 @@ std::uint64_t MapObject::attack(std::pair<long, std::string> &result, std::uint6
 	bool bCritical = false;
 	int result_type = IMPACT_NORMAL;
 	std::uint64_t damage = 0;
-	double k = 0.35;
+	double k = 0.03;
+
+	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
+	auto ememy_solider_count = target_object->get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
+
 	double attack_rate = map_object_type_data->attack_speed + get_attribute(EmperyCenter::AttributeIds::ID_RATE_OF_FIRE_ADD) / 1000.0;
 	double doge_rate = emempy_type_data->doge_rate + get_attribute(EmperyCenter::AttributeIds::ID_DODGING_RATIO_ADD)/ 1000.0;
 	double critical_rate = map_object_type_data->critical_rate + get_attribute(EmperyCenter::AttributeIds::ID_CRITICAL_DAMAGE_RATIO_ADD) / 1000.0;
 	double critical_demage_plus_rate = map_object_type_data->critical_damage_plus_rate + get_attribute(EmperyCenter::AttributeIds::ID_CRITICAL_DAMAGE_MULTIPLIER_ADD) / 1000.0;
-	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0;
-	double total_defense = emempy_type_data->defence * (1.0 + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_BONUS) / 1000.0) + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_ADD) / 1000.0;
+	
+	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + 
+		get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0 + 
+		get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_ATTACK_ADD)*soldier_count*0.1;
+
+	
+	double total_defense = emempy_type_data->defence * (1.0 + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_BONUS) / 1000.0) + 
+		target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_ADD) / 1000.0 + 
+		target_object->get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_DEFENSE_ADD)*ememy_solider_count*0.1;
+
 	double relative_rate = Data::MapObjectRelative::get_relative(get_arm_attack_type(),target_object->get_arm_defence_type());
 //	std::uint32_t hp =  map_object_type_data->hp ;
 //	hp = (hp == 0 )? 1:hp;
-	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 //	if(soldier_count%hp != 0){
 //		soldier_count = (soldier_count/hp + 1)*hp;
 //	}
@@ -626,12 +642,12 @@ std::uint64_t MapObject::on_attack_goblin(boost::shared_ptr<MapObject> attacker,
 			const auto ai_data = Data::MapObjectAi::get(ai_id);
 			std::istringstream iss(ai_data->params);
 			auto temp_array = Poseidon::JsonParser::parse_array(iss);
-			auto random_left = temp_array.at(0).get<double>();
-			auto random_right = temp_array.at(1).get<double>();
-			const auto rand_x = Poseidon::rand32(random_left, random_right);
-			const auto rand_y = Poseidon::rand32(random_left, random_right);
-			auto direct_x = Poseidon::rand32(0, 2) ? 1 : -1;
-			auto direct_y = Poseidon::rand32(0, 2) ? 1 : -1;
+			auto random_left = static_cast<std::uint32_t>(temp_array.at(0).get<double>());
+			auto random_right = static_cast<std::uint32_t>(temp_array.at(1).get<double>());
+			const auto rand_x = Poseidon::rand32() % (saturated_sub(random_right, random_left) + 1) + random_left;
+			const auto rand_y = Poseidon::rand32() % (saturated_sub(random_right, random_left) + 1) + random_left;
+			auto direct_x = Poseidon::rand32() % 2 ? 1 : -1;
+			auto direct_y = Poseidon::rand32() % 2 ? 1 : -1;
 			std::int64_t  target_x = get_coord().x() + static_cast<std::int64_t>(rand_x)*direct_x;
 			std::int64_t  target_y = get_coord().y() + static_cast<std::int64_t>(rand_y)*direct_y;
 			const auto cluster_scope = WorldMap::get_cluster_scope(get_coord());
@@ -645,7 +661,7 @@ std::uint64_t MapObject::on_attack_goblin(boost::shared_ptr<MapObject> attacker,
 			target_y = ( target_y > top ? top : target_y);
 
 		    std::deque<std::pair<signed char, signed char>> waypoints;
-			if(find_way_points(waypoints,get_coord(),Coord(target_x,target_y),true)){
+			if(find_way_points(waypoints,get_coord(),Coord(target_x,target_y),true) || !waypoints.empty()){
 				set_action(get_coord(), waypoints, static_cast<MapObject::Action>(ACT_GUARD),"");
 			}else{
 				LOG_EMPERY_CLUSTER_DEBUG("goblin find way fail");
@@ -692,13 +708,18 @@ std::uint64_t MapObject::harvest_resource_crate(std::pair<long, std::string> &re
 
 	std::uint64_t damage = 0;
 	double k = 0.35;
+	const auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
+	
 	double attack_rate = map_object_type_data->harvest_speed*(1 + get_attribute(EmperyCenter::AttributeIds::ID_HARVEST_SPEED_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_HARVEST_SPEED_ADD) / 1000.0;;
-	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0;
+	
+	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + 
+		get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0 + 
+		get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_ATTACK_ADD)*soldier_count*0.1;	
+
 	double total_defense = resource_crate_data->defence;
 	double relative_rate = Data::MapObjectRelative::get_relative(get_arm_attack_type(),resource_crate_data->defence_type);
 //	std::uint32_t hp =  map_object_type_data->hp ;
 //	hp = (hp == 0 )? 1:hp;
-	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 //	if(soldier_count%hp != 0){
 //		soldier_count = (soldier_count/hp + 1)*hp;
 //	}
@@ -777,13 +798,17 @@ std::uint64_t MapObject::attack_territory(std::pair<long, std::string> &result, 
 
 	std::uint64_t damage = 0;
 	double k = 0.35;
+	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 	double attack_rate = map_object_type_data->attack_speed + get_attribute(EmperyCenter::AttributeIds::ID_RATE_OF_FIRE_ADD) / 1000.0;
-	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0;;
+
+	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + 
+		get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0 + 
+		get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_ATTACK_ADD)*soldier_count*0.1;
+
 	double total_defense = map_cell_ticket->defense;
 	double relative_rate = Data::MapObjectRelative::get_relative(get_arm_attack_type(),map_cell_ticket->defence_type);
 //	std::uint32_t hp =  map_object_type_data->hp ;
 //	hp = (hp == 0 )? 1:hp;
-	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 //	if(soldier_count%hp != 0){
 //		soldier_count = (soldier_count/hp + 1)*hp;
 //	}
@@ -930,8 +955,11 @@ bool MapObject::is_in_group_view_scope(boost::shared_ptr<MapObject>& target_obje
 
 std::uint64_t MapObject::get_view_range(){
 	PROFILE_ME;
-
-	return get_shoot_range() + 1 + get_attribute(EmperyCenter::AttributeIds::ID_SIGHT_RANGE_ADD) / 1000.0;
+	const auto map_object_type_data = get_map_object_type_data();
+	if(!map_object_type_data){
+		return 0;
+	}
+	return map_object_type_data->view + get_attribute(EmperyCenter::AttributeIds::ID_SIGHT_RANGE_ADD) / 1000.0;
 }
 
 void MapObject::troops_attack(boost::shared_ptr<MapObject> target,bool passive){
@@ -1092,13 +1120,12 @@ bool    MapObject::find_way_points(std::deque<std::pair<signed char, signed char
 	if(!precise){
 		distance_close_enough = get_shoot_range();
 	}
-	if(find_path(path,from_coord, target_coord,get_owner_uuid(), 20, distance_close_enough)){
-		for(auto it = path.begin(); it != path.end(); ++it){
-			waypoints.emplace_back(it->first, it->second);
-		}
-		return true;
+	const auto distance_limit = get_config<unsigned>("path_recalculation_radius", 10);
+	bool result = find_path(path,from_coord, target_coord,get_owner_uuid(), distance_limit, distance_close_enough);
+	for(auto it = path.begin(); it != path.end(); ++it){
+		waypoints.emplace_back(it->first, it->second);
 	}
-	return false;
+	return result;
 }
 
 bool    MapObject::get_new_enemy(AccountUuid owner_uuid,boost::shared_ptr<MapObject> &new_enemy_map_object){
@@ -1115,6 +1142,9 @@ bool    MapObject::get_new_enemy(AccountUuid owner_uuid,boost::shared_ptr<MapObj
 		const auto &map_object = *it;
 		const auto result = is_under_protection(virtual_shared_from_this<MapObject>(),map_object);
 		if(result.first != Msg::ST_OK){
+			continue;
+		}
+		if(is_level_limit(map_object)){
 			continue;
 		}
 		if(is_castle() && map_object->is_castle()){
@@ -1156,6 +1186,10 @@ void  MapObject::attack_new_target(boost::shared_ptr<MapObject> enemy_map_object
 		return;
 	const auto result = is_under_protection(virtual_shared_from_this<MapObject>(),enemy_map_object);
 	if(result.first != Msg::ST_OK){
+		return;
+	}
+	if(is_level_limit(enemy_map_object)){
+		LOG_EMPERY_CLUSTER_WARNING("attack target in level limit");
 		return;
 	}
 	if(is_castle() && enemy_map_object->is_castle()){
@@ -1272,6 +1306,27 @@ bool  MapObject::is_protectable(){
 	}else{
 		return false;
 	}
+}
+
+bool MapObject::is_level_limit(boost::shared_ptr<MapObject> enemy_map_object){
+	if(!is_monster() && enemy_map_object->is_monster()){
+		const auto max_account_attack_level  = get_attribute(EmperyCenter::AttributeIds::ID_OWNER_MAX_ATTACK_MONSTER_LEVEL);
+		const auto monster_level = enemy_map_object->get_monster_level();
+		if(max_account_attack_level < monster_level){
+			LOG_EMPERY_CLUSTER_DEBUG("account max attack level than monster level,max_account_attack_level = ",max_account_attack_level," monster_level = ",monster_level,
+			" map_object_uuid = ",get_map_object_uuid(), " enemy_object_uuid = ",enemy_map_object->get_map_object_uuid());
+			return true;
+		}
+	}
+	return false;
+}
+
+std::int64_t MapObject::get_monster_level(){
+	const auto map_object_type_monster_data = Data::MapObjectTypeMonster::get(get_map_object_type_id());
+	if(!map_object_type_monster_data){
+		return 0;
+	}
+	return map_object_type_monster_data->level;
 }
 
 bool  MapObject::is_lost_attacked_target(){

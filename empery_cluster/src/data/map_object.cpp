@@ -51,6 +51,7 @@ namespace {
 			Data::MapObjectType elem = { };
 			csv.get(elem.map_object_type_id,                "arm_id");
 			csv.get(elem.category_id,                       "arm_type");
+			csv.get(elem.map_object_chassis_id,             "arm_class");
 			csv.get(elem.attack,                            "attack");
 			csv.get(elem.defence,                           "defence");
 			csv.get(elem.speed,                             "speed");
@@ -100,6 +101,7 @@ namespace {
 			Data::MapObjectTypeMonster monster_elem = {};
 			csvMonster.get(monster_elem.map_object_type_id,                "arm_id");
 			csvMonster.get(monster_elem.arm_relative_id,                   "arm_relative");
+			csvMonster.get(monster_elem.level,                             "arm_level");
 			if(!map_object_monster_map->insert(std::move(monster_elem)).second){
 				LOG_EMPERY_CLUSTER_ERROR("Duplicate MapObjectTypeMonster: map_object_type_id = ", monster_elem.map_object_type_id);
 				DEBUG_THROW(Exception, sslit("Duplicate MapObjectTypeMonster"));

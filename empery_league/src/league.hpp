@@ -40,6 +40,7 @@ public:
 		LEAGUE_POWER_CHANGENOTICE 	= 11,	// 修改联盟公告
 		LEAGUE_POWER_DISBAND 		= 12,	// 解散联盟
 		LEAGUE_POWER_EXPAND 		= 13,	// 联盟扩张
+		LEAGUE_POWER_MODIFY         = 16,   // 联盟修改
 	};
 
 	enum LEAGUE_NOTICE_MSG_TYPE
@@ -54,6 +55,8 @@ public:
 		LEAGUE_NOTICE_MSG_TYPE_EXPAND  			= 8,	// 联盟扩张
 		LEAGUE_NOTICE_MSG_TYPE_DISBAND  		= 9,	// 联盟解散
 		LEAGUE_NOTICE_MSG_CREATE_SUCCESS  		= 10,	// 联盟创建成功
+		LEAGUE_NOTICE_MSG_TYPE_MODIFY_NOTICE    = 11,   // 联盟公告修改
+		LEAGUE_NOTICE_MSG_TYPE_MODIFY           = 12,   // 联盟修改
 	};
 
 public:
@@ -94,6 +97,8 @@ public:
 		return m_obj->unlocked_get_created_time();
 	}
 
+    void set_nick(std::string nick);
+
 	const std::string &get_nick() const;
 
 	const boost::weak_ptr<LeagueSession> &get_weak_controller() const {
@@ -123,6 +128,7 @@ public:
 	void set_attributes(boost::container::flat_map<LeagueAttributeId, std::string> modifiers);
 
 	void synchronize_with_player(const boost::shared_ptr<LeagueSession>& league_client, AccountUuid account_uuid,LegionUuid legion_uuid, std::string str_league_uuid = "") const;
+	void synchronize_with_other_player(const boost::shared_ptr<LeagueSession>& league_client, AccountUuid account_uuid,AccountUuid to_account_uuid,LegionUuid legion_uuid, std::string str_league_uuid = "") const;
 
 	/*
 	boost::shared_ptr<LeagueClient> get_league_client() const {

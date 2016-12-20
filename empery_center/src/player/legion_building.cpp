@@ -37,6 +37,7 @@
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include "../legion_log.hpp"
 
+#include "../singletons/legion_financial_map.hpp"
 
 namespace EmperyCenter {
 
@@ -198,6 +199,11 @@ PLAYER_SERVLET(Msg::CS_CreateLegionBuildingMessage, account, session,  req )
 								const auto new_money = boost::lexical_cast<uint64_t>(legion->get_attribute(LegionAttributeIds::ID_MONEY));
 								if(old_money != new_money){
 									LegionLog::LegionMoneyTrace(member->get_legion_uuid(),old_money,new_money,ReasonIds::ID_LEGION_CREATE_BUILDING,req.map_object_type_id,0,0);
+
+									//军团资金账本
+									 LegionFinancialMap::make_insert(member->get_legion_uuid(),account_uuid, ItemId(5500001),
+									                           old_money,new_money,static_cast<std::int64_t>(new_money - old_money),
+									                           2,0,Poseidon::get_utc_time());
 								}
 
                                 const auto defense_building = boost::make_shared<WarehouseBuilding>(defense_building_uuid, map_object_type_id,
@@ -224,7 +230,7 @@ PLAYER_SERVLET(Msg::CS_CreateLegionBuildingMessage, account, session,  req )
                                 Msg::SC_LegionNoticeMsg msg;
                                 msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_MINE_STATUS_CHANGE;
                                 msg.nick = account->get_nick();
-                                msg.ext1 = "";
+                                msg.ext1 = "1";
                                 legion->sendNoticeMsg(msg);
 
                                 LOG_EMPERY_CENTER_DEBUG("Created defense building: defense_building_uuid = ", defense_building_uuid,
@@ -389,6 +395,12 @@ PLAYER_SERVLET(Msg::CS_UpgradeLegionBuildingMessage, account, session,  req )
 									const auto new_money = boost::lexical_cast<uint64_t>(legion->get_attribute(LegionAttributeIds::ID_MONEY));
 									if(old_money != new_money){
 										LegionLog::LegionMoneyTrace(member->get_legion_uuid(),old_money,new_money,ReasonIds::ID_UPGRADE_BUILDING,map_object_type_id.get(),buildingingo->house_level,0);
+								
+									 //军团资金账本
+									 LegionFinancialMap::make_insert(member->get_legion_uuid(),account_uuid, ItemId(5500001),
+									                           old_money,new_money,static_cast<int64_t>(new_money - old_money),
+									                           3,0,Poseidon::get_utc_time());
+
 									}
 
                                     LegionBuildingMap::synchronize_with_player(member->get_legion_uuid(),session);
@@ -397,7 +409,7 @@ PLAYER_SERVLET(Msg::CS_UpgradeLegionBuildingMessage, account, session,  req )
                                         Msg::SC_LegionNoticeMsg msg;
                                         msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_MINE_STATUS_CHANGE;
                                         msg.nick = account->get_nick();
-                                        msg.ext1 = "";
+                                        msg.ext1 = "3";
                                         legion->sendNoticeMsg(msg);
                                     });
                             if(insuff_resource_id){
@@ -660,6 +672,11 @@ PLAYER_SERVLET(Msg::CS_OpenLegionGrubeMessage, account, session,  req )
 						const auto new_money = boost::lexical_cast<uint64_t>(legion->get_attribute(LegionAttributeIds::ID_MONEY));
 						if(new_money != old_money){
 							LegionLog::LegionMoneyTrace(member->get_legion_uuid(),old_money,new_money,ReasonIds::ID_LEGION_OPEN_GRUBE,0,0,0);
+
+						//军团资金账本
+						LegionFinancialMap::make_insert(member->get_legion_uuid(),account_uuid, ItemId(5500001),
+									                           old_money,new_money,static_cast<int64_t>(new_money - old_money),
+									                           4,0,Poseidon::get_utc_time());
 						}
                         // 更新建筑物属性
                    //     boost::container::flat_map<LegionBuildingAttributeId, std::string> modifiers;
@@ -688,7 +705,7 @@ PLAYER_SERVLET(Msg::CS_OpenLegionGrubeMessage, account, session,  req )
                         Msg::SC_LegionNoticeMsg msg;
                         msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_MINE_STATUS_CHANGE;
                         msg.nick = account->get_nick();
-                        msg.ext1 = "";
+                        msg.ext1 = "2";
                         legion->sendNoticeMsg(msg);
 
                         // 日志数据埋点
@@ -805,6 +822,11 @@ PLAYER_SERVLET(Msg::CS_RepairLegionGrubeMessage, account, session,  req )
 					const auto map_object_uuid_head = Poseidon::load_be(reinterpret_cast<const std::uint64_t &>(map_object_uuid.get()[0]));
 					if(new_money != old_money){
 						LegionLog::LegionMoneyTrace(member->get_legion_uuid(),old_money,new_money,ReasonIds::ID_LEGION_REPAIR_GRUBE,map_object_uuid_head,0,0);
+
+					//军团资金账本
+					LegionFinancialMap::make_insert(member->get_legion_uuid(),account_uuid, ItemId(5500001),
+									                           old_money,new_money,static_cast<int64_t>(new_money - old_money),
+									                           5,0,Poseidon::get_utc_time());
 					}
 
                     if(curhp == 0 && warehouse_building->get_mission() == WarehouseBuilding::Mission::MIS_DESTRUCT)
@@ -824,7 +846,7 @@ PLAYER_SERVLET(Msg::CS_RepairLegionGrubeMessage, account, session,  req )
                     Msg::SC_LegionNoticeMsg msg;
                     msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_MINE_STATUS_CHANGE;
                     msg.nick = account->get_nick();
-                    msg.ext1 = "";
+                    msg.ext1 = "4";
                     legion->sendNoticeMsg(msg);
 
                     return Response(Msg::ST_OK);
@@ -931,6 +953,12 @@ PLAYER_SERVLET(Msg::CS_GradeLegionMessage, account, session, req)
 					const auto legion_uuid_head = Poseidon::load_be(reinterpret_cast<const std::uint64_t &>(member->get_legion_uuid().get()[0]));
 					LegionLog::LegionMoneyTrace(member->get_legion_uuid(),old_money,new_money,ReasonIds::ID_LEGION_UPGRADE,legion_uuid_head,level,0);
 
+
+
+                    //军团资金账本
+					LegionFinancialMap::make_insert(member->get_legion_uuid(),account_uuid, ItemId(5500001),
+									                           old_money,new_money,static_cast<int64_t>(new_money - old_money),
+									                           6,level,Poseidon::get_utc_time());
                     // 广播给军团成员
                     Msg::SC_LegionNoticeMsg msg;
 					msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_TYPE_LEGION_GRADE;

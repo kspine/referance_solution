@@ -214,7 +214,8 @@ namespace Msg {
 		FIELD_VUINT         (count)	\
 	)	\
 	FIELD_STRING        (castle_uuid)	\
-	FIELD_VUINT         (reward_counter)
+	FIELD_VUINT         (reward_counter) \
+	FIELD_VUINT			    (bequip)
 #include <poseidon/cbpp/message_generator.hpp>
 
 #define MESSAGE_NAME    SC_MapResourceCrateInfo
@@ -292,6 +293,34 @@ namespace Msg {
 	FIELD_VINT          (old_coord_y)	\
 	FIELD_VINT          (new_coord_x)	\
 	FIELD_VINT          (new_coord_y)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    SC_MapActivityAcculateReward
+#define MESSAGE_ID      376
+#define MESSAGE_FIELDS  \
+	FIELD_VINT          (x)	\
+	FIELD_VINT          (y)	\
+	FIELD_VINT          (activity_id) \
+	FIELD_ARRAY         (items_basic,	\
+		FIELD_VUINT         (item_id)	\
+		FIELD_VUINT         (count)	\
+	)	\
+	FIELD_ARRAY         (reward_acculate,	\
+		FIELD_VUINT         (acculate)	\
+	)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    SC_MapGoblinRewardGot
+#define MESSAGE_ID      375
+#define MESSAGE_FIELDS  \
+	FIELD_VINT          (x)	\
+	FIELD_VINT          (y)	\
+	FIELD_VUINT         (map_object_type_id)	\
+	FIELD_ARRAY         (items_basic,	\
+		FIELD_VUINT         (item_id)	\
+		FIELD_VUINT         (count)	\
+	)	\
+	FIELD_STRING        (castle_uuid)
 #include <poseidon/cbpp/message_generator.hpp>
 
 }

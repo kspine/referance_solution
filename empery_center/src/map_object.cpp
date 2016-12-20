@@ -19,7 +19,13 @@
 #include "map_object_type_ids.hpp"
 #include "singletons/legion_member_map.hpp"
 #include "singletons/legion_building_map.hpp"
-
+#include "account.hpp"
+#include "account_attribute_ids.hpp"
+#include "singletons/captain_map.hpp"
+#include "captain.hpp"
+#include "captain_attribute_ids.hpp"
+#include "data/captain_config.hpp"
+#include "msg/sc_captain.hpp"
 namespace EmperyCenter {
 
 namespace {
@@ -58,6 +64,8 @@ const std::initializer_list<AttributeId> MapObject::COMBAT_ATTRIBUTES = {
 	AttributeIds::ID_CARRIAGE_ADD,
 	AttributeIds::ID_HARVEST_SPEED_BONUS,
 	AttributeIds::ID_HARVEST_SPEED_ADD,
+	AttributeIds::ID_CAPTAIN_ATTACK_ADD,
+	AttributeIds::ID_CAPTAIN_DEFENSE_ADD,
 };
 
 
@@ -236,6 +244,30 @@ void MapObject::recalculate_attributes(bool recursive){
 		}
 	}
 
+	// 将领对属性的影响
+	modifiers[AttributeIds::ID_CAPTAIN_ATTACK_ADD] = get_attribute(AttributeIds::ID_CAPTAIN_ATTACK_ADD);
+	modifiers[AttributeIds::ID_CAPTAIN_DEFENSE_ADD] = get_attribute(AttributeIds::ID_CAPTAIN_DEFENSE_ADD);
+	//将领affix属性
+	const auto captain_baseid = get_attribute(AttributeIds::ID_CAPTAIN_BASEID);
+	if (captain_baseid != 0)
+	{
+		// 根据map_object_uuid查找到对应的将领
+		const auto &captain = CaptainMap::find_by_relation_map_object_uuid(get_owner_uuid(), get_map_object_uuid().str());
+		if (captain)
+		{
+			boost::container::flat_map<std::uint64_t,double> attr_change;
+			captain->cal_captain_affix_attr(virtual_shared_from_this<MapObject>(),attr_change);
+			if(attr_change.empty()){
+				LOG_EMPERY_CENTER_DEBUG("captain affix attribute is empty");
+			}else{
+				for(auto it = attr_change.begin(); it != attr_change.end(); ++it){
+					LOG_EMPERY_CENTER_DEBUG("captain affix attribute add ,attribute_id = ",it->first, " value = ",it->second);
+					auto &value = modifiers[AttributeId(it->first)];
+					value += std::round(it->second * 1000.0);
+				}
+			}
+		}
+	}
 	set_attributes(std::move(modifiers));
 	m_last_updated_time = utc_now;
 }
@@ -751,11 +783,22 @@ void MapObject::synchronize_with_cluster(const boost::shared_ptr<ClusterSession>
 		msg.garrisoned         = is_garrisoned();
 		msg.x                  = get_coord().x();
 		msg.y                  = get_coord().y();
-		msg.attributes.reserve(m_attributes.size());
+		msg.attributes.reserve(m_attributes.size()+1);
 		for(auto it = m_attributes.begin(); it != m_attributes.end(); ++it){
 			auto &attribute = *msg.attributes.emplace(msg.attributes.end());
 			attribute.attribute_id = it->first.get();
 			attribute.value        = it->second->get_value();
+		}
+		std::int64_t max_attack_own_max_attack_monster_level = 1;
+		const auto account = AccountMap::get(get_owner_uuid());
+		if(account){
+			std::string max_attack_monster_level_str = account->get_attribute(AccountAttributeIds::ID_MAX_ATTACK_MONSTER_LEVEL);
+			if(!max_attack_monster_level_str.empty()){
+				max_attack_own_max_attack_monster_level = boost::lexical_cast<std::int64_t>(max_attack_monster_level_str);
+			}
+			auto &attribute = *msg.attributes.emplace(msg.attributes.end());
+			attribute.attribute_id = AttributeIds::ID_OWNER_MAX_ATTACK_MONSTER_LEVEL.get();
+			attribute.value        = max_attack_own_max_attack_monster_level;
 		}
 		msg.buffs.reserve(m_buffs.size());
 		for(auto it = m_buffs.begin(); it != m_buffs.end(); ++it){
@@ -765,6 +808,138 @@ void MapObject::synchronize_with_cluster(const boost::shared_ptr<ClusterSession>
 			buff.time_end   = it->second->get_time_end();
 		}
 		cluster->send(msg);
+	}
+}
+
+void MapObject::recalculate_captain_attributes(const boost::shared_ptr<Captain> &captain, bool bAdd)
+{
+	PROFILE_ME;
+
+	boost::container::flat_map<AttributeId, std::int64_t> modifiers;
+
+	// 查看将领对属性的影响
+	if (captain)
+	{
+		const auto& config = Data::CaptainConfig::get(boost::lexical_cast<std::uint64_t>(captain->get_attribute(CaptainAttributeIds::ID_BASEID)));
+		if (config)
+		{
+			// 当前队列士兵数量
+			const auto soldier_count = get_attribute(AttributeIds::ID_SOLDIER_COUNT);
+
+			const auto base_attr = captain->get_attribute(CaptainAttributeIds::ID_BASEATTRIBUTE);
+
+			Poseidon::JsonObject  obj;
+
+			std::istringstream iss(base_attr);
+			auto val = Poseidon::JsonParser::parse_object(iss);
+			obj = std::move(val);
+
+			LOG_EMPERY_CENTER_INFO("recalculate_captain_attributes  将领基础属性解析 ===========", obj.dump());
+
+			auto  add_max_count = 0;
+			if (obj.find(SharedNts::view("6200003")) != obj.end())
+			{
+				add_max_count = static_cast<std::int64_t>(obj.at(SharedNts::view("6200003")).get<double>());
+			}
+			auto  add_attack = 0;
+			if (obj.find(SharedNts::view("6200001")) != obj.end())
+			{
+				add_attack = static_cast<std::int64_t>(obj.at(SharedNts::view("6200001")).get<double>());
+			}
+			auto  add_defense = 0;
+			if (obj.find(SharedNts::view("6200002")) != obj.end())
+			{
+				add_defense = static_cast<std::int64_t>(obj.at(SharedNts::view("6200002")).get<double>());
+			}
+			if (bAdd)
+			{
+
+				modifiers[AttributeIds::ID_SOLDIER_COUNT_MAX] = get_attribute(AttributeIds::ID_SOLDIER_COUNT_MAX) + add_max_count;
+
+				modifiers[AttributeIds::ID_CAPTAIN_ATTACK_ADD] = add_attack;
+
+				modifiers[AttributeIds::ID_CAPTAIN_DEFENSE_ADD] = add_defense;
+
+				modifiers[AttributeIds::ID_CAPTAIN_SOLDIER_COUNT_MAX_ADD] = add_max_count;
+
+			}
+			else
+			{
+				modifiers[AttributeIds::ID_SOLDIER_COUNT_MAX] = get_attribute(AttributeIds::ID_SOLDIER_COUNT_MAX) - add_max_count;
+
+				modifiers[AttributeIds::ID_CAPTAIN_ATTACK_ADD] = 0;
+
+				modifiers[AttributeIds::ID_CAPTAIN_DEFENSE_ADD] = 0;
+
+				modifiers[AttributeIds::ID_CAPTAIN_SOLDIER_COUNT_MAX_ADD] = 0;
+
+			}
+
+			// 判断下是否有超过校场队列士兵数量上限的士兵将直接解散逻辑
+			const auto max_count = modifiers[AttributeIds::ID_SOLDIER_COUNT_MAX];
+			LOG_EMPERY_CENTER_WARNING("recalculate_attributes  soldier_count= ", soldier_count, ",max_count=", max_count);
+			if (soldier_count > max_count)
+			{
+				const auto map_object_type_id = get_map_object_type_id();
+				const auto map_object_uuid = get_map_object_uuid();
+				const auto castle_uuid = get_parent_object_uuid();
+				const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(castle_uuid));
+				if (castle && is_idle()){
+
+					const auto castle_uuid_head = Poseidon::load_be(reinterpret_cast<const std::uint64_t &>(castle_uuid.get()[0]));
+					const auto battalion_uuid_head = Poseidon::load_be(reinterpret_cast<const std::uint64_t &>(map_object_uuid.get()[0]));
+
+					std::vector<SoldierTransactionElement> transaction;
+					transaction.emplace_back(SoldierTransactionElement::OP_ADD, map_object_type_id, soldier_count - max_count,
+						ReasonIds::ID_DISMISS_BATTALION, castle_uuid_head, battalion_uuid_head, 0);
+					castle->commit_soldier_transaction(transaction,
+						[&]{
+						modifiers[AttributeIds::ID_SOLDIER_COUNT] = max_count;
+					});
+				}
+			}
+
+		}
+	}
+
+	set_attributes(std::move(modifiers));
+
+	recalculate_attributes(false);
+
+}
+
+void MapObject::check_reset_captain(bool bescape)
+{
+	PROFILE_ME;
+
+	const auto captain_baseid = get_attribute(AttributeIds::ID_CAPTAIN_BASEID);
+	if (captain_baseid != 0)
+	{
+		// 根据map_object_uuid查找到对应的将领
+		const auto &captaininfo = CaptainMap::find_by_relation_map_object_uuid(get_owner_uuid(), get_map_object_uuid().str());
+		if (captaininfo)
+		{
+			// 设置将领的当前状态
+			boost::container::flat_map<CaptainAttributeId, std::string> Attributes;
+			Attributes[CaptainAttributeIds::ID_CURSTATUS] = "0";
+			Attributes[CaptainAttributeIds::ID_RELATION_OBJECT_UUID] = "";
+			captaininfo->set_attributes(std::move(Attributes));
+
+			// 发消息给前端
+			const auto& target_session = PlayerSessionMap::get(get_owner_uuid());
+			if (target_session)
+			{
+				Msg::SC_CaptainChange msg;
+				msg.captain_uuid = captaininfo->get_captain_uuid().str();
+				msg.baseid = boost::lexical_cast<std::string>(captain_baseid);
+				if (bescape)  // 所在部队死亡后逃跑
+					msg.ntype = 1;
+				else
+					msg.ntype = 0;
+
+				target_session->send(msg);
+			}
+		}
 	}
 }
 

@@ -48,6 +48,11 @@
 #include "../resource_crate.hpp"
 #include "../buff_ids.hpp"
 #include "../map_cell.hpp"
+#include "../activity.hpp"
+#include "../singletons/activity_map.hpp"
+#include "../singletons/map_activity_accumulate_map.hpp"
+#include "../activity_ids.hpp"
+#include "../data/activity.hpp"
 #include "../singletons/controller_client.hpp"
 #include "../warehouse_building.hpp"
 #include "../legion_task_box.hpp"
@@ -56,7 +61,21 @@
 #include "../legion_member.hpp"
 #include "../legion_member_attribute_ids.hpp"
 #include "../legion_log.hpp"
+#include "../account.hpp"
+#include "../account_attribute_ids.hpp"
 
+#include "../singletons/legion_map.hpp"
+
+#include "../data/legion_building_config.hpp"
+
+#include "../singletons/captain_item_map.hpp"
+
+
+#include "../data/legion_package_corps_box.hpp"
+#include "../data/legion_corps_level.hpp"
+#include "../legion.hpp"
+#include "../legion_attribute_ids.hpp"
+#include "../item_ids.hpp"
 namespace EmperyCenter {
 
 CLUSTER_SERVLET(Msg::KS_MapRegisterCluster, cluster, req){
@@ -299,12 +318,20 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 
 	const auto interval = req.interval;
 	const auto amount_to_harvest = req.amount_harvested;
-	const auto amount_harvested = strategic_resource->harvest(map_object, amount_to_harvest / unit_weight, forced_attack);
+	//地图活动翻倍
+	double activity_add_rate = 1;
+	const auto map_activity = ActivityMap::get_map_activity();
+	if(map_activity){
+		if(map_activity->get_current_activity() == ActivityIds::ID_MAP_ACTIVITY_HARVEST){
+			activity_add_rate = 2;
+		}
+	}
+	const auto amount_harvested = strategic_resource->harvest(map_object, amount_to_harvest * activity_add_rate / unit_weight, forced_attack);
 	LOG_EMPERY_CENTER_DEBUG("Harvest: map_object_uuid = ", map_object_uuid, ", map_object_type_id = ", map_object_type_id,
 		", harvest_speed = ", harvest_speed, ", amount_to_harvest = ", amount_to_harvest,", unit_weight = ", unit_weight,
 		", amount_harvested = ", amount_harvested, ", forced_attack = ", forced_attack);
 	map_object->set_buff(BuffIds::ID_HARVEST_STATUS, interval);
-	//军团礼包任务:采集n战略资源
+		//军团礼包任务:采集n战略资源
 	const auto task_box = TaskBoxMap::require(map_object->get_owner_uuid());
 	try {
 		auto pShared = Data::CastleResource::get(resource_id);
@@ -339,6 +366,42 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 	} catch (std::exception &e){
 		LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
 	}
+
+	try {
+		Poseidon::enqueue_async_job([=]{
+			{
+				PROFILE_ME;
+				//世界活动累积贡献值
+				const auto world_activity = ActivityMap::get_world_activity();
+				if(!world_activity){
+					goto world_activity_resource_acculate_done;
+				}
+				auto primary_castle =  WorldMap::get_primary_castle(map_object->get_owner_uuid());
+				if(!primary_castle){
+					goto world_activity_resource_acculate_done;
+				}
+				auto attacking_primary_castle_coord = WorldMap::get_cluster_scope(primary_castle->get_coord()).bottom_left();
+				auto attacking_cluster_coord = WorldMap::get_cluster_scope(map_object->get_coord()).bottom_left();
+				if(attacking_primary_castle_coord !=  attacking_cluster_coord){
+					goto world_activity_resource_acculate_done;
+				}
+				const auto activity_contribute = Data::ActivityContribute::get(resource_id.get());
+				if(!activity_contribute || 0 == activity_contribute->factor){
+					goto world_activity_resource_acculate_done;
+				}
+				auto contribute = activity_contribute->contribute*amount_harvested/activity_contribute->factor;
+				if(contribute <= 0){
+					goto world_activity_resource_acculate_done;
+				}
+				world_activity->update_world_activity_schedule(attacking_primary_castle_coord,ActivityIds::ID_WORLD_ACTIVITY_RESOURCE,map_object->get_owner_uuid(),contribute);
+			}
+			world_activity_resource_acculate_done:
+			;
+		});
+	} catch(std::exception &e){
+			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+	}
+
 	return Response();
 }
 
@@ -411,9 +474,21 @@ namespace {
 			msg.coord_y            = coord.y();
 			msg.params.reserve(sizeof...(params));
 			std::string param_strs[] = { boost::lexical_cast<std::string>(params)... };
+			std::string other_parent_uuid_str;
 			for(std::size_t i = 0; i < sizeof...(params); ++i){
 				auto &param = *msg.params.emplace(msg.params.end());
 				param.str = std::move(param_strs[i]);
+				if(i == sizeof...(params)-1){
+					other_parent_uuid_str = param.str;
+				}
+			}
+			//发送对方城堡信息
+			auto other_parent_uuid = MapObjectUuid(other_parent_uuid_str);
+			if(other_account_uuid && other_parent_uuid){
+				auto other_parent_object = WorldMap::get_map_object(other_parent_uuid);
+				if(other_parent_object){
+					other_parent_object->synchronize_with_player(session);
+				}
 			}
 			session->send(msg);
 		} catch(std::exception &e){
@@ -493,6 +568,45 @@ CLUSTER_SERVLET(Msg::KS_MapObjectAttackAction, cluster, req){
 	LOG_EMPERY_CENTER_DEBUG("Map object damaged: attacked_object_uuid = ", attacked_object_uuid,
 		", hp_previous = ", hp_previous, ", hp_damaged = ", hp_damaged, ", hp_remaining = ", hp_remaining,
 		", soldiers_previous = ", soldiers_previous, ", soldiers_damaged = ", soldiers_damaged, ", soldiers_remaining = ", soldiers_remaining);
+
+	// 通知客户端。
+	try {
+		PROFILE_ME;
+
+		Msg::SC_MapObjectAttackResult msg;
+		msg.attacking_object_uuid    = attacking_object_uuid.str();
+		msg.attacking_coord_x        = attacking_coord.x();
+		msg.attacking_coord_y        = attacking_coord.y();
+		msg.attacked_object_uuid     = attacked_object_uuid.str();
+		msg.attacked_coord_x         = attacked_coord.x();
+		msg.attacked_coord_y         = attacked_coord.y();
+		msg.result_type              = result_type;
+		msg.soldiers_wounded         = 0; // FIXME soldiers_wounded;
+		msg.soldiers_wounded_added   = 0; // FIXME soldiers_wounded_added;
+		msg.soldiers_damaged         = hp_damaged;
+		msg.soldiers_remaining       = hp_remaining;
+		msg.attacking_object_type_id = attacking_object_type_id.get();
+		msg.attacked_object_type_id  = attacked_object_type_id.get();
+		LOG_EMPERY_CENTER_TRACE("Broadcasting attack result message: msg = ", msg);
+
+		const auto range_left   = std::min(attacking_coord.x(), attacked_coord.x());
+		const auto range_right  = std::max(attacking_coord.x(), attacked_coord.x());
+		const auto range_bottom = std::min(attacking_coord.y(), attacked_coord.y());
+		const auto range_top    = std::max(attacking_coord.y(), attacked_coord.y());
+		std::vector<boost::shared_ptr<PlayerSession>> sessions;
+		WorldMap::get_players_viewing_rectangle(sessions,
+			Rectangle(Coord(range_left, range_bottom), Coord(range_right + 1, range_top + 1)));
+		for(auto it = sessions.begin(); it != sessions.end(); ++it){
+			const auto &session = *it;
+			try {
+				session->send(msg);
+			} catch(std::exception &e){
+				LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+			}
+		}
+	} catch(std::exception &e){
+		LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
+	}
 
 	boost::container::flat_map<AttributeId, std::int64_t> modifiers;
 	modifiers[AttributeIds::ID_SOLDIER_COUNT] = static_cast<std::int64_t>(soldiers_remaining);
@@ -593,45 +707,6 @@ _wounded_done:
 	const auto should_send_battle_notifications = !attacked_object->is_buff_in_effect(BuffIds::ID_BATTLE_NOTIFICATION_TIMEOUT);
 	attacked_object->set_buff(BuffIds::ID_BATTLE_NOTIFICATION_TIMEOUT, utc_now, battle_status_timeout);
 
-	// 通知客户端。
-	try {
-		PROFILE_ME;
-
-		Msg::SC_MapObjectAttackResult msg;
-		msg.attacking_object_uuid    = attacking_object_uuid.str();
-		msg.attacking_coord_x        = attacking_coord.x();
-		msg.attacking_coord_y        = attacking_coord.y();
-		msg.attacked_object_uuid     = attacked_object_uuid.str();
-		msg.attacked_coord_x         = attacked_coord.x();
-		msg.attacked_coord_y         = attacked_coord.y();
-		msg.result_type              = result_type;
-		msg.soldiers_wounded         = soldiers_wounded;
-		msg.soldiers_wounded_added   = soldiers_wounded_added;
-		msg.soldiers_damaged         = hp_damaged;
-		msg.soldiers_remaining       = hp_remaining;
-		msg.attacking_object_type_id = attacking_object_type_id.get();
-		msg.attacked_object_type_id  = attacked_object_type_id.get();
-		LOG_EMPERY_CENTER_TRACE("Broadcasting attack result message: msg = ", msg);
-
-		const auto range_left   = std::min(attacking_coord.x(), attacked_coord.x());
-		const auto range_right  = std::max(attacking_coord.x(), attacked_coord.x());
-		const auto range_bottom = std::min(attacking_coord.y(), attacked_coord.y());
-		const auto range_top    = std::max(attacking_coord.y(), attacked_coord.y());
-		std::vector<boost::shared_ptr<PlayerSession>> sessions;
-		WorldMap::get_players_viewing_rectangle(sessions,
-			Rectangle(Coord(range_left, range_bottom), Coord(range_right + 1, range_top + 1)));
-		for(auto it = sessions.begin(); it != sessions.end(); ++it){
-			const auto &session = *it;
-			try {
-				session->send(msg);
-			} catch(std::exception &e){
-				LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
-			}
-		}
-	} catch(std::exception &e){
-		LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
-	}
-
 	// 战斗通知。
 	if(should_send_battle_notifications){
 		const auto attacked_castle = boost::dynamic_pointer_cast<Castle>(attacked_object);
@@ -643,7 +718,7 @@ _wounded_done:
 					PROFILE_ME;
 
 					send_battle_notification(attacking_account_uuid, type, attacked_account_uuid, attacking_coord,
-						attacking_object_type_id, attacked_castle->get_name(), attacked_castle->get_level());
+						attacking_object_type_id, attacked_castle->get_name(), attacked_castle->get_level(),attacked_castle->get_map_object_uuid());
 				} catch(std::exception &e){
 					LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 				}
@@ -653,7 +728,7 @@ _wounded_done:
 					PROFILE_ME;
 
 					send_battle_notification(attacked_account_uuid, -type, attacking_account_uuid, attacked_coord,
-						attacking_object_type_id, attacked_object_type_id);
+						attacking_object_type_id, attacked_object_type_id,attacking_object->get_parent_object_uuid());
 				} catch(std::exception &e){
 					LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 				}
@@ -666,7 +741,7 @@ _wounded_done:
 					PROFILE_ME;
 
 					send_battle_notification(attacking_account_uuid, type, attacked_account_uuid, attacking_coord,
-						attacking_object_type_id, attacked_object_type_id);
+						attacking_object_type_id, attacked_object_type_id,attacked_object->get_parent_object_uuid());
 				} catch(std::exception &e){
 					LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 				}
@@ -676,7 +751,7 @@ _wounded_done:
 					PROFILE_ME;
 
 					send_battle_notification(attacked_account_uuid, -type, attacking_account_uuid, attacked_coord,
-						attacking_object_type_id, attacked_object_type_id);
+						attacking_object_type_id, attacked_object_type_id,attacking_object->get_parent_object_uuid());
 				} catch(std::exception &e){
 					LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 				}
@@ -711,6 +786,12 @@ _wounded_done:
 				battle_record_box->push(utc_now, attacking_object_type_id, attacking_coord,
 					attacked_account_uuid, attacked_object_type_id, attacked_coord,
 					result_type, soldiers_wounded, soldiers_wounded_added, soldiers_damaged, soldiers_remaining);
+
+				const auto account = AccountMap::require(attacking_account_uuid);
+
+				boost::container::flat_map<AccountAttributeId, std::string> modifiers;
+				modifiers[AccountAttributeIds::ID_BATTLE_RECORDS_UNREAD] = "1";
+				account->set_attributes(std::move(modifiers));
 			});
 		} catch(std::exception &e){
 			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
@@ -730,6 +811,12 @@ _wounded_done:
 				battle_record_box->push(utc_now, attacked_object_type_id, attacked_coord,
 					attacking_account_uuid, attacking_object_type_id, attacking_coord,
 					-result_type, soldiers_wounded, soldiers_wounded_added,soldiers_damaged, soldiers_remaining);
+
+				const auto account = AccountMap::require(attacked_account_uuid);
+
+				boost::container::flat_map<AccountAttributeId, std::string> modifiers;
+				modifiers[AccountAttributeIds::ID_BATTLE_RECORDS_UNREAD] = "1";
+				account->set_attributes(std::move(modifiers));
 			});
 		} catch(std::exception &e){
 			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
@@ -755,6 +842,16 @@ _wounded_done:
 				if(!monster_type_data){
 					return;
 				}
+				bool goblin_award = false;
+				bool world_boss_award = false;
+				static constexpr auto GOBLIN_WEAPON_ID = MapObjectWeaponId(2605001);
+				if(monster_type_data->map_object_weapon_id == GOBLIN_WEAPON_ID){
+					goblin_award = true;
+				}
+				if(attacked_object_type_id == MapObjectTypeIds::ID_WORLD_ACTIVITY_BOSS){
+					world_boss_award = true;
+				}
+
 
 				const auto item_box = ItemBoxMap::get(attacking_account_uuid);
 				if(!item_box){
@@ -776,19 +873,32 @@ _wounded_done:
 				}
 
 				boost::container::flat_map<ItemId, std::uint64_t> items_basic, items_extra;
+				std::uint64_t bequip = 0;
+				std::uint64_t  activity_add_rate = 1;
+				const auto map_activity = ActivityMap::get_map_activity();
+				if(map_activity){
+					if(map_activity->get_current_activity() == ActivityIds::ID_MAP_ACTIVITY_MONSTER){
+						activity_add_rate = 2;
+					}
+				}
 
 				const auto reward_counter = castle->get_resource(ResourceIds::ID_MONSTER_REWARD_COUNT).amount;
 				if(reward_counter > 0){
 					std::vector<ResourceTransactionElement> resource_transaction;
-					resource_transaction.emplace_back(ResourceTransactionElement::OP_REMOVE, ResourceIds::ID_MONSTER_REWARD_COUNT, 1,
-						ReasonIds::ID_MONSTER_REWARD_COUNT, attacked_object_type_id.get(), 0, 0);
+					if(!goblin_award && !world_boss_award){
+						resource_transaction.emplace_back(ResourceTransactionElement::OP_REMOVE, ResourceIds::ID_MONSTER_REWARD_COUNT, 1,
+							ReasonIds::ID_MONSTER_REWARD_COUNT, attacked_object_type_id.get(), 0, 0);
+					}
 
 					std::vector<ItemTransactionElement> transaction;
 
 					const auto push_monster_rewards = [&](const boost::container::flat_map<std::string, std::uint64_t> &monster_rewards, bool extra){
 						for(auto rit = monster_rewards.begin(); rit != monster_rewards.end(); ++rit){
 							const auto &collection_name = rit->first;
-							const auto repeat_count = rit->second;
+							auto repeat_count = rit->second;
+							if(!extra){
+								repeat_count = repeat_count * activity_add_rate;
+							}
 							for(std::size_t i = 0; i < repeat_count; ++i){
 								const auto reward_data = Data::MapObjectTypeMonsterReward::random_by_collection_name(collection_name);
 								if(!reward_data){
@@ -829,7 +939,6 @@ _wounded_done:
 					castle->commit_resource_transaction(resource_transaction,
 						[&]{ item_box->commit_transaction(transaction, false); });
 				}
-
 				const auto session = PlayerSessionMap::get(attacking_account_uuid);
 				if(session){
 					try {
@@ -851,10 +960,124 @@ _wounded_done:
 						}
 						msg.castle_uuid        = castle->get_map_object_uuid().str();
 						msg.reward_counter     = reward_counter;
+						msg.bequip = bequip;						
 						session->send(msg);
 					} catch(std::exception &e){
 						LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
 						session->shutdown(e.what());
+					}
+				}
+			});
+		} catch(std::exception &e){
+			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
+		}
+	}
+
+	//哥布林掉落
+	if(attacking_account_uuid){
+		try {
+			Poseidon::enqueue_async_job([=]{
+				PROFILE_ME;
+
+				const auto monster_type_data = Data::MapObjectTypeMonster::get(attacked_object_type_id);
+				if(!monster_type_data){
+					return;
+				}
+				static constexpr auto GOBLIN_WEAPON_ID = MapObjectWeaponId(2605001);
+				if(monster_type_data->map_object_weapon_id == GOBLIN_WEAPON_ID)
+				{
+					const auto map_activity = ActivityMap::get_map_activity();
+					if(map_activity){
+						if(map_activity->get_current_activity() != ActivityIds::ID_MAP_ACTIVITY_GOBLIN){
+							return;
+						}
+					}
+					const auto item_box = ItemBoxMap::get(attacking_account_uuid);
+					if(!item_box){
+						LOG_EMPERY_CENTER_DEBUG("Failed to load item box: attacking_account_uuid = ", attacking_account_uuid);
+						return;
+					}
+					const auto parent_object_uuid = attacking_object->get_parent_object_uuid();
+					if(!parent_object_uuid){
+						return;
+					}
+					const auto parent_castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(parent_object_uuid));
+					if(!parent_castle){
+						LOG_EMPERY_CENTER_WARNING("No such castle: parent_object_uuid = ", parent_object_uuid);
+						return;
+					}
+					const auto hp_total = checked_mul(monster_type_data->max_soldier_count, monster_type_data->hp_per_soldier);
+					const auto hp_damaged_now = checked_sub(hp_total,hp_remaining);
+					const auto hp_damaged_last = checked_sub(hp_damaged_now,hp_damaged);
+					const auto interval  = hp_total*Data::Global::as_double(Data::Global::SLOT_GOBLIN_DROP_AWARD_HP_PERCENT);
+					auto reward_count = static_cast<int>(hp_damaged_now/interval) - static_cast<int>(hp_damaged_last/interval);
+					bool real_award = false;
+					if(hp_damaged_now == hp_total){
+						//最后死亡走普通怪物掉落
+						reward_count -= 1;
+					}
+					const auto goblin_award_object = Data::Global::as_object(Data::Global::SLOT_GOBLIN_DROP_AWARD);
+					boost::container::flat_map<std::string, std::uint64_t> goblin_rewards;
+					goblin_rewards.reserve(goblin_award_object.size());
+					for(auto it = goblin_award_object.begin(); it != goblin_award_object.end(); ++it){
+						auto collection_name = std::string(it->first.get());
+						const auto count = static_cast<std::uint64_t>(it->second.get<double>());
+						if(!goblin_rewards.emplace(std::move(collection_name), count).second){
+							LOG_EMPERY_CENTER_ERROR("Duplicate reward set: collection_name = ", collection_name);
+							DEBUG_THROW(Exception, sslit("Duplicate reward set"));
+						}
+					}
+					boost::container::flat_map<ItemId, std::uint64_t> items_basic;
+					std::vector<ItemTransactionElement> transaction;
+					const auto push_monster_rewards = [&](const boost::container::flat_map<std::string, std::uint64_t> &monster_rewards){
+						for(auto rit = monster_rewards.begin(); rit != monster_rewards.end(); ++rit){
+							const auto &collection_name = rit->first;
+							const auto repeat_count = rit->second;
+							for(std::size_t i = 0; i < repeat_count; ++i){
+								const auto reward_data = Data::MapObjectTypeMonsterReward::random_by_collection_name(collection_name);
+								if(!reward_data){
+									LOG_EMPERY_CENTER_WARNING("Error getting random reward: attacked_object_type_id = ", attacked_object_type_id,
+										", collection_name = ", collection_name);
+									continue;
+								}
+								for(auto it = reward_data->reward_items.begin(); it != reward_data->reward_items.end(); ++it){
+									const auto item_id = it->first;
+									const auto count = it->second;
+									transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
+											ReasonIds::ID_MONSTER_REWARD, attacked_object_type_id.get(),
+											static_cast<std::int64_t>(reward_data->unique_id), 0);
+										items_basic[item_id] += count;
+								}
+							}
+						}
+					};
+					for(int index = 0; index < reward_count; ++index){
+						real_award = true;
+						push_monster_rewards(goblin_rewards);
+					}
+					if(!real_award){
+						return;
+					}
+					item_box->commit_transaction(transaction, false);
+					const auto session = PlayerSessionMap::get(attacking_account_uuid);
+					if(session){
+						try {
+							Msg::SC_MapGoblinRewardGot msg;
+							msg.x                  = attacked_coord.x();
+							msg.y                  = attacked_coord.y();
+							msg.map_object_type_id = attacked_object_type_id.get();
+							msg.items_basic.reserve(items_basic.size());
+							for(auto it = items_basic.begin(); it != items_basic.end(); ++it){
+								auto &elem = *msg.items_basic.emplace(msg.items_basic.end());
+								elem.item_id = it->first.get();
+								elem.count   = it->second;
+							}
+							msg.castle_uuid        = parent_castle->get_map_object_uuid().str();
+							session->send(msg);
+						} catch(std::exception &e){
+							LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+							session->shutdown(e.what());
+						}
 					}
 				}
 			});
@@ -1036,6 +1259,10 @@ _wounded_done:
 						{
 							const auto ntype = warehouse_building->get_output_type();
 							auto &amount = resources_dropped[ResourceId(ntype)];
+
+							//折损比例
+	                        amount = amount *  Data::Global::as_double(Data::Global::SLOT_LEGION_BUILDING_IMPAIRMENT_RATIO);
+
 							amount = checked_add(amount, left);
 
 							// 矿井不消失，给个击毁标识
@@ -1091,7 +1318,7 @@ _wounded_done:
 				;
 
 				while(!resources_dropped.empty()){
-					const auto rand = Poseidon::rand32(0, resources_dropped.size());
+					const auto rand = Poseidon::rand32() % resources_dropped.size();
 					const auto it = resources_dropped.begin() + static_cast<std::ptrdiff_t>(rand);
 					const auto resource_id = it->first;
 					const auto amount = it->second;
@@ -1113,6 +1340,207 @@ _wounded_done:
 		} catch(std::exception &e){
 			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 		}
+	}
+	const auto map_activity_acculate_rewards = [=](MapActivityId activity_id,std::uint64_t delta,ReasonId reason_id){
+		{
+			const auto map_activity = ActivityMap::get_map_activity();
+			if(map_activity){
+				if(map_activity->get_current_activity() != activity_id){
+					goto _activity_acculate_done;
+				}
+			}
+			MapActivity::MapActivityDetailInfo map_activity_info = map_activity->get_activity_info(activity_id);
+			if(map_activity_info.unique_id != activity_id.get()){
+				goto _activity_acculate_done;
+			}
+			std::uint64_t old_accumulate,new_accumulate;
+			boost::container::flat_map<ItemId, std::uint64_t> items_basic;
+			std::vector<std::uint64_t> acculate_condition;
+			MapActivityAccumulateMap::AccumulateInfo info = MapActivityAccumulateMap::get(attacking_account_uuid,activity_id,map_activity_info.available_since);
+			if(info.activity_id != MapActivityId(0) && (info.account_uuid == attacking_account_uuid) && (info.activity_id == activity_id)){
+				old_accumulate = info.accumulate_value;
+				info.accumulate_value += delta;
+				MapActivityAccumulateMap::update(info,false);
+				new_accumulate = info.accumulate_value;
+			}else{
+				info.account_uuid = attacking_account_uuid;
+				info.activity_id = activity_id;
+				info.avaliable_since = map_activity_info.available_since;
+				info.avaliable_util = map_activity_info.available_until;
+				old_accumulate = 0;
+				info.accumulate_value += delta;
+				MapActivityAccumulateMap::insert(info);
+				new_accumulate = info.accumulate_value;
+			}
+			boost::shared_ptr<const Data::MapActivity> map_activity_data  = Data::MapActivity::get(activity_id.get());
+			if(!map_activity_data){
+				goto _activity_acculate_done;
+			}
+			if(old_accumulate == new_accumulate){
+				goto _activity_acculate_done;
+			}
+			const auto item_box = ItemBoxMap::require(attacking_account_uuid);
+			std::vector<ItemTransactionElement> transaction;
+			const auto &rewards = map_activity_data->rewards;
+			for(auto it = rewards.begin(); it != rewards.end(); ++it){
+				if((it->first > old_accumulate) && (it->first <= new_accumulate)){
+					const auto &items_vec = it->second;
+					for(auto iit = items_vec.begin(); iit != items_vec.end(); ++iit){
+						const auto item_id = ItemId(iit->first);
+						const auto count = iit->second;
+						transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
+										reason_id,it->first,
+										old_accumulate,new_accumulate);
+						items_basic[item_id] += count;
+					}
+					acculate_condition.push_back(it->first);
+				}
+			}
+			if(acculate_condition.empty()){
+				goto _activity_acculate_done;
+			}
+			item_box->commit_transaction(transaction, false);
+			const auto session = PlayerSessionMap::get(attacking_account_uuid);
+			if(session){
+				try {
+					Msg::SC_MapActivityAcculateReward msg;
+					msg.x                  = attacked_coord.x();
+					msg.y                  = attacked_coord.y();
+					msg.activity_id        = activity_id.get();
+					msg.items_basic.reserve(items_basic.size());
+					for(auto it = items_basic.begin(); it != items_basic.end(); ++it){
+						auto &elem = *msg.items_basic.emplace(msg.items_basic.end());
+						elem.item_id = it->first.get();
+						elem.count   = it->second;
+					}
+					for(auto it = acculate_condition.begin(); it != acculate_condition.end(); ++it){
+						auto &elem = *msg.reward_acculate.emplace(msg.reward_acculate.end());
+						elem.acculate = *it;
+					}
+					session->send(msg);
+				} catch(std::exception &e){
+					LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+					session->shutdown(e.what());
+				}
+			}
+	}
+			_activity_acculate_done:
+			;
+	};
+	//杀兵活动
+	if(attacking_account_uuid && attacked_account_uuid && soldiers_remaining == 0){
+		try{
+			Poseidon::enqueue_async_job([=]{
+				PROFILE_ME;
+				{
+					const auto attacked_type_data = Data::MapObjectTypeBattalion::get(attacked_object_type_id);
+					if(!attacked_type_data || attacked_type_data->warfare == 0){
+							goto _activity_kill_solider_done;
+					}
+					map_activity_acculate_rewards(ActivityIds::ID_MAP_ACTIVITY_KILL_SOLDIER,attacked_type_data->warfare,ReasonIds::ID_SOLDIER_KILL_ACCUMULATE);
+				}
+				_activity_kill_solider_done:
+				;
+			});
+		} catch (std::exception &e){
+			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
+		}
+	}
+	//攻城活动
+	const auto castle = boost::dynamic_pointer_cast<Castle>(attacked_object);
+	if(castle){
+		try{
+			Poseidon::enqueue_async_job([=]{
+				PROFILE_ME;
+				map_activity_acculate_rewards(ActivityIds::ID_MAP_ACTIVITY_CASTLE_DAMAGE,hp_damaged,ReasonIds::ID_CASTLE_DMAGE_ACCUMULATE);
+			});
+		} catch (std::exception &e){
+			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
+		}
+	}
+
+	//世界活动刷怪
+	if(attacking_account_uuid && (soldiers_remaining == 0)){
+		Poseidon::enqueue_async_job([=]{
+			try {
+				PROFILE_ME;
+
+				const auto monster_type_data = Data::MapObjectTypeMonster::get(attacked_object_type_id);
+				if(!monster_type_data){
+					return;
+				}
+				{
+					const auto world_activity = ActivityMap::get_world_activity();
+					if(!world_activity){
+						goto world_activity_monster_acculate_done;
+					}
+					auto primary_castle =  WorldMap::get_primary_castle(attacking_account_uuid);
+					if(!primary_castle){
+						goto world_activity_monster_acculate_done;
+					}
+					auto attacking_primary_castle_coord = WorldMap::get_cluster_scope(primary_castle->get_coord()).bottom_left();
+					auto attacking_cluster_coord = WorldMap::get_cluster_scope(attacking_coord).bottom_left();
+					if(attacking_primary_castle_coord !=  attacking_cluster_coord){
+						goto world_activity_monster_acculate_done;
+					}
+					const auto activity_contribute = Data::ActivityContribute::get(attacked_object_type_id.get());
+					if(!activity_contribute || 0 == activity_contribute->factor){
+						goto world_activity_monster_acculate_done;
+					}
+					auto contribute = activity_contribute->contribute;
+					if(contribute <= 0){
+						goto world_activity_monster_acculate_done;
+					}
+					world_activity->update_world_activity_schedule(attacking_primary_castle_coord,ActivityIds::ID_WORLD_ACTIVITY_MONSTER,attacking_account_uuid,contribute);
+				}
+				world_activity_monster_acculate_done:
+				;
+			}catch (std::exception &e){
+			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
+			}
+		});
+	}
+
+	//世界活动打boss
+	if(attacked_object_type_id == MapObjectTypeIds::ID_WORLD_ACTIVITY_BOSS){
+		Poseidon::enqueue_async_job([=]{
+			try {
+				PROFILE_ME;
+
+				const auto monster_type_data = Data::MapObjectTypeMonster::get(attacked_object_type_id);
+				if(!monster_type_data){
+					return;
+				}
+				{
+					const auto world_activity = ActivityMap::get_world_activity();
+					if(!world_activity){
+						goto world_activity_boss_done;
+					}
+					auto primary_castle =  WorldMap::get_primary_castle(attacking_account_uuid);
+					if(!primary_castle){
+						goto world_activity_boss_done;
+					}
+					auto attacking_primary_castle_coord = WorldMap::get_cluster_scope(primary_castle->get_coord()).bottom_left();
+					auto attacking_cluster_coord = WorldMap::get_cluster_scope(attacking_coord).bottom_left();
+					if(attacking_primary_castle_coord !=  attacking_cluster_coord){
+						goto world_activity_boss_done;
+					}
+					const auto activity_contribute = Data::ActivityContribute::get(attacked_object_type_id.get());
+					if(!activity_contribute || 0 == activity_contribute->factor){
+						goto world_activity_boss_done;
+					}
+					auto contribute = activity_contribute->contribute*hp_damaged/activity_contribute->factor;
+					if(contribute <= 0){
+						goto world_activity_boss_done;
+					}
+					world_activity->update_world_activity_schedule(attacking_primary_castle_coord,ActivityIds::ID_WORLD_ACTIVITY_BOSS,attacking_account_uuid,contribute,(soldiers_remaining == 0));
+				}
+				world_activity_boss_done:
+				;
+			}catch (std::exception &e){
+			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
+			}
+		});
 	}
 		//军团任务杀兵
 	if(attacking_account_uuid && (soldiers_remaining == 0)){
@@ -1139,6 +1567,7 @@ _wounded_done:
 			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
 		}
 	}
+
 	//军团任务杀怪
 	if(attacking_account_uuid && (soldiers_remaining == 0)){
 		try{
@@ -1159,6 +1588,41 @@ _wounded_done:
 				}
 				legion_destory_monster_done:
 				;
+			});
+		} catch (std::exception &e){
+			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+		}
+	}
+
+	// 设置最大攻击野怪等级
+	if(attacking_account_uuid && (soldiers_remaining == 0)){
+		try {
+			Poseidon::enqueue_async_job([=]() mutable {
+				PROFILE_ME;
+
+				const auto monster_type_data = Data::MapObjectTypeMonster::get(attacked_object_type_id);
+				if(!monster_type_data){
+					return;
+				}
+				const auto account = AccountMap::require(attacking_account_uuid);
+				std::string max_attack_monster_level_str =  account->get_attribute(AccountAttributeIds::ID_MAX_ATTACK_MONSTER_LEVEL);
+				std::uint64_t max_attack_monster_level_expect = 2;
+				bool update_max_attack_level = false;
+				if(max_attack_monster_level_str.empty()){
+					LOG_EMPERY_CENTER_WARNING("account max_attack_monster level is empty,attacking_account_uuid = ",attacking_account_uuid);
+					update_max_attack_level = true;
+				}else{
+					std::uint64_t current_level = boost::lexical_cast<std::uint64_t>(max_attack_monster_level_str);
+					if(monster_type_data->level == current_level){
+						max_attack_monster_level_expect = monster_type_data->level + 1;
+						update_max_attack_level = true;
+					}
+				}
+				if(update_max_attack_level){
+					boost::container::flat_map<AccountAttributeId, std::string> modifiers;
+					modifiers[AccountAttributeIds::ID_MAX_ATTACK_MONSTER_LEVEL] = boost::lexical_cast<std::string>(max_attack_monster_level_expect);
+					account->set_attributes(std::move(modifiers));
+				}
 			});
 		} catch (std::exception &e){
 			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
@@ -1298,6 +1762,12 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestResourceCrate, cluster, req){
 
 				crate_record_box->push(utc_now, attacking_object_type_id, attacking_coord, attacked_coord,
 					resource_id, amount_to_harvest, amount_harvested, amount_remaining);
+
+				const auto account = AccountMap::require(attacking_account_uuid);
+
+				boost::container::flat_map<AccountAttributeId, std::string> modifiers;
+				modifiers[AccountAttributeIds::ID_CRATE_RECORDS_UNREAD] = "1";
+				account->set_attributes(std::move(modifiers));
 			});
 		} catch(std::exception &e){
 			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
@@ -1481,7 +1951,7 @@ _occupation_done:
 				PROFILE_ME;
 
 				send_battle_notification(attacking_account_uuid, type, attacked_account_uuid, attacking_coord,
-					attacking_object_type_id, attacked_ticket_item_id);
+					attacking_object_type_id, attacked_ticket_item_id,attacked_cell->get_parent_object_uuid());
 			} catch(std::exception &e){
 				LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 			}
@@ -1491,7 +1961,7 @@ _occupation_done:
 				PROFILE_ME;
 
 				send_battle_notification(attacked_account_uuid, -type, attacking_account_uuid, attacked_coord,
-					attacking_object_type_id, attacked_ticket_item_id);
+					attacking_object_type_id, attacked_ticket_item_id,attacking_object->get_parent_object_uuid());
 			} catch(std::exception &e){
 				LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 			}
@@ -1545,14 +2015,47 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestLegionResource, cluster, req)
 			return Response(Msg::ERR_LEGION_GATHER_IN_LEAVE_TIME);
 	}
 
-	
+
+	const auto unique_legion_uuid = member->get_legion_uuid();
+    const auto legion = LegionMap::get(unique_legion_uuid);
+    if (!legion)
+    {
+        LOG_EMPERY_CENTER_FATAL("军团不存在 ERR_LEGION_CANNOT_FIND;");
+        //军团不存在
+    	return Response(Msg::ERR_LEGION_CANNOT_FIND);
+    }
+
+	const auto levelinfo = Data::LegionCorpsLevel::require(LegionCorpsLevelId(boost::lexical_cast<uint32_t>(legion->get_attribute(LegionAttributeIds::ID_LEVEL))));
+    const auto legion_member_max = levelinfo->legion_member_max;
+
+    auto H_interval_min = 24 * 60;
+      auto CD_open_time = Data::LegionBuilding::get_open_time(target_object->get_level());
+      auto max_resource = Data::LegionBuilding::get_max_resource(target_object->get_level());
+      const auto K_cofficient = Data::Global::as_unsigned(Data::Global::SLOT_LEGION_BUILDING_HARVEST_COEFFICIENT);
+
+      auto daily_harvest_limit = boost::lexical_cast<std::int64_t>((boost::lexical_cast<uint64_t>(max_resource) / boost::lexical_cast<uint64_t>(legion_member_max)) * 
+       (boost::lexical_cast<uint64_t>(H_interval_min) / boost::lexical_cast<uint64_t>(CD_open_time)) *  boost::lexical_cast<uint64_t>(K_cofficient));
+
+      const auto item_box = ItemBoxMap::require(account_uuid);
+	  auto harvested_count = item_box->get(ItemIds::ID_LEGION_BUILDING_HARVESTED_COUNTS).count;
+	  if(harvested_count >= boost::lexical_cast<std::uint64_t>(daily_harvest_limit))
+	  {
+		return Response(Msg::ERR_LEGION_BUILDING_HARVEST_LIMITED);
+      }
+
+	  std::vector<ItemTransactionElement> transaction;
+
+	  transaction.emplace_back(ItemTransactionElement::OP_ADD, ItemIds::ID_LEGION_BUILDING_HARVESTED_COUNTS,
+	                         1, ReasonIds::ID_LEGION_BUILDING_HARVESTED_COUNTS_ITEM,
+							 0, 0, 0);
+
+	item_box->commit_transaction(transaction, false);
 	const auto parent_object_uuid = map_object->get_parent_object_uuid();
 	const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(parent_object_uuid));
 	if(!castle){
 		return Response(Msg::ERR_MAP_OBJECT_PARENT_GONE) <<parent_object_uuid;
 	}
-	
-	
+
 	const auto coord = map_object->get_coord();
 	/*
 	const auto strategic_resource = WorldMap::get_strategic_resource(coord);
@@ -1565,8 +2068,6 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestLegionResource, cluster, req)
 		return Response(Msg::ERR_STRATEGIC_RESOURCE_ALREADY_REMOVED) <<coord;
 	}
 
-	
-	
 	const auto resource_id = target_object->get_output_type();
 	const auto resource_data = Data::CastleResource::require(ResourceId(resource_id));
 	const auto unit_weight = resource_data->unit_weight;
@@ -1577,7 +2078,6 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestLegionResource, cluster, req)
 	if(!carried_attribute_id){
 		return Response(Msg::ERR_RESOURCE_NOT_HARVESTABLE) <<resource_id;
 	}
-	
 	const auto map_object_type_id = map_object->get_map_object_type_id();
 	const auto map_object_type_data = Data::MapObjectTypeBattalion::require(map_object_type_id);
 	const auto harvest_speed = map_object_type_data->harvest_speed;
@@ -1688,3 +2188,12 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestLegionResource, cluster, req)
 }
 
 }
+
+
+
+
+
+
+
+
+

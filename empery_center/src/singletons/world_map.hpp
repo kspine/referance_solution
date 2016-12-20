@@ -60,9 +60,16 @@ struct WorldMap {
 
 	// MapEventBlock
 	static boost::shared_ptr<MapEventBlock> get_map_event_block(Coord coord);
+	static void get_cluster_map_event_blocks(Coord cluster_coord, std::vector<boost::shared_ptr<MapEventBlock>> &ret);
 	static boost::shared_ptr<MapEventBlock> require_map_event_block(Coord coord);
 	static void insert_map_event_block(const boost::shared_ptr<MapEventBlock> &map_event_block);
 	static void update_map_event_block(const boost::shared_ptr<MapEventBlock> &map_event_block, bool throws_if_not_exists = true);
+	static void refresh_activity_event(unsigned map_event_type);
+	static void remove_activity_event(unsigned map_event_type);
+	static void refresh_world_activity_event(Coord cluster_coord,unsigned map_event_type);
+	static void remove_world_activity_event(Coord cluster_coord, unsigned map_event_type);
+	static void refresh_world_activity_boss(Coord cluster_coord, std::uint64_t since);
+	static void remove_world_activity_boss(Coord cluster_coord,std::uint64_t since);
 
 	// ResourceCrate
 	static boost::shared_ptr<ResourceCrate> get_resource_crate(ResourceCrateUuid resource_crate_uuid);
@@ -79,15 +86,15 @@ struct WorldMap {
 
 	// ClusterSession
 	static Rectangle get_cluster_scope(Coord coord);
-	static  std::string make_cluster_coord_string(Coord coord);
-	static  bool check_primery_key_coord_uuid(std::uint64_t coord_x,std::uint64_t coord_y,std::string coord_uuid);
+
+    static std::string make_cluster_coord_string(Coord coord);
 
 	static boost::shared_ptr<ClusterSession> get_cluster(Coord coord);
 	static void get_clusters_all(std::vector<std::pair<Coord, boost::shared_ptr<ClusterSession>>> &ret);
 	static void set_cluster(const boost::shared_ptr<ClusterSession> &cluster, Coord coord);
 	static void forced_reload_cluster(Coord coord);
 	static void synchronize_cluster(const boost::shared_ptr<ClusterSession> &cluster, Rectangle view) noexcept;
-
+    static void synchronize_account_map_object_all(AccountUuid account_uuid) noexcept;
 	// 出生点
 	// 限定在指定小地图内。
 	static boost::shared_ptr<Castle> place_castle_random_restricted(

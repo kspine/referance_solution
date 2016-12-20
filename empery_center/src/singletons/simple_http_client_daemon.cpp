@@ -5,6 +5,7 @@
 #include <poseidon/singletons/dns_daemon.hpp>
 #include <poseidon/sock_addr.hpp>
 #include <poseidon/http/client.hpp>
+
 #include <poseidon/http/status_codes.hpp>
 #include <poseidon/http/utilities.hpp>
 #include <poseidon/http/exception.hpp>

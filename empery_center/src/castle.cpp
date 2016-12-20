@@ -20,6 +20,8 @@
 #include "singletons/world_map.hpp"
 #include "buff_ids.hpp"
 
+#include "singletons/castle_offline_upgrade_building_base_map.hpp"
+
 namespace EmperyCenter {
 
 namespace {
@@ -81,6 +83,12 @@ namespace {
 		info.duration              = obj->get_duration();
 		info.time_begin            = obj->get_time_begin();
 		info.time_end              = obj->get_time_end();
+	}
+	void fill_tech_era_info(Castle::TechEraInfo &info, const boost::shared_ptr<MongoDb::Center_CastleTechEra> &obj){
+		PROFILE_ME;
+
+		info.tech_era              = obj->get_tech_era();
+		info.unlocked              = obj->get_unlocked();
 	}
 
 	void fill_building_message(Msg::SC_CastleBuildingBase &msg,
@@ -161,6 +169,20 @@ namespace {
 			msg.treatment_time_remaining = saturated_sub(obj->get_time_end(), utc_now);
 		}
 	}
+	void fill_tech_era_message(Msg::SC_CastleTechEra &msg, const boost::shared_ptr<MongoDb::Center_CastleTechEra> &obj){
+		PROFILE_ME;
+
+		msg.map_object_uuid       = obj->unlocked_get_map_object_uuid().to_string();
+		msg.tech_era              = obj->get_tech_era();
+		msg.unlocked              = obj->get_unlocked();
+	}
+	void fill_resource_battalion_unload_message(Msg::SC_CastleResourceBattalionUnload &msg, const boost::shared_ptr<MongoDb::Center_CastleResourceBattalionUnload> &obj){
+		PROFILE_ME;
+
+		msg.map_object_uuid        = obj->unlocked_get_map_object_uuid().to_string();
+		msg.resource_id            = obj->get_resource_id();
+		msg.count                  = obj->get_delta();
+	}
 
 	bool check_building_mission(const boost::shared_ptr<MongoDb::Center_CastleBuildingBase> &obj, std::uint64_t utc_now){
 		PROFILE_ME;
@@ -186,6 +208,7 @@ namespace {
 		case Castle::MIS_UPGRADE:
 			level = obj->get_building_level();
 			obj->set_building_level(level + 1);
+            CastleOfflineUpgradeBuildingBaseMap::make_insert(MapObjectUuid(obj->get_map_object_uuid()),obj->get_building_base_id());
 			break;
 
 		case Castle::MIS_DESTRUCT:
@@ -283,15 +306,14 @@ Castle::Castle(boost::shared_ptr<MongoDb::Center_MapObject> obj,
 	const std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalion>> &soldiers,
 	const std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalionProduction>> &soldier_production,
 	const std::vector<boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier>> &wounded_soldiers,
-	const std::vector<boost::shared_ptr<MongoDb::Center_CastleTreatment>> &treatment)
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleTreatment>> &treatment,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleTechEra>> &tech_eras,
+	const std::vector<boost::shared_ptr<MongoDb::Center_CastleResourceBattalionUnload>> &resources_battalion_unload)
 	: DefenseBuilding(std::move(obj), attributes, buffs, defense_objs)
 {
 	for(auto it = buildings.begin(); it != buildings.end(); ++it){
 		const auto &obj = *it;
 		m_buildings.emplace(BuildingBaseId(obj->get_building_base_id()), obj);
-		
-	  //LOG_EMPERY_CENTER_ERROR("BuildingId:",obj->get_building_id());
-
 	}
 	for(auto it = techs.begin(); it != techs.end(); ++it){
 		const auto &obj = *it;
@@ -321,6 +343,14 @@ Castle::Castle(boost::shared_ptr<MongoDb::Center_MapObject> obj,
 	for(auto it = treatment.begin(); it != treatment.end(); ++it){
 		const auto &obj = *it;
 		m_treatment.emplace(MapObjectTypeId(obj->get_map_object_type_id()), obj);
+	}
+	for(auto it = tech_eras.begin(); it != tech_eras.end(); ++it){
+		const auto &obj = *it;
+		m_tech_eras.emplace(obj->get_tech_era(), obj);
+	}
+	for(auto it = resources_battalion_unload.begin(); it != resources_battalion_unload.end(); ++it){
+		const auto &obj = *it;
+		m_resources_battalion_unload.emplace(ResourceId(obj->get_resource_id()), obj);
 	}
 }
 Castle::~Castle(){
@@ -1529,11 +1559,14 @@ ResourceId Castle::commit_resource_transaction_nothrow(const std::vector<Resourc
 	events.reserve(transaction.size());
 	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleResource>, std::uint64_t /* new_amount */> temp_result_map;
 	temp_result_map.reserve(transaction.size());
+	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleResourceBattalionUnload>, std::uint64_t /* new_amount */> temp_unload_map;
+	temp_unload_map.reserve(transaction.size());
 
 	const FlagGuard transaction_guard(m_locked_by_resource_transaction);
 
 	const auto map_object_uuid = get_map_object_uuid();
 	const auto owner_uuid = get_owner_uuid();
+	const auto utc_now = Poseidon::get_utc_time();
 
     for(auto tit = transaction.begin(); tit != transaction.end(); ++tit){
 		const auto operation    = tit->m_operation;
@@ -1580,6 +1613,24 @@ ResourceId Castle::commit_resource_transaction_nothrow(const std::vector<Resourc
 					", reason = ", reason, ", param1 = ", param1, ", param2 = ", param2, ", param3 = ", param3);
 				events.emplace_back(boost::make_shared<Events::CastleResourceChanged>(
 					map_object_uuid, owner_uuid, resource_id, old_amount, new_amount, reason, param1, param2, param3));
+				//累计部队卸载资源用于回城提示
+				if(reason == ReasonIds::ID_BATTALION_UNLOAD || reason == ReasonIds::ID_BATTALION_UNLOAD_CRATE){
+					boost::shared_ptr<MongoDb::Center_CastleResourceBattalionUnload> obj_battalion_unload;
+					const auto it_unload = m_resources_battalion_unload.find(resource_id);
+					if(it_unload == m_resources_battalion_unload.end()){
+						obj_battalion_unload = boost::make_shared<MongoDb::Center_CastleResourceBattalionUnload>(get_map_object_uuid().get(), resource_id.get(), 0, 0);
+						obj_battalion_unload->async_save(true);
+						m_resources_battalion_unload.emplace(resource_id, obj_battalion_unload);
+					} else {
+						obj_battalion_unload = it_unload->second;
+					}
+					auto temp_it_unload = temp_unload_map.find(obj_battalion_unload);
+					if(temp_it_unload == temp_unload_map.end()){
+						temp_it_unload = temp_unload_map.emplace_hint(temp_it_unload, obj_battalion_unload, obj_battalion_unload->get_delta());
+					}
+					const auto old_amount = temp_it_unload->second;
+					temp_it_unload->second = checked_add(old_amount, delta_amount);
+				}
 			}
 			break;
 
@@ -1637,6 +1688,10 @@ ResourceId Castle::commit_resource_transaction_nothrow(const std::vector<Resourc
 	for(auto it = temp_result_map.begin(); it != temp_result_map.end(); ++it){
 		it->first->set_amount(it->second);
 	}
+	for(auto it = temp_unload_map.begin(); it != temp_unload_map.end(); ++it){
+		it->first->set_delta(it->second);
+		it->first->set_updated_time(utc_now);
+	}
 	*withdrawn = false;
 
 	const auto session = PlayerSessionMap::get(get_owner_uuid());
@@ -1645,6 +1700,11 @@ ResourceId Castle::commit_resource_transaction_nothrow(const std::vector<Resourc
 			for(auto it = temp_result_map.begin(); it != temp_result_map.end(); ++it){
 				Msg::SC_CastleResource msg;
 				fill_resource_message(msg, it->first);
+				session->send(msg);
+			}
+			for(auto it = temp_unload_map.begin(); it != temp_unload_map.end(); ++it){
+				Msg::SC_CastleResourceBattalionUnload msg;
+				fill_resource_battalion_unload_message(msg, it->first);
 				session->send(msg);
 			}
 		} catch(std::exception &e){
@@ -2482,6 +2542,81 @@ void Castle::synchronize_treatment_with_player(const boost::shared_ptr<PlayerSes
 	session->send(msg);
 }
 
+Castle::TechEraInfo Castle::get_tech_era(unsigned tech_era) const {
+	PROFILE_ME;
+
+	TechEraInfo info = { };
+	info.tech_era = tech_era;
+
+	const auto it = m_tech_eras.find(tech_era);
+	if(it == m_tech_eras.end()){
+		return info;
+	}
+	fill_tech_era_info(info, it->second);
+	return info;
+}
+void Castle::get_tech_era_all(std::vector<Castle::TechEraInfo> &ret) const {
+	PROFILE_ME;
+
+	ret.reserve(ret.size() + m_tech_eras.size());
+	for(auto it = m_tech_eras.begin(); it != m_tech_eras.end(); ++it){
+		TechEraInfo info;
+		fill_tech_era_info(info, it->second);
+		ret.emplace_back(std::move(info));
+	}
+}
+void Castle::unlock_tech_era(unsigned tech_era){
+	PROFILE_ME;
+
+	auto it = m_tech_eras.find(tech_era);
+	if(it == m_tech_eras.end()){
+		auto obj = boost::make_shared<MongoDb::Center_CastleTechEra>(
+			get_map_object_uuid().get(), tech_era, false);
+		obj->async_save(true);
+		it = m_tech_eras.emplace(tech_era, std::move(obj)).first;
+	}
+	if(it->second->get_unlocked()){
+		LOG_EMPERY_CENTER_DEBUG("TechEra is already unlocked: map_object_uuid = ", get_map_object_uuid().get(),
+			", tech_era = ", tech_era);
+		return;
+	}
+
+	it->second->set_unlocked(true);
+
+	const auto session = PlayerSessionMap::get(get_owner_uuid());
+	if(session){
+		try {
+			Msg::SC_CastleTechEra msg;
+			fill_tech_era_message(msg, it->second);
+			session->send(msg);
+		} catch(std::exception &e){
+			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+			session->shutdown(e.what());
+		}
+	}
+}
+
+void Castle::reset_resource_battalion_unload(){
+	PROFILE_ME;
+
+	const auto utc_now = Poseidon::get_utc_time();
+	const auto session = PlayerSessionMap::get(get_owner_uuid());
+	if(session){
+		try {
+			for(auto it = m_resources_battalion_unload.begin(); it != m_resources_battalion_unload.end(); ++it){
+				Msg::SC_CastleResourceBattalionUnload msg;
+				it->second->set_delta(0);
+				it->second->set_updated_time(utc_now);
+				fill_resource_battalion_unload_message(msg, it->second);
+				session->send(msg);
+			}
+		} catch(std::exception &e){
+			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+			session->shutdown(e.what());
+		}
+	}
+}
+
 void Castle::synchronize_with_player(const boost::shared_ptr<PlayerSession> &session) const {
 	PROFILE_ME;
 
@@ -2520,6 +2655,16 @@ void Castle::synchronize_with_player(const boost::shared_ptr<PlayerSession> &ses
 	{
 		Msg::SC_CastleTreatment msg;
 		fill_treatment_message(msg, get_map_object_uuid(), m_treatment, utc_now);
+		session->send(msg);
+	}
+	for(auto it = m_tech_eras.begin(); it != m_tech_eras.end(); ++it){
+		Msg::SC_CastleTechEra msg;
+		fill_tech_era_message(msg, it->second);
+		session->send(msg);
+	}
+	for(auto it = m_resources_battalion_unload.begin(); it != m_resources_battalion_unload.end(); ++it){
+		Msg::SC_CastleResourceBattalionUnload msg;
+		fill_resource_battalion_unload_message(msg, it->second);
 		session->send(msg);
 	}
 }

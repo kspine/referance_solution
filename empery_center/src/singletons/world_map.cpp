@@ -37,7 +37,7 @@
 #include "controller_client.hpp"
 #include "../msg/st_map.hpp"
 #include "global_status.hpp"
-//#include "map_activity_accumulate_map.hpp"
+#include "map_activity_accumulate_map.hpp"
 #include "../attribute_ids.hpp"
 #include "../warehouse_building.hpp"
 
@@ -711,6 +711,8 @@ namespace EmperyCenter {
 			const auto soldier_production = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalionProduction>>>();
 			const auto wounded_soldiers = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier>>>();
 			const auto treatment = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_CastleTreatment>>>();
+      const auto tech_eras = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_CastleTechEra>>>();
+		  const auto resources_unload = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_CastleResourceBattalionUnload>>>();
 
 #define RELOAD_PART_(sink_, table_)	\
 		{	\
@@ -754,6 +756,8 @@ namespace EmperyCenter {
 					RELOAD_PART_(soldier_production, Center_CastleBattalionProduction)
 					RELOAD_PART_(wounded_soldiers, Center_CastleWoundedSoldier)
 					RELOAD_PART_(treatment, Center_CastleTreatment)
+          RELOAD_PART_(tech_eras,          Center_CastleTechEra)
+			    RELOAD_PART_(resources_unload,   Center_CastleResourceBattalionUnload)
 			case MapObjectTypeIds::ID_DEFENSE_TOWER.get():
 			case MapObjectTypeIds::ID_BATTLE_BUNKER.get():
 				RELOAD_PART_Ex(defense_objs, Center_DefenseBuilding)
@@ -761,6 +765,7 @@ namespace EmperyCenter {
 				RELOAD_PART_Ex(warehouse_objs, Center_WarehouseBuilding)
 			default:
 				RELOAD_PART_(attributes, Center_MapObjectAttribute)
+        RELOAD_PART_(buffs,              Center_MapObjectBuff)
 
 			}
 			//=============================================================================
@@ -777,7 +782,7 @@ namespace EmperyCenter {
 			switch (obj->get_map_object_type_id()) {
 			case MapObjectTypeIds::ID_CASTLE.get():
 				castle = boost::make_shared<Castle>(std::move(obj), *attributes, *buffs, *defense_objs,
-					*buildings, *techs, *resources, *soldiers, *soldier_production, *wounded_soldiers, *treatment);
+					*buildings, *techs, *resources, *soldiers, *soldier_production, *wounded_soldiers, *treatment, *tech_eras,*resources_unload);
 				castle->check_init_buildings();
 				castle->check_init_resources();
 				return std::move(castle);
@@ -1720,7 +1725,208 @@ namespace EmperyCenter {
 		return it->map_event_block;
 	}
 
-	
+	void WorldMap::get_cluster_map_event_blocks(Coord cluster_coord, std::vector<boost::shared_ptr<MapEventBlock>> &ret){
+	    PROFILE_ME;
+
+	    const auto map_event_block_map = g_map_event_block_map.lock();
+	    if(!map_event_block_map){
+		LOG_EMPERY_CENTER_WARNING("Map event block map not loaded.");
+		return;
+	    }
+	    ret.reserve(ret.size() + map_event_block_map->size());
+	    for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
+		auto temp_cluster_coord = WorldMap::get_cluster_scope(it->map_event_block->get_block_coord()).bottom_left();
+		if(temp_cluster_coord != cluster_coord){
+		    continue;
+		}
+		ret.emplace_back(it->map_event_block);
+	    }
+	}
+
+	boost::shared_ptr<MapEventBlock> WorldMap::require_map_event_block(Coord coord){
+	    PROFILE_ME;
+
+	    auto ret = get_map_event_block(coord);
+	    if(!ret){
+		LOG_EMPERY_CENTER_WARNING("Map event block not found: coord = ", coord);
+		DEBUG_THROW(Exception, sslit("Map event block map not found"));
+	    }
+	    return ret;
+	}
+	void WorldMap::insert_map_event_block(const boost::shared_ptr<MapEventBlock> &map_event_block){
+	    PROFILE_ME;
+
+	    const auto map_event_block_map = g_map_event_block_map.lock();
+	    if(!map_event_block_map){
+		LOG_EMPERY_CENTER_WARNING("Map event block map not loaded.");
+		DEBUG_THROW(Exception, sslit("Map event block map not loaded"));
+	    }
+
+	    const auto block_coord = map_event_block->get_block_coord();
+
+	    LOG_EMPERY_CENTER_TRACE("Inserting map event block: block_coord = ", block_coord);
+	    const auto result = map_event_block_map->insert(MapEventBlockElement(map_event_block));
+	    if(!result.second){
+		LOG_EMPERY_CENTER_WARNING("Map event block already exists: block_coord = ", block_coord);
+		DEBUG_THROW(Exception, sslit("Map event block already exists"));
+	    }
+	}
+
+
+	void WorldMap::update_map_event_block(const boost::shared_ptr<MapEventBlock> &map_event_block, bool throws_if_not_exists){
+	    PROFILE_ME;
+
+	    const auto map_event_block_map = g_map_event_block_map.lock();
+	    if(!map_event_block_map){
+		LOG_EMPERY_CENTER_WARNING("Map event block map not loaded.");
+		if(throws_if_not_exists){
+		    DEBUG_THROW(Exception, sslit("Map event block map not loaded"));
+		}
+		return;
+	    }
+
+	    const auto block_coord = map_event_block->get_block_coord();
+
+	    const auto it = map_event_block_map->find<0>(block_coord);
+	    if(it == map_event_block_map->end<0>()){
+		LOG_EMPERY_CENTER_WARNING("Map event block map not found: block_coord = ", block_coord);
+		if(throws_if_not_exists){
+		    DEBUG_THROW(Exception, sslit("Map event block map not found"));
+		}
+		return;
+	    }
+
+	    LOG_EMPERY_CENTER_DEBUG("Updating map event block: block_coord = ", block_coord);
+	    map_event_block_map->replace<0>(it, MapEventBlockElement(map_event_block));
+	}
+
+	void WorldMap::refresh_activity_event(unsigned map_event_type){
+	    PROFILE_ME;
+	    LOG_EMPERY_CENTER_TRACE("refresh activity event ");
+
+	    const auto map_event_block_map = g_map_event_block_map.lock();
+	    if(!map_event_block_map){
+		return;
+	    }
+
+	    for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
+		const auto &map_event_block = it->map_event_block;
+		map_event_block->refresh_events(false,map_event_type);
+	    }
+	}
+
+	void WorldMap::remove_activity_event(unsigned map_event_type){
+	    PROFILE_ME;
+	    LOG_EMPERY_CENTER_TRACE("Map event block remove activity" );
+
+	    const auto map_event_block_map = g_map_event_block_map.lock();
+	    if(!map_event_block_map){
+		return;
+	    }
+	    const auto utc_now = Poseidon::get_utc_time();
+	    for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
+		const auto &map_event_block = it->map_event_block;
+		map_event_block->remove_expired_events(utc_now,map_event_type,true);
+	    }
+	}
+
+	void WorldMap::refresh_world_activity_event(Coord cluster_coord,unsigned map_event_type){
+	    PROFILE_ME;
+	    LOG_EMPERY_CENTER_TRACE("refresh activity event ");
+
+	    const auto map_event_block_map = g_map_event_block_map.lock();
+	    if(!map_event_block_map){
+		return;
+	    }
+
+	    for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
+		const auto &map_event_block = it->map_event_block;
+		const auto &temp_cluster_coord = WorldMap::get_cluster_scope(map_event_block->get_block_coord()).bottom_left();
+		if(cluster_coord != temp_cluster_coord){
+		    continue;
+		}
+		map_event_block->refresh_events(false,map_event_type);
+	    }
+	}
+	void WorldMap::remove_world_activity_event(Coord cluster_coord, unsigned map_event_type){
+	    PROFILE_ME;
+	    LOG_EMPERY_CENTER_TRACE("Map event block remove activity" );
+
+	    const auto map_event_block_map = g_map_event_block_map.lock();
+	    if(!map_event_block_map){
+		return;
+	    }
+	    const auto utc_now = Poseidon::get_utc_time();
+	    for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
+		const auto &map_event_block = it->map_event_block;
+		const auto &temp_cluster_coord = WorldMap::get_cluster_scope(map_event_block->get_block_coord()).bottom_left();
+		if(cluster_coord != temp_cluster_coord){
+		    continue;
+		}
+		map_event_block->remove_expired_events(utc_now,map_event_type,true);
+	    }
+	}
+
+
+	void WorldMap::refresh_world_activity_boss(Coord cluster_coord,std::uint64_t since){
+	    PROFILE_ME;
+	    //先查一下有没有存在的boss，有则直接返回
+	    WorldActivityBossMap::WorldActivityBossInfo boss_info = WorldActivityBossMap::get(cluster_coord,since);
+	    if(boss_info.since == since){
+		return;
+	    }
+	    //不存在则直接开刷
+	    const auto map_event_block_map = g_map_event_block_map.lock();
+	    if(!map_event_block_map){
+		return;
+	    }
+	    const auto utc_now = Poseidon::get_utc_time();
+	    boost::shared_ptr<MapObject> boss;
+	    std::vector<boost::shared_ptr<MapEventBlock>> ret;
+	    WorldMap::get_cluster_map_event_blocks(cluster_coord,ret);
+	    std::sort(ret.begin(), ret.end(),
+		            [](const boost::shared_ptr<MapEventBlock> &lhs, const boost::shared_ptr<MapEventBlock> &rhs){
+		                return lhs->get_map_event_cicle_id() < rhs->get_map_event_cicle_id();
+		            });
+	    for(auto it = ret.begin(); it != ret.end(); ++it){
+		const auto &map_event_block = *it;
+		const auto &temp_cluster_coord = WorldMap::get_cluster_scope(map_event_block->get_block_coord()).bottom_left();
+		if(cluster_coord != temp_cluster_coord){
+		    continue;
+		}
+		boss = map_event_block->refresh_boss(utc_now);
+		if(boss){
+		    boss_info.cluster_coord = cluster_coord;
+		    boss_info.since         = since;
+		    boss_info.boss_uuid     = boss->get_map_object_uuid();
+		    boss_info.create_date   = utc_now;
+		    boss_info.delete_date   = 0;
+		    WorldActivityBossMap::update(boss_info);
+		    break;
+		}
+	    }
+	    if(!boss){
+		LOG_EMPERY_CENTER_FATAL("refresh world activity boss Failed,has no enough coord ????");
+	    }
+	}
+
+	void WorldMap::remove_world_activity_boss(Coord cluster_coord,std::uint64_t since){
+	    PROFILE_ME;
+
+	    WorldActivityBossMap::WorldActivityBossInfo boss_info = WorldActivityBossMap::get(cluster_coord,since);
+	    if(boss_info.since != since){
+		return;
+	    }
+	    const auto utc_now = Poseidon::get_utc_time();
+	    boost::shared_ptr<MapObject> monster_boss = WorldMap::get_map_object(boss_info.boss_uuid);
+	    if(monster_boss){
+		boss_info.delete_date = utc_now;
+		boss_info.hp_die = static_cast<std::uint64_t>(monster_boss->get_attribute(AttributeIds::ID_HP_TOTAL));
+		WorldActivityBossMap::update(boss_info);
+		monster_boss->delete_from_game();
+	    }
+	}
+
 	boost::shared_ptr<ResourceCrate> WorldMap::get_resource_crate(ResourceCrateUuid resource_crate_uuid) {
 		PROFILE_ME;
 
@@ -1980,12 +2186,6 @@ namespace EmperyCenter {
 	  return coord_string;
     }
 
-    bool WorldMap::check_primery_key_coord_uuid(std::uint64_t coord_x,std::uint64_t coord_y,std::string coord_uuid)
-    {
-       PROFILE_ME;
-
-       return (coord_uuid.compare(boost::lexical_cast<std::string>(coord_x) + "," + boost::lexical_cast<std::string>(coord_y)) == 0 ? true : false);
-    }
 
 	boost::shared_ptr<ClusterSession> WorldMap::get_cluster(Coord coord) {
 		PROFILE_ME;
@@ -2335,6 +2535,18 @@ LOG_EMPERY_CENTER_DEBUG("Load Center_MapEventBlock");
 		cluster->shutdown(e.what());
 	}
 
+
+    void WorldMap::synchronize_account_map_object_all(AccountUuid owner_uuid) noexcept{
+	       PROFILE_ME;
+		   std::vector<boost::shared_ptr<MapObject>> ret;
+		    WorldMap::get_map_objects_by_owner(ret,owner_uuid);
+		    for(auto it = ret.begin(); it != ret.end(); ++it){
+			  const auto &map_object = *it;
+			  const auto coord = map_object->get_coord();
+			  synchronize_map_object_all(map_object,coord,coord);
+			}
+	}
+
 	boost::shared_ptr<Castle> WorldMap::place_castle_random_restricted(
 		const boost::function<boost::shared_ptr<Castle>(Coord)> &factory, Coord coord_hint)
 	{
@@ -2495,28 +2707,29 @@ LOG_EMPERY_CENTER_DEBUG("Load Center_MapEventBlock");
 			GlobalStatus::set(GlobalStatus::SLOT_INIT_SERVER_X, std::move(x_str));
 			GlobalStatus::set(GlobalStatus::SLOT_INIT_SERVER_Y, std::move(y_str));
 
-			const auto cluster_coord = front_it->second;
-			LOG_EMPERY_CENTER_DEBUG("Selected cluster server: cluster_coord = ", cluster_coord);
-			it = std::find_if(clusters.begin(), clusters.end(), [&](decltype(clusters.front()) &pair) { return pair.first == cluster_coord; });
-			if (it != clusters.end()) {
-				goto _use_hint;
-			}
+		const auto cluster_coord = front_it->second;
+		LOG_EMPERY_CENTER_DEBUG("Selected cluster server: cluster_coord = ", cluster_coord);
+		it = std::find_if(clusters.begin(), clusters.end(), [&](decltype(clusters.front()) &pair){ return pair.first == cluster_coord; });
+		if(it != clusters.end()){
+			goto _use_hint;
 		}
-		LOG_EMPERY_CENTER_DEBUG("Number of cluster servers: ", clusters.size());
-
-		while (!clusters.empty()) {
-			it = clusters.begin() + static_cast<std::ptrdiff_t>(Poseidon::rand32(0, clusters.size()));
-		_use_hint:
-			const auto cluster_coord = it->first;
-			LOG_EMPERY_CENTER_DEBUG("Trying cluster server: cluster_coord = ", cluster_coord);
-			auto castle = place_castle_random_restricted(factory, cluster_coord);
-			if (castle) {
-				LOG_EMPERY_CENTER_INFO("Castle placed successfully: map_object_uuid = ", castle->get_map_object_uuid(),
-					", owner_uuid = ", castle->get_owner_uuid(), ", coord = ", castle->get_coord());
-				return std::move(castle);
-			}
-			clusters.erase(it);
-		}
-		return{};
 	}
+	LOG_EMPERY_CENTER_DEBUG("Number of cluster servers: ", clusters.size());
+
+	while(!clusters.empty()){
+		it = clusters.begin() + static_cast<std::ptrdiff_t>(Poseidon::rand32() % clusters.size());
+_use_hint:
+		const auto cluster_coord = it->first;
+		LOG_EMPERY_CENTER_DEBUG("Trying cluster server: cluster_coord = ", cluster_coord);
+		auto castle = place_castle_random_restricted(factory, cluster_coord);
+		if(castle){
+			LOG_EMPERY_CENTER_INFO("Castle placed successfully: map_object_uuid = ", castle->get_map_object_uuid(),
+				", owner_uuid = ", castle->get_owner_uuid(), ", coord = ", castle->get_coord());
+			return std::move(castle);
+		}
+		clusters.erase(it);
+	}
+	return { };
+}
+
 }

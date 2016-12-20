@@ -97,7 +97,22 @@ namespace MongoDb {
     FIELD_SIGNED            (legion_building_attribute_id)	\
     FIELD_STRING            (value)
 #include <poseidon/mongodb/object_generator.hpp>
-	}
+
+#define MONGODB_OBJECT_NAME   Center_LegionFinancial
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(financial_uuid);}
+#define MONGODB_OBJECT_FIELDS \
+    FIELD_UUID               (financial_uuid)  \
+    FIELD_UUID               (legion_uuid)  \
+    FIELD_UUID               (account_uuid)  \
+    FIELD_UNSIGNED           (item_id) \
+    FIELD_UNSIGNED           (old_count) \
+    FIELD_UNSIGNED           (new_count) \
+    FIELD_SIGNED             (delta_count) \
+    FIELD_UNSIGNED           (action_id)   \
+    FIELD_UNSIGNED           (action_count) \
+    FIELD_DATETIME           (created_time)
+#include <poseidon/mongodb/object_generator.hpp>
+}
 }
 
 #endif

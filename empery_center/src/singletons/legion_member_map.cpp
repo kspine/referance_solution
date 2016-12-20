@@ -28,7 +28,7 @@
 #include "../singletons/chat_box_map.hpp"
 #include "../chat_box.hpp"
 #include <poseidon/async_job.hpp>
-
+#include "../singletons/world_map.hpp"
 #include "../legion_log.hpp"
 
 namespace EmperyCenter {
@@ -759,6 +759,8 @@ void LegionMemberMap::check_in_waittime()
 	{
 		const auto &member = it->member;
 
+        const auto account_uuid = member->get_account_uuid();
+
 		// 查看member权限
 		bool bdelete = false;
 		// 根据account_uuid查找是否有军团
@@ -957,6 +959,7 @@ void LegionMemberMap::check_in_waittime()
 		{
 			// 如果需要清空
 			it = account_map->erase(it);
+			WorldMap::synchronize_account_map_object_all(account_uuid);
 		}
 		else
 		{

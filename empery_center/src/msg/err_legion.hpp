@@ -13,7 +13,8 @@ namespace Msg {
 		ERR_LEGION_CREATE_NOTENOUGH_MONEY               	= 73001,		// 创建资源不足
 		ERR_LEGION_CREATE_HOMONYM              				= 73002,		// 军团名已存在
 		ERR_LEGION_NOT_JOIN              					= 73003,		// 没有加入军团
-		ERR_LEGION_CANNOT_FIND             					= 73004,		// 没有找到军团
+		ERR_LEGION_CANNOT_FIND  
+		= 73004,		// 没有找到军团
 		ERR_LEGION_MEMBER_FULL            					= 73005,		// 军团人数已满
 		ERR_LEGION_ALREADY_APPLY            				= 73006,		// 已经申请过同军团
 		ERR_LEGION_NO_POWER            						= 73007,		// 没有相应权限
@@ -55,6 +56,8 @@ namespace Msg {
 		ERR_LEGION_OPEN_GRUBE_DESTRUCT						= 73043,		// 开启货仓时，因为处于击毁状态不能开启
 		ERR_LEGION_UPGRADE_GRUBE_LEFT						= 73044,		// 升级货仓时，货仓中有剩余资源，不可升级
 		ERR_LEGION_GATHER_IN_LEAVE_TIME						= 73045,		// 处于离开等待时，不能采集
+		ERR_LEGION_BUILDING_HARVEST_LIMITED                 = 73046,        // 军团货仓采集已达上限
+		ERR_LEGION_OPEN_CHAT                                                        = 73047,        // 已经解禁
 	};
 }
 

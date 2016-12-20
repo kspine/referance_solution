@@ -149,6 +149,7 @@ namespace EmperyCenter {
 
 				csv.get(elem.return_range, "return_range");
 				csv.get(elem.warfare, "warfare");
+				csv.get(elem.level,   "arm_level");
 
 				Poseidon::JsonObject object;
 				csv.get(object, "drop");
@@ -209,6 +210,8 @@ namespace EmperyCenter {
 				csv.get(elem.unique_id, "id");
 				csv.get(elem.collection_name, "name");
 				csv.get(elem.weight, "probability");
+
+				csv.get(elem.ntype, "type");
 
 				Poseidon::JsonObject object;
 				csv.get(object, "item");
@@ -484,7 +487,8 @@ namespace EmperyCenter {
 					LOG_EMPERY_CENTER_DEBUG("> Sum of weight is zero: collection_name = ", collection_name);
 					return{};
 				}
-				auto random_weight = Poseidon::rand_double(0, weight_total);
+
+ 				auto random_weight = Poseidon::rand_double(0, weight_total);
 				LOG_EMPERY_CENTER_DEBUG("> Generated a random weight: random_weight = ", random_weight, ", weight_total = ", weight_total);
 				for (auto it = range.first; it != range.second; ++it) {
 					random_weight -= it->weight;

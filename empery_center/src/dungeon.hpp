@@ -8,12 +8,15 @@
 #include "id_types.hpp"
 #include "coord.hpp"
 #include "rectangle.hpp"
+#include "player_session.hpp"
+#include "dungeon_session.hpp"
 
 namespace EmperyCenter {
 
 class DungeonObject;
 class PlayerSession;
 class DungeonSession;
+class DungeonBuff;
 
 class Dungeon : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 public:
@@ -45,7 +48,10 @@ private:
 	const boost::weak_ptr<DungeonSession> m_server;
 
 	AccountUuid m_founder_uuid;
+	std::uint64_t m_create_time;
 	std::uint64_t m_expiry_time;
+	std::uint64_t m_finish_count;
+	bool          m_begin;
 
 	struct Observer {
 		boost::weak_ptr<PlayerSession> session;
@@ -53,18 +59,47 @@ private:
 	};
 	boost::container::flat_map<AccountUuid, Observer> m_observers;
 	boost::container::flat_map<DungeonObjectUuid, boost::shared_ptr<DungeonObject>> m_objects;
-
+	boost::container::flat_map<Coord, boost::shared_ptr<DungeonBuff>>               m_dungeon_buffs;
 	Rectangle m_scope;
 	Suspension m_suspension = { };
 
 public:
 	Dungeon(DungeonUuid dungeon_uuid, DungeonTypeId dungeon_type_id, const boost::shared_ptr<DungeonSession> &server,
-		AccountUuid founder_uuid, std::uint64_t expiry_time);
+		AccountUuid founder_uuid,std::uint64_t create_time, std::uint64_t expiry_time,std::uint64_t finish_count);
 	~Dungeon();
 
 private:
-	void synchronize_with_all_observers(const boost::shared_ptr<DungeonObject> &dungeon_object) const noexcept;
-	void synchronize_with_dungeon_server(const boost::shared_ptr<DungeonObject> &dungeon_object) const noexcept;
+	template<typename T>
+	void synchronize_with_all_observers(const boost::shared_ptr<T> &dungeon_object) const noexcept{
+			PROFILE_ME;
+
+			for(auto it = m_observers.begin(); it != m_observers.end(); ++it){
+				const auto session = it->second.session.lock();
+				if(session){
+					try {
+						dungeon_object->synchronize_with_player(session);
+					} catch(std::exception &e){
+						LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+						session->shutdown(e.what());
+					}
+				}
+			}
+	}
+
+	template<typename T>
+	void synchronize_with_dungeon_server(const boost::shared_ptr<T> &dungeon_object) const noexcept{
+		PROFILE_ME;
+
+		const auto server = m_server.lock();
+		if(server){
+			try {
+				dungeon_object->synchronize_with_dungeon_server(server);
+			} catch(std::exception &e){
+				LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+				server->shutdown(e.what());
+			}
+		}
+	}
 
 public:
 	virtual void pump_status();
@@ -88,6 +123,16 @@ public:
 		return m_expiry_time;
 	}
 	void set_expiry_time(std::uint64_t expiry_time) noexcept;
+	
+	std::uint64_t get_create_time() const {
+		return m_create_time;
+	}
+	
+	bool is_begin() const {
+		return m_begin;
+	}
+
+	void set_begin(bool begin) noexcept;
 
 	Rectangle get_scope() const {
 		return m_scope;
@@ -114,11 +159,14 @@ public:
 	void broadcast_to_observers(const MessageT &msg){
 		broadcast_to_observers(MessageT::ID, Poseidon::StreamBuffer(msg));
 	}
-
 	boost::shared_ptr<DungeonObject> get_object(DungeonObjectUuid dungeon_object_uuid) const;
 	void get_objects_all(std::vector<boost::shared_ptr<DungeonObject>> &ret) const;
 	void insert_object(const boost::shared_ptr<DungeonObject> &dungeon_object);
 	void update_object(const boost::shared_ptr<DungeonObject> &dungeon_object, bool throws_if_not_exists = true);
+
+	boost::shared_ptr<DungeonBuff> get_dungeon_buff(Coord coord);
+	void insert_dungeon_buff(const boost::shared_ptr<DungeonBuff> &dungeon_buff);
+	void update_dungeon_buff(const boost::shared_ptr<DungeonBuff> &dungeon_buff, bool throws_if_not_exists = true);
 
 	bool is_virtually_removed() const;
 	void synchronize_with_player(const boost::shared_ptr<PlayerSession> &session) const;

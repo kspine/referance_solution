@@ -18,7 +18,8 @@ namespace EmperyCenter {
 			ID_DESTROY_MONSTERS(9), // 消灭野怪战斗力ID
 			ID_DESTROY_SOLDIERS(10), //消灭士兵战斗力ID
 			ID_CHARGE_DIAMOND(11), //充值钻石ID
-			ID_LEGION_DONATE(12); // 军团捐献 单位数      -               -
+			ID_LEGION_DONATE(12), // 军团捐献 单位数
+			ID_DUNGEON_CLEARANCE(13);
 	}
 
 	namespace TaskLegionPackageKeyIds {
@@ -37,6 +38,16 @@ namespace EmperyCenter {
 			ID_WIPE_OUT_MONSTERS(5710003),
 			ID_WIPE_OUT_SOLIDERS(5710004),
 			ID_LEGION_DONATE(5710006);
+	}
+	namespace TaskDungeonClearanceIds{
+	   constexpr TaskDungeonClearanceId
+	        ID_DUNGEON_CLEARANCE_LV1(3400001),
+	        ID_DUNGEON_CLEARANCE_LV2(3400002),
+	        ID_DUNGEON_CLEARANCE_LV3(3400003),
+	        ID_DUNGEON_CLEARANCE_LV4(3400004),
+	        ID_DUNGEON_CLEARANCE_LV5(3400005),
+	        ID_DUNGEON_CLEARANCE_LV6(3400006);
+
 	}
 }
 

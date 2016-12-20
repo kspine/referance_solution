@@ -50,6 +50,9 @@
 
 #include "../legion_log.hpp"
 
+
+#include "../singletons/legion_financial_map.hpp"
+
 namespace EmperyCenter {
 
 PLAYER_SERVLET(Msg::CS_LegionCreateReqMessage, account, session, req){
@@ -163,6 +166,12 @@ PLAYER_SERVLET(Msg::CS_LegionCreateReqMessage, account, session, req){
 			LOG_EMPERY_CENTER_INFO("CS_LegionCreateReqMessage count:", count);
 
 			legion->synchronize_with_player(account_uuid,session);
+            
+			// 如果还请求加入过其他军团，也需要做善后操作，删除其他所有加入请求
+			LegionApplyJoinMap::deleteInfo(LegionUuid(legion->get_legion_uuid()),account_uuid,true);
+
+			// 别人邀请加入的也要清空
+			LegionInviteJoinMap::deleteInfo_by_invited_uuid(account_uuid);
 		});
 
 		if(insuff_item_id)
@@ -1733,6 +1742,17 @@ PLAYER_SERVLET(Msg::CS_banChatLegionReqMessage, account, session, req)
 				{
 					return Response(Msg::ERR_LEGION_NO_POWER);
 				}
+
+                                if(othermember->get_attribute(LegionMemberAttributeIds::ID_SPEAKFLAG) == "1" )
+				{
+					return Response(Msg::ERR_LEGION_BAN_CHAT);
+				}
+
+                                if(othermember->get_attribute(LegionMemberAttributeIds::ID_SPEAKFLAG) == "0" )
+				{
+					return Response(Msg::ERR_LEGION_OPEN_CHAT);
+				}
+				
 				const auto titleid= boost::lexical_cast<uint>(othermember->get_attribute(LegionMemberAttributeIds::ID_TITLEID));
 				if( titleid > boost::lexical_cast<uint>(member->get_attribute(LegionMemberAttributeIds::ID_TITLEID)))
 				{
@@ -2094,10 +2114,14 @@ PLAYER_SERVLET(Msg::CS_LegionDonateMessage, account, session, req)
 						[&]{
 							// 修改军团资金
 							LOG_EMPERY_CENTER_ERROR("军团资金 捐献前  ===========",legion->get_attribute(LegionAttributeIds::ID_MONEY));
+                            auto  old_count = boost::lexical_cast<std::uint64_t>(legion->get_attribute(LegionAttributeIds::ID_MONEY));
+
 							boost::container::flat_map<LegionAttributeId, std::string> Attributes;
 							const auto old_money = boost::lexical_cast<uint64_t>(legion->get_attribute(LegionAttributeIds::ID_MONEY));
 							const auto money = boost::lexical_cast<std::string>(std::ceil(old_money + req.num * 100 / dvalue * lvalue));
 							Attributes[LegionAttributeIds::ID_MONEY] = money;
+
+							auto new_count = boost::lexical_cast<std::uint64_t>(money);
 							LOG_EMPERY_CENTER_ERROR("军团资金 捐献后  ===========",money);
 							legion->set_attributes(Attributes);								
 							LegionLog::LegionMoneyTrace(member->get_legion_uuid(),old_money,boost::lexical_cast<std::uint64_t>(money),ReasonIds::ID_DOANTE_LEGION, 0, 0, static_cast<std::uint64_t>(req.num * 100));
@@ -2116,6 +2140,8 @@ PLAYER_SERVLET(Msg::CS_LegionDonateMessage, account, session, req)
 								// 修改军团成员个人贡献
 								LOG_EMPERY_CENTER_ERROR("CS_LegionDonateMessage  之前个人贡献 ===========",member->get_attribute(LegionMemberAttributeIds::ID_DONATE));
 
+                                auto  old_action_count = boost::lexical_cast<std::uint64_t>(member->get_attribute(LegionMemberAttributeIds::ID_DONATE));
+
 								boost::container::flat_map<LegionMemberAttributeId, std::string> Attributes1;
 
 								auto strdotan = std::ceil(boost::lexical_cast<uint64_t>(member->get_attribute(LegionMemberAttributeIds::ID_DONATE)) + req.num * 100  / dvalue * mvalue);
@@ -2123,6 +2149,9 @@ PLAYER_SERVLET(Msg::CS_LegionDonateMessage, account, session, req)
 									strdotan = Data::Global::as_double(Data::Global::SLOT_LEGION_WEEK_DONATE_DIAMOND_LIMIT) / 100;
 
 								Attributes1[LegionMemberAttributeIds::ID_DONATE] = boost::lexical_cast<std::string>(std::ceil(strdotan));
+
+								//统计当前捐献数量
+								auto  action_count = strdotan -  old_action_count;
 
 								LOG_EMPERY_CENTER_ERROR("CS_LegionDonateMessage  捐献后个人贡献 ===========",strdotan);
 				//				Attributes1[LegionMemberAttributeIds::ID_DONATE] = boost::lexical_cast<std::string>(boost::lexical_cast<uint64_t>(member->get_attribute(LegionMemberAttributeIds::ID_DONATE)) + req.num / dvalue * mvalue);
@@ -2132,6 +2161,11 @@ PLAYER_SERVLET(Msg::CS_LegionDonateMessage, account, session, req)
 								member->set_attributes(std::move(Attributes1));
 								const auto new_donate = boost::lexical_cast<uint64_t>(member->get_attribute(LegionMemberAttributeIds::ID_DONATE));
 								LegionLog::LegionPersonalDonateTrace(account_uuid,old_donate,new_donate,ReasonIds::ID_DOANTE_LEGION, 0, 0, static_cast<std::uint64_t>(req.num * 100));
+
+								//军团资金账本记录
+								LegionFinancialMap::make_insert(LegionUuid(member->get_legion_uuid()),account_uuid, ItemId(5500001),
+								                             old_count,new_count,static_cast<std::int64_t>(new_count - old_count),
+								                             0,action_count, Poseidon::get_utc_time());
 							}
 
 
@@ -2149,6 +2183,7 @@ PLAYER_SERVLET(Msg::CS_LegionDonateMessage, account, session, req)
 									auto donate = req.num * 100 / dvalue * mvalue;
 									const auto legion_uuid = LegionUuid(member->get_legion_uuid());
 									const auto legion_task_box = LegionTaskBoxMap::require(legion_uuid);
+									LOG_EMPERY_CENTER_FATAL("LEGION DONATE ORIGIN donate:",donate);
 									legion_task_box->check(TaskTypeIds::ID_LEGION_DONATE, TaskLegionKeyIds::ID_LEGION_DONATE,donate,account_uuid, 0, 0);
 									legion_task_box->pump_status();
 
@@ -2437,6 +2472,196 @@ PLAYER_SERVLET(Msg::CS_LegionContribution, account, session, req){
 		return Response(Msg::ERR_LEGION_NOT_JOIN);
 	}
 	return Response();
+}
+
+PLAYER_SERVLET(Msg::CS_ModifyLegionNameReqMessage, account, session, req){
+	PROFILE_ME;
+
+	const auto name     	= 	req.name;
+
+	const auto account_uuid = account->get_account_uuid();
+
+	const auto member = LegionMemberMap::get_by_account_uuid(account_uuid);
+	if(!member)
+	{
+		return Response(Msg::ERR_LEGION_NOT_JOIN);
+	}
+	const auto legion = LegionMap::get(LegionUuid(member->get_legion_uuid()));
+	if(!legion)
+	{
+	    return Response(Msg::ERR_LEGION_CANNOT_FIND);
+	}
+
+    if(!Data::LegionCorpsPower::is_have_power(LegionCorpsPowerId(boost::lexical_cast<uint32_t>(member->get_attribute(LegionMemberAttributeIds::ID_TITLEID))),
+                                             Legion::LEGION_POWER::LEGION_POWER_MODIFY))
+    {
+        return Response(Msg::ERR_LEGION_NO_POWER);
+    }
+
+    std::vector<boost::shared_ptr<Legion>> other_legiones;
+	  LegionMap::get_by_nick(other_legiones,std::move(name));
+	  if(!other_legiones.empty())
+	  {
+		   return Response(Msg::ERR_LEGION_CREATE_HOMONYM);
+	  }
+   const auto  item_box = ItemBoxMap::require(account_uuid);
+   std::vector<ItemTransactionElement> transaction;
+   const auto& info = Data::Global::as_object(Data::Global::SLOT_LEGION_MODIFY_NAME);
+   for(auto it = info.begin(); it != info.end(); ++it)
+   {
+	  if(std::string(it->first.get()) != boost::lexical_cast<std::string>(ItemIds::ID_DIAMONDS))
+	  {
+	     return Response(Msg::ERR_LEGION_CREATE_NOTENOUGH_MONEY);
+	  }
+
+      auto count = boost::lexical_cast<std::uint64_t>(it->second.get<double>()); 
+	  if(item_box->get(ItemIds::ID_DIAMONDS).count <  count)
+      {
+  		 return Response(Msg::ERR_LEGION_CREATE_NOTENOUGH_MONEY);
+      }
+	  transaction.emplace_back(ItemTransactionElement::OP_REMOVE, ItemIds::ID_DIAMONDS, count,ReasonIds::ID_MODIFY_LEGION, 0, 0, count);
+   }
+
+    item_box->commit_transaction(transaction, false);
+
+    legion->set_nick(name);
+
+    Msg::SC_LegionNoticeMsg msg;
+    msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_TYPE_MODIFY;
+    msg.nick = account->get_nick();
+    msg.ext1 = name;
+    legion->sendNoticeMsg(msg);
+
+   return Response(Msg::ST_OK);
+}
+
+PLAYER_SERVLET(Msg::CS_ModifyLegionIconReqMessage, account, session, req){
+	PROFILE_ME;
+
+	const auto icon = req.icon;
+
+	const auto account_uuid = account->get_account_uuid();
+
+	const auto member = LegionMemberMap::get_by_account_uuid(account_uuid);
+	if(!member)
+	{
+		return Response(Msg::ERR_LEGION_NOT_JOIN);
+	}
+	const auto legion = LegionMap::get(LegionUuid(member->get_legion_uuid()));
+	if(!legion)
+	{
+	    return Response(Msg::ERR_LEGION_CANNOT_FIND);
+	}
+
+    if(!Data::LegionCorpsPower::is_have_power(LegionCorpsPowerId(boost::lexical_cast<uint32_t>(member->get_attribute(LegionMemberAttributeIds::ID_TITLEID))),
+                                             Legion::LEGION_POWER::LEGION_POWER_MODIFY))
+    {
+        return Response(Msg::ERR_LEGION_NO_POWER);
+    }
+
+   const auto  item_box = ItemBoxMap::require(account_uuid);
+   std::vector<ItemTransactionElement> transaction;
+   const auto& info = Data::Global::as_object(Data::Global::SLOT_LEGION_MODIFY_ICON);
+   for(auto it = info.begin(); it != info.end(); ++it)
+   {
+	 if(std::string(it->first.get()) != boost::lexical_cast<std::string>(ItemIds::ID_DIAMONDS))
+	 {
+	       return Response(Msg::ERR_LEGION_CREATE_NOTENOUGH_MONEY);
+	 }
+     auto count = boost::lexical_cast<std::uint64_t>(it->second.get<double>()); 
+	 if(item_box->get(ItemIds::ID_DIAMONDS).count <  count)
+     {
+		   return Response(Msg::ERR_LEGION_CREATE_NOTENOUGH_MONEY);
+     }
+     transaction.emplace_back(ItemTransactionElement::OP_REMOVE, ItemIds::ID_DIAMONDS, count,ReasonIds::ID_MODIFY_LEGION, 0, 0, count);
+   }
+
+   item_box->commit_transaction(transaction, false);
+
+   boost::container::flat_map<LegionAttributeId, std::string> Attributes;
+   Attributes[LegionAttributeIds::ID_ICON] = std::move(boost::lexical_cast<std::string>(icon));
+   legion->set_attributes(Attributes);
+
+   Msg::SC_LegionNoticeMsg msg;
+   msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_TYPE_MODIFY;
+   msg.nick = account->get_nick();
+   msg.ext1 = icon;
+   legion->sendNoticeMsg(msg);
+
+   return Response(Msg::ST_OK);
+}
+
+PLAYER_SERVLET(Msg::CS_ModifyLegionLanguageReqMessage, account, session, req){
+	PROFILE_ME;
+
+	const auto language 	= 	req.language;
+
+	const auto account_uuid = account->get_account_uuid();
+
+	const auto member = LegionMemberMap::get_by_account_uuid(account_uuid);
+	if(!member)
+	{
+		return Response(Msg::ERR_LEGION_NOT_JOIN);
+	}
+	const auto legion = LegionMap::get(LegionUuid(member->get_legion_uuid()));
+	if(!legion)
+	{
+	    return Response(Msg::ERR_LEGION_CANNOT_FIND);
+	}
+    if(!Data::LegionCorpsPower::is_have_power(LegionCorpsPowerId(boost::lexical_cast<uint32_t>(member->get_attribute(LegionMemberAttributeIds::ID_TITLEID))),
+                                             Legion::LEGION_POWER::LEGION_POWER_MODIFY))
+    {
+        return Response(Msg::ERR_LEGION_NO_POWER);
+    }
+
+    boost::container::flat_map<LegionAttributeId, std::string> Attributes;
+    Attributes[LegionAttributeIds::ID_LANAGE] = std::move(boost::lexical_cast<std::string>(language));
+    legion->set_attributes(Attributes);
+
+    Msg::SC_LegionNoticeMsg msg;
+    msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_TYPE_MODIFY;
+    msg.nick = account->get_nick();
+    msg.ext1 = language;
+    legion->sendNoticeMsg(msg);
+
+    return Response(Msg::ST_OK);
+}
+
+
+PLAYER_SERVLET(Msg::CS_ModifyLegionSwitchStatusReqMessage, account, session, req){
+	PROFILE_ME;
+
+	const auto switchstatus = 	req.switchstatus;
+
+	const auto account_uuid = account->get_account_uuid();
+
+	const auto member = LegionMemberMap::get_by_account_uuid(account_uuid);
+	if(!member)
+	{
+		return Response(Msg::ERR_LEGION_NOT_JOIN);
+	}
+	const auto legion = LegionMap::get(LegionUuid(member->get_legion_uuid()));
+	if(!legion)
+	{
+	    return Response(Msg::ERR_LEGION_CANNOT_FIND);
+	}
+
+    if(!Data::LegionCorpsPower::is_have_power(LegionCorpsPowerId(boost::lexical_cast<uint32_t>(member->get_attribute(LegionMemberAttributeIds::ID_TITLEID))),
+                                             Legion::LEGION_POWER::LEGION_POWER_MODIFY))
+    {
+        return Response(Msg::ERR_LEGION_NO_POWER);
+    }
+    boost::container::flat_map<LegionAttributeId, std::string> Attributes;
+    Attributes[LegionAttributeIds::ID_AUTOJOIN] = std::move(boost::lexical_cast<std::string>(switchstatus));
+    legion->set_attributes(Attributes);
+
+    Msg::SC_LegionNoticeMsg msg;
+    msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_TYPE_MODIFY;
+    msg.nick = account->get_nick();
+    msg.ext1 = boost::lexical_cast<std::string>(switchstatus);
+    legion->sendNoticeMsg(msg);
+
+    return Response(Msg::ST_OK);
 }
 
 }

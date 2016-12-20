@@ -236,6 +236,13 @@ namespace IdTypes {
 	using LegionTaskContributionId  = GenericId<std::uint32_t, 120036>;
 	using TaskLegionKeyId           = GenericId<std::uint32_t, 120037>;
 	using TaskLegionPackageKeyId    = GenericId<std::uint32_t, 120038>;
+	using DungeonTrapTypeId         = GenericId<std::uint32_t, 120039>;
+	using DungeonBuffTypeId         = GenericId<std::uint32_t, 120040>;
+	using NoviceGuideStepId         = GenericId<std::uint32_t, 120041>;
+	using DungeonMonsterSkillId     = GenericId<std::uint32_t, 120042>;
+    using CaptainAttributeId		= GenericId<std::uint32_t, 120043>;
+	using CaptainItemAttributeId	= GenericId<std::uint32_t, 120044>;
+	using TaskDungeonClearanceId    = GenericId<std::uint32_t, 120045>;
 
 	using AccountUuid               = GenericUuid<210001>;
 	using MapObjectUuid             = GenericUuid<210002>;
@@ -244,13 +251,17 @@ namespace IdTypes {
 	using AnnouncementUuid          = GenericUuid<210005>;
 	using ResourceCrateUuid         = GenericUuid<210006>;
 	using DungeonUuid               = GenericUuid<210007>;
-	using HornMessageUuid  			= GenericUuid<210008>;
+	using HornMessageUuid  		    = GenericUuid<210008>;
 	using DungeonObjectUuid         = GenericUuid<210009>;
     using VoiceUuid                 = GenericUuid<210010>;
 	using LegionUuid  				= GenericUuid<210011>;
 	using LegionBuildingUuid  		= GenericUuid<210012>;
 	using LegionPackageShareUuid    = GenericUuid<210013>;
 	using LeagueUuid                = GenericUuid<210014>;
+	using LegionFinancialUuid       = GenericUuid<210015>;
+	using FriendPrivateMsgUuid      = GenericUuid<210016>;
+    using CaptainUuid			    = GenericUuid<210017>;
+	using CaptainItemUuid			= GenericUuid<210018>;
 }
 
 using namespace IdTypes;

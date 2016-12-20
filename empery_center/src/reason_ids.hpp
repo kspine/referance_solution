@@ -40,6 +40,7 @@ constexpr ReasonId
 	ID_CASTLE_CAPTURED               ( 672028 ), // 0                   0                   0
 	ID_BATTALION_UNLOAD_CRATE        ( 672029 ), // 部队 UUID 高位      0                   0
 	ID_SOLDIER_HEALED                ( 672030 ), // 0                   0                   0
+	ID_LAYOFFS_BATTALION             ( 672031 ), // 城堡 UUID 高位      部队 UUID 高位      0
 
 	ID_INIT_ITEMS                    ( 673001 ), // 初始数量            0                   0
 	ID_AUTO_INCREMENT                ( 673002 ), // 自增长类型          自增长偏移          0
@@ -65,6 +66,11 @@ constexpr ReasonId
 	ID_CREATE_LEAGUE                 ( 673022 ), //创建联盟 0                    道具 ID             扣除数量
 	ID_CREATE_LEAGUE_FAIL            ( 673023 ), //创建联盟失败 0                道具 ID             扣除数量
 	ID_EXPAND_LEAGUE                 ( 673024 ), //扩展联盟 0                    道具 ID             扣除数量
+	ID_EXPAND_CAPTAIN_LEVEL			 ( 673025 ), //升级将领 0                    道具 ID             扣除数量
+	ID_EXPAND_CAPTAIN_STARLEVEL      ( 673026 ), //升级将领星级 0                道具 ID             扣除数量
+	ID_EXPAND_CAPTAIN_QUALITYLEVEL   ( 673027 ), //升级将领品质 0                道具 ID             扣除数量
+	ID_EXPAND_CAPTAIN_RESOLVE_EQUIP  ( 673028 ), //拆解将领道具 0                道具 ID             扣除数量
+	ID_EXPAND_CREATE_CAPTAIN		 ( 673029 ), //生成将领     0                道具 ID             扣除数量
 
 	ID_MAP_CELL_PURCHASE             ( 674001 ), // 世界坐标 X          世界坐标 Y          0
 	ID_MAP_CELL_UPGRADE              ( 674002 ), // 世界坐标 X          世界坐标 Y          0
@@ -103,7 +109,14 @@ constexpr ReasonId
 	ID_LEGION_UPGRADE                ( 675005 ),//  军团UUID 高位        等级               0
 	ID_LEGION_REPAIR_GRUBE           ( 675006 ),//  矿井UUID 高位        0                  0
 	ID_LEGION_USE_DONATE_ITEM        ( 675007 ),//  道具 ID              道具数量           0
-	ID_LEGION_EXCHANGE_ITEM          ( 675008 );//  0                    0                  0
+	ID_LEGION_EXCHANGE_ITEM          ( 675008 ),//  0                    0                  0
+	ID_NEW_GUIDE_CREATE_SOLIDER      ( 675009 ),//  0                    0                  0
+	ID_NOVICE_GUIDE_ADD_ITEM         ( 675010 ),
+	ID_NOVICE_GUIDE_ADD_RESOURCE     ( 675011 ),
+	ID_NOVICE_GUIDE_ADD_ARM          ( 675012 ),
+	ID_MODIFY_LEGION                 ( 675013 ),
+	ID_MODIFY_LEAGUE                 ( 675014 ),
+	ID_LEGION_BUILDING_HARVESTED_COUNTS_ITEM(675015);
 }
 
 }

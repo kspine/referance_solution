@@ -56,6 +56,7 @@ public:
 		LEGION_POWER_GRADEDOWN 		= 22,	// 可被降级
 		LEGION_POWER_LEAGUE_INVITE 	= 23,	// 可以处理邀请加入军团
 		LEGION_POWER_DEMOLISH_MINE 	= 24,	// 拆除军团矿井
+		LEGION_POWER_MODIFY         = 25,   //军团修改
 	};
 
 	enum LEGION_NOTICE_MSG_TYPE
@@ -75,6 +76,8 @@ public:
 		LEGION_NOTICE_MSG_CREATE_SUCCESS  	    = 13,	// 创建成功
 		LEGION_NOTICE_MSG_MINE_STATUS_CHANGE 	= 14,	// 货仓变动
 		LEGION_NOTICE_MSG_MEMBER_STATUS_CHANGE 	= 15,	// 军团成员信息有更新
+		LEGION_NOTICE_MSG_TYPE_MODIFY           = 16,   // 军团修改通知
+		LEGION_NOTICE_MSG_TYPE_USE_PERSONAL_DONATE_ITEM  = 17, //使用跟人贡献道具
 	};
 public:
 
@@ -145,6 +148,7 @@ public:
 
 
 	void synchronize_with_player(AccountUuid account_uuid,const boost::shared_ptr<PlayerSession> &session) const;
+	void synchronize_with_other_player(AccountUuid account_uuid,const boost::shared_ptr<PlayerSession> &session) const;
 	void broadcast_to_members(std::uint16_t message_id, const Poseidon::StreamBuffer &payload);
 	template<class MessageT>
 	void broadcast_to_members(const MessageT &msg){

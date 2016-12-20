@@ -7,6 +7,9 @@
 #include "player_session.hpp"
 #include "msg/sc_dungeon.hpp"
 #include "src/dungeon_object.hpp"
+#include "dungeon_buff.hpp"
+#include <poseidon/singletons/job_dispatcher.hpp>
+#include "events/dungeon.hpp"
 
 namespace EmperyCenter {
 
@@ -33,15 +36,18 @@ namespace {
 }
 
 Dungeon::Dungeon(DungeonUuid dungeon_uuid, DungeonTypeId dungeon_type_id, const boost::shared_ptr<DungeonSession> &server,
-	AccountUuid founder_uuid, std::uint64_t expiry_time)
+	AccountUuid founder_uuid, std::uint64_t create_time, std::uint64_t expiry_time,std::uint64_t finish_count)
 	: m_dungeon_uuid(dungeon_uuid), m_dungeon_type_id(dungeon_type_id), m_server(server)
-	, m_founder_uuid(founder_uuid), m_expiry_time(expiry_time)
+	, m_founder_uuid(founder_uuid), m_create_time(create_time), m_expiry_time(expiry_time)
+	, m_finish_count(finish_count), m_begin(false)
 {
 	try {
 		Msg::SD_DungeonCreate msg;
 		msg.dungeon_uuid    = get_dungeon_uuid().str();
 		msg.dungeon_type_id = get_dungeon_type_id().get();
 		msg.founder_uuid    = get_founder_uuid().str();
+		msg.finish_count    = m_finish_count;
+		msg.expiry_time     = m_expiry_time;
 		server->send(msg);
 	} catch(std::exception &e){
 		LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
@@ -60,10 +66,14 @@ Dungeon::~Dungeon(){
 			server->shutdown(e.what());
 		}
 	}
-
 	clear_observers(Q_DUNGEON_EXPIRED, "");
+	/*
+	auto event = boost::make_shared<Events::DungeonDeleted>(get_founder_uuid(),get_dungeon_type_id());
+	Poseidon::async_raise_event(event);
+	*/
 }
 
+/*
 void Dungeon::synchronize_with_all_observers(const boost::shared_ptr<DungeonObject> &dungeon_object) const noexcept {
 	PROFILE_ME;
 
@@ -92,6 +102,7 @@ void Dungeon::synchronize_with_dungeon_server(const boost::shared_ptr<DungeonObj
 		}
 	}
 }
+*/
 
 void Dungeon::pump_status(){
 	PROFILE_ME;
@@ -113,6 +124,12 @@ void Dungeon::set_expiry_time(std::uint64_t expiry_time) noexcept {
 	m_expiry_time = expiry_time;
 
 	DungeonMap::update(virtual_shared_from_this<Dungeon>(), false);
+}
+
+void Dungeon::set_begin(bool begin) noexcept{
+	PROFILE_ME;
+
+	m_begin = begin;
 }
 
 void Dungeon::set_scope(Rectangle scope){
@@ -377,6 +394,77 @@ void Dungeon::update_object(const boost::shared_ptr<DungeonObject> &dungeon_obje
 	synchronize_with_dungeon_server(dungeon_object);
 }
 
+boost::shared_ptr<DungeonBuff> Dungeon::get_dungeon_buff(Coord coord){
+	PROFILE_ME;
+
+	const auto it = m_dungeon_buffs.find(coord);
+	if(it == m_dungeon_buffs.end()){
+		LOG_EMPERY_CENTER_DEBUG("Dungeon buff not found: coord = ", coord);
+		return { };
+	}
+	return it->second;
+}
+void Dungeon::insert_dungeon_buff(const boost::shared_ptr<DungeonBuff> &dungeon_buff){
+	PROFILE_ME;
+
+	const auto dungeon_uuid = get_dungeon_uuid();
+	if(dungeon_buff->get_dungeon_uuid() != dungeon_uuid){
+		LOG_EMPERY_CENTER_WARNING("This dungeon buff does not belong to this dungeon!");
+		DEBUG_THROW(Exception, sslit("This dungeon buff does not belong to this dungeon"));
+	}
+
+	const auto coord = dungeon_buff->get_coord();
+
+	if(dungeon_buff->is_virtually_removed()){
+		LOG_EMPERY_CENTER_WARNING("Dungeon buff has been marked as deleted: coord = ", coord);
+		DEBUG_THROW(Exception, sslit("Dongeon buff has been marked as deleted"));
+	}
+
+	LOG_EMPERY_CENTER_DEBUG("Inserting dungeon buff: coord = ", coord, ", dungeon_uuid = ", dungeon_uuid);
+	const auto result = m_dungeon_buffs.emplace(coord, dungeon_buff);
+	if(!result.second){
+		LOG_EMPERY_CENTER_WARNING("Dungeon buff already exists: coord = ", coord, ", dungeon_uuid = ", dungeon_uuid);
+		DEBUG_THROW(Exception, sslit("Dungeon buff already exists"));
+	}
+
+	synchronize_with_all_observers(dungeon_buff);
+	synchronize_with_dungeon_server(dungeon_buff);
+}
+void Dungeon::update_dungeon_buff(const boost::shared_ptr<DungeonBuff> &dungeon_buff, bool throws_if_not_exists){
+	PROFILE_ME;
+
+	const auto dungeon_uuid = get_dungeon_uuid();
+	if(dungeon_buff->get_dungeon_uuid() != dungeon_uuid){
+		LOG_EMPERY_CENTER_WARNING("This dungeon buff does not belong to this dungeon!");
+		if(throws_if_not_exists){
+			DEBUG_THROW(Exception, sslit("This dungeon buff does not belong to this dungeon"));
+		}
+		return;
+	}
+
+	const auto coord = dungeon_buff->get_coord();
+
+	const auto it = m_dungeon_buffs.find(coord);
+	if(it == m_dungeon_buffs.end()){
+		LOG_EMPERY_CENTER_TRACE("Dungeon buff not found: coord = ", coord, ", dungeon_uuid = ", dungeon_uuid);
+		if(throws_if_not_exists){
+			DEBUG_THROW(Exception, sslit("Dungeon buff not found"));
+		}
+		return;
+	}
+
+	LOG_EMPERY_CENTER_TRACE("Updating dungeon buff: coord = ", coord, ", dungeon_uuid = ", dungeon_uuid);
+	if(dungeon_buff->is_virtually_removed()){
+		m_dungeon_buffs.erase(it);
+	} else {
+		//
+		it->second = dungeon_buff;
+	}
+
+	synchronize_with_all_observers(dungeon_buff);
+	synchronize_with_dungeon_server(dungeon_buff);
+}
+
 bool Dungeon::is_virtually_removed() const {
 	return get_expiry_time() == 0;
 }
@@ -387,6 +475,7 @@ void Dungeon::synchronize_with_player(const boost::shared_ptr<PlayerSession> &se
 		const auto &dungeon_object = it->second;
 		dungeon_object->synchronize_with_player(session);
 	}
+	
 }
 
 }

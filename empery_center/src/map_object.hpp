@@ -18,8 +18,27 @@ namespace MongoDb {
 class Castle;
 class PlayerSession;
 class ClusterSession;
+class Captain;
 
 class MapObject : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
+public:
+		enum Action {
+		ACT_GUARD                             = 0,
+		ACT_ATTACK                            = 1,
+		ACT_DEPLOY_INTO_CASTLE                = 2,
+//		ACT_HARVEST_OVERLAY                   = 3,
+		ACT_ENTER_CASTLE                      = 4,
+		ACT_HARVEST_STRATEGIC_RESOURCE        = 5,
+		ACT_ATTACK_TERRITORY_FORCE            = 6,
+		ACT_MONTER_REGRESS             		  = 7,
+		ACT_HARVEST_RESOURCE_CRATE            = 8,
+		ACT_ATTACK_TERRITORY           		  = 9,
+//		ACT_HARVEST_OVERLAY_FORCE             = 10,
+		ACT_HARVEST_STRATEGIC_RESOURCE_FORCE  = 11,
+		ACT_HARVEST_RESOURCE_CRATE_FORCE      = 12,
+		ACT_STAND_BY                          = 13,
+		ACT_HARVEST_LEGION_RESOURCE           = 14,
+	};
 public:
 	struct BuffInfo {
 		BuffId buff_id;
@@ -121,6 +140,11 @@ public:
 	bool is_virtually_removed() const;
 	void synchronize_with_player(const boost::shared_ptr<PlayerSession> &session) const;
 	void synchronize_with_cluster(const boost::shared_ptr<ClusterSession> &cluster) const;
+
+	// 将领影响到的内容
+	void recalculate_captain_attributes(const boost::shared_ptr<Captain> &captain, bool bAdd);
+	// 检查是否有将领，并需要重置
+	void check_reset_captain(bool bescape = false);
 };
 
 }

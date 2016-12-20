@@ -61,6 +61,43 @@ namespace Msg {
 	)
 #include <poseidon/cbpp/message_generator.hpp>
 
+#define MESSAGE_NAME    CS_FriendSearchByNick
+#define MESSAGE_ID      708
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (nick)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    CS_FriendBlackListAdd
+#define MESSAGE_ID      709
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (friend_uuid)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    CS_FriendBlackListDelete
+#define MESSAGE_ID      710
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (friend_uuid)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    CS_FriendRecords
+#define MESSAGE_ID      711
+#define MESSAGE_FIELDS  \
+	//
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    CS_FriendGetOfflineMsg
+#define MESSAGE_ID      712
+#define MESSAGE_FIELDS  \
+	//
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    CS_FriendGetRecent
+#define MESSAGE_ID      713
+#define MESSAGE_FIELDS  \
+	//
+#include <poseidon/cbpp/message_generator.hpp>
+
+
 }
 
 }

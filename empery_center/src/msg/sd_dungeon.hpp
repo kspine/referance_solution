@@ -12,7 +12,9 @@ namespace Msg {
 #define MESSAGE_FIELDS  \
 	FIELD_STRING        (dungeon_uuid)	\
 	FIELD_VUINT         (dungeon_type_id)	\
-	FIELD_STRING        (founder_uuid)
+	FIELD_STRING        (founder_uuid)	\
+	FIELD_VUINT         (finish_count)	\
+	FIELD_VUINT         (expiry_time)
 #include <poseidon/cbpp/message_generator.hpp>
 
 #define MESSAGE_NAME    SD_DungeonDestroy
@@ -69,6 +71,32 @@ namespace Msg {
 #define MESSAGE_FIELDS  \
 	FIELD_STRING        (dungeon_uuid)	\
 	FIELD_STRING        (context)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    SD_DungeonBuffInfo
+#define MESSAGE_ID      50093
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (dungeon_uuid)	\
+	FIELD_VINT          (x)	\
+	FIELD_VINT          (y)	\
+	FIELD_VUINT         (buff_type_id)\
+	FIELD_STRING        (create_uuid)\
+	FIELD_STRING        (create_owner_uuid)\
+	FIELD_VUINT         (expired_time)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    SD_DungeonBuffRemoved
+#define MESSAGE_ID      50092
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (dungeon_uuid)	\
+	FIELD_VINT          (x)	\
+	FIELD_VINT          (y)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    SD_DungeonBegin
+#define MESSAGE_ID      50091
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (dungeon_uuid)
 #include <poseidon/cbpp/message_generator.hpp>
 
 }

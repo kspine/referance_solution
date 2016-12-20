@@ -21,13 +21,21 @@ std::pair<long, std::string> get_move_result(DungeonUuid dungeon_uuid,Coord coor
 	const auto dungeon_data = Data::Dungeon::require(dungeon->get_dungeon_type_id());
 	const auto map_x = coord.x();
 	const auto map_y = coord.y();
-	const auto cell_data = Data::MapCellBasic::require(dungeon_data->dungeon_map,map_x, map_y);
+	const auto cell_data = Data::MapCellBasic::get(dungeon_data->dungeon_map,map_x, map_y);
+	if(!cell_data){
+		return CbppResponse(Msg::ERR_NO_DUNGEON_CELL) << dungeon_data->dungeon_map << map_x << map_y;
+	}
 	const auto terrain_id = cell_data->terrain_id;
 	const auto terrain_data = Data::MapTerrain::require(terrain_id);
 	if(!terrain_data->passable){
 		LOG_EMPERY_DUNGEON_TRACE("Blocked by terrain: terrain_id = ", terrain_id);
 		return CbppResponse(Msg::ERR_BLOCKED_BY_IMPASSABLE_MAP_CELL) <<terrain_id;
 	}
+	if(dungeon->is_dungeon_blocks_coord(coord)){
+		LOG_EMPERY_DUNGEON_FATAL("dungeon triggter  blocks,coord = ",coord);
+		return CbppResponse(Msg::ERR_BLOCKED_BY_TRIGGER_BLOCKS);
+	}
+
 	/*
 	const unsigned border_thickness = Data::Global::as_unsigned(Data::Global::SLOT_MAP_BORDER_THICKNESS);
 	if((map_x < border_thickness) || (map_y < border_thickness))
@@ -111,6 +119,9 @@ bool find_path(std::vector<std::pair<signed char, signed char>> &path,
 	astar_coords.emplace(from_coord, init_elem);
 	coords_open.emplace_back(init_elem);
 
+	std::uint64_t nearest_dist = UINT64_MAX;
+	Coord nearest_coord;
+	
 	std::vector<Coord> surrounding;
 	for(;;){
 		// 获得距离总和最小的一点，然后把它从队列中删除。注意维护优先级。
@@ -126,7 +137,15 @@ bool find_path(std::vector<std::pair<signed char, signed char>> &path,
 			get_surrounding_coords(surrounding, elem_popped.coord, 1);
 			for(auto it = surrounding.begin(); it != surrounding.end(); ++it){
 				const auto coord = *it;
-
+				//除去地图中不存在的点
+				const auto dungeon = DungeonMap::require(dungeon_uuid);
+				const auto dungeon_data = Data::Dungeon::require(dungeon->get_dungeon_type_id());
+				const auto map_x = coord.x();
+				const auto map_y = coord.y();
+				const auto cell_data = Data::MapCellBasic::get(dungeon_data->dungeon_map,map_x, map_y);
+				if(!cell_data){
+					continue;
+				}
 				auto cit = astar_coords.find(coord);
 				if(cit == astar_coords.end()){
 					AStarCoordElement elem = { };
@@ -151,21 +170,13 @@ bool find_path(std::vector<std::pair<signed char, signed char>> &path,
 
 				if(new_elem.distance_to_hint <= distance_close_enough){
 					// 寻路成功。
-					std::deque<Coord> coord_queue;
-					auto current_coord = coord;
-					for(;;){
-						coord_queue.emplace_front(current_coord);
-						if(current_coord == from_coord){
-							break;
-						}
-						current_coord = astar_coords.at(current_coord).parent_coord;
-					}
-					assert(!coord_queue.empty());
-					path.reserve(path.size() + coord_queue.size() - 1);
-					for(auto qit = coord_queue.begin(), qprev = qit; ++qit != coord_queue.end(); qprev = qit){
-						path.emplace_back(qit->x() - qprev->x(), qit->y() - qprev->y());
-					}
-					return true;
+					nearest_coord = coord;
+					nearest_dist = 0;
+					goto _done;
+				}
+				if(new_elem.distance_to_hint < nearest_dist){
+					nearest_dist = new_elem.distance_to_hint;
+					nearest_coord = coord;
 				}
 				if(new_distance_from < distance_limit){
 					coords_open.emplace_back(new_elem);
@@ -177,8 +188,27 @@ bool find_path(std::vector<std::pair<signed char, signed char>> &path,
 		if(coords_open.empty()){
 		LOG_EMPERY_DUNGEON_DEBUG("Pathfinding failed: from_coord = ", from_coord, ", to_coord = ", to_coord,
 		", distance_limit = ", distance_limit, ", distance_close_enough = ", distance_close_enough);
-			return false;
+			goto _done;
 		}
 	}
+	_done:
+	;
+	if(nearest_dist != UINT64_MAX){
+		std::deque<Coord> coord_queue;
+		auto current_coord = nearest_coord;
+		for(;;){
+			coord_queue.emplace_front(current_coord);
+			if(current_coord == from_coord){
+				break;
+			}
+			current_coord = astar_coords.at(current_coord).parent_coord;
+		}
+		assert(!coord_queue.empty());
+		path.reserve(path.size() + coord_queue.size() - 1);
+		for(auto qit = coord_queue.begin(), qprev = qit; ++qit != coord_queue.end(); qprev = qit){
+			path.emplace_back(qit->x() - qprev->x(), qit->y() - qprev->y());
+		}
+	}
+	return nearest_dist == 0;
 }
 }

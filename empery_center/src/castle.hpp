@@ -18,6 +18,8 @@ namespace MongoDb {
 	class Center_CastleBattalionProduction;
 	class Center_CastleWoundedSoldier;
 	class Center_CastleTreatment;
+	class Center_CastleTechEra;
+	class Center_CastleResourceBattalionUnload;
 }
 
 class Castle : public DefenseBuilding {
@@ -74,6 +76,11 @@ public:
 		std::uint64_t time_end;
 	};
 
+	struct TechEraInfo {
+		unsigned tech_era;
+		bool unlocked;
+	};
+
 private:
 	boost::container::flat_map<BuildingBaseId,
 		boost::shared_ptr<MongoDb::Center_CastleBuildingBase>> m_buildings;
@@ -100,6 +107,12 @@ private:
 	boost::container::flat_map<MapObjectTypeId,
 		boost::shared_ptr<MongoDb::Center_CastleTreatment>> m_treatment;
 
+	boost::container::flat_map<unsigned,
+		boost::shared_ptr<MongoDb::Center_CastleTechEra>> m_tech_eras;
+
+	boost::container::flat_map<ResourceId,
+		boost::shared_ptr<MongoDb::Center_CastleResourceBattalionUnload>> m_resources_battalion_unload;
+
 	// 非持久化数据。
 	double m_population_production_remainder = 0;
 	double m_population_production_rate = 0;
@@ -118,7 +131,9 @@ public:
 		const std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalion>> &soldiers,
 		const std::vector<boost::shared_ptr<MongoDb::Center_CastleBattalionProduction>> &soldier_production,
 		const std::vector<boost::shared_ptr<MongoDb::Center_CastleWoundedSoldier>> &wounded_soldiers,
-		const std::vector<boost::shared_ptr<MongoDb::Center_CastleTreatment>> &treatment);
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleTreatment>> &treatment,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleTechEra>> &tech_eras,
+		const std::vector<boost::shared_ptr<MongoDb::Center_CastleResourceBattalionUnload>> &resources_battalion_unload);
 	~Castle();
 
 public:
@@ -229,6 +244,12 @@ public:
 
 	void harvest_treatment();
 	void synchronize_treatment_with_player(const boost::shared_ptr<PlayerSession> &session) const;
+
+	TechEraInfo get_tech_era(unsigned tech_era) const;
+	void get_tech_era_all(std::vector<TechEraInfo> &ret) const;
+	void unlock_tech_era(unsigned tech_era);
+
+	void reset_resource_battalion_unload();
 
 	void synchronize_with_player(const boost::shared_ptr<PlayerSession> &session) const;
 };

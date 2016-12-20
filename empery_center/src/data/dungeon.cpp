@@ -21,6 +21,12 @@ namespace {
 	boost::weak_ptr<const TaskContainer> g_task_container;
 	const char TASK_FILE[] = "dungeon_task";
 
+	MULTI_INDEX_MAP(TrapContainer, Data::DungeonTrap,
+		UNIQUE_MEMBER_INDEX(trap_type_id)
+	)
+	boost::weak_ptr<const TrapContainer> g_trap_container;
+	const char TRAP_FILE[] = "dungeon_trap";
+
 	MODULE_RAII_PRIORITY(handles, 1000){
 		auto csv = Data::sync_load_data(DUNGEON_FILE);
 		const auto dungeon_container = boost::make_shared<DungeonContainer>();
@@ -98,9 +104,31 @@ namespace {
 					DEBUG_THROW(Exception, sslit("Duplicate reward set"));
 				}
 			}
+			
+			object.clear();
+			csv.get(object, "dungeon_reward_material");
+			elem.rewards_resources.reserve(object.size());
+			for(auto it = object.begin(); it != object.end(); ++it){
+				const auto resource_id = boost::lexical_cast<ResourceId>(it->first);
+				const auto count = static_cast<std::uint64_t>(it->second.get<double>());
+				if(!elem.rewards_resources.emplace(resource_id, count).second){
+					LOG_EMPERY_CENTER_ERROR("Duplicate reward set: resource_id = ", resource_id);
+					DEBUG_THROW(Exception, sslit("Duplicate reward set"));
+				}
+			}
 
 			csv.get(elem.resuscitation_ratio, "resurrection");
-
+			
+			array.clear();
+			csv.get(array, "dungeon_need_task");
+			elem.need_tasks.reserve(array.size());
+			for(auto it = array.begin(); it != array.end(); ++it){
+				const auto task_id = DungeonTaskId(it->get<double>());
+				if(!elem.need_tasks.insert(task_id).second){
+					LOG_EMPERY_CENTER_ERROR("Duplicate dungeon need task: task_id = ", task_id);
+					DEBUG_THROW(Exception, sslit("Duplicate dungeon need task"));
+				}
+			}
 			if(!dungeon_container->insert(std::move(elem)).second){
 				LOG_EMPERY_CENTER_ERROR("Duplicate Dungeon: dungeon_type_id = ", elem.dungeon_type_id);
 				DEBUG_THROW(Exception, sslit("Duplicate Dungeon"));
@@ -130,6 +158,19 @@ namespace {
 				}
 			}
 
+
+             object.clear();
+			 csv.get(object, "dungeon_reward_material");
+			 elem.rewards_resources.reserve(object.size());
+			 for(auto it = object.begin(); it != object.end(); ++it){
+			   const auto resource_id = boost::lexical_cast<ResourceId>(it->first);
+			   const auto count = static_cast<std::uint64_t>(it->second.get<double>());
+			   if(!elem.rewards_resources.emplace(resource_id, count).second){
+				 LOG_EMPERY_CENTER_ERROR("Duplicate reward: resource_id = ", resource_id);
+				 DEBUG_THROW(Exception, sslit("Duplicate reward resesource"));
+			   }
+		     }
+
 			if(!task_container->insert(std::move(elem)).second){
 				LOG_EMPERY_CENTER_ERROR("Duplicate DungeonTask: dungeon_task_id = ", elem.dungeon_task_id);
 				DEBUG_THROW(Exception, sslit("Duplicate DungeonTask"));
@@ -138,6 +179,25 @@ namespace {
 		g_task_container = task_container;
 		handles.push(task_container);
 		servlet = DataSession::create_servlet(TASK_FILE, Data::encode_csv_as_json(csv, "dungeon_task_id"));
+		handles.push(std::move(servlet));
+
+		csv = Data::sync_load_data(TRAP_FILE);
+		const auto trap_container = boost::make_shared<TrapContainer>();
+		while(csv.fetch_row()){
+			Data::DungeonTrap elem = { };
+
+			csv.get(elem.trap_type_id, "trap_id");
+			csv.get(elem.attack_type,  "attack_type");
+			csv.get(elem.attack_range, "attack_range");
+			csv.get(elem.attack,       "attack");
+			if(!trap_container->insert(std::move(elem)).second){
+				LOG_EMPERY_CENTER_ERROR("Duplicate DungeonTrap: dungeon_trap_id = ", elem.trap_type_id);
+				DEBUG_THROW(Exception, sslit("Duplicate DungeonTrap"));
+			}
+		}
+		g_trap_container = trap_container;
+		handles.push(trap_container);
+		servlet = DataSession::create_servlet(TRAP_FILE, Data::encode_csv_as_json(csv, "trap_id"));
 		handles.push(std::move(servlet));
 	}
 }
@@ -192,6 +252,32 @@ namespace Data {
 		auto ret = get(dungeon_task_id);
 		if(!ret){
 			LOG_EMPERY_CENTER_WARNING("Dungeon not found: dungeon_task_id = ", dungeon_task_id);
+			DEBUG_THROW(Exception, sslit("Dungeon not found"));
+		}
+		return ret;
+	}
+	boost::shared_ptr<const DungeonTrap> DungeonTrap::get(DungeonTrapTypeId dungeon_trap_type_id){
+		PROFILE_ME;
+
+		const auto trap_container = g_trap_container.lock();
+		if(!trap_container){
+			LOG_EMPERY_CENTER_WARNING("dungeon trap has not been loaded.");
+			return { };
+		}
+
+		const auto it = trap_container->find<0>(dungeon_trap_type_id);
+		if(it == trap_container->end<0>()){
+			LOG_EMPERY_CENTER_TRACE("Dungeon not found: dungeon_trap_type_id = ", dungeon_trap_type_id);
+			return { };
+		}
+		return boost::shared_ptr<const DungeonTrap>(trap_container, &*it);
+	}
+	boost::shared_ptr<const DungeonTrap> DungeonTrap::require(DungeonTrapTypeId dungeon_trap_type_id){
+		PROFILE_ME;
+
+		auto ret = get(dungeon_trap_type_id);
+		if(!ret){
+			LOG_EMPERY_CENTER_WARNING("Dungeon not found: dungeon_trap_type_id = ", dungeon_trap_type_id);
 			DEBUG_THROW(Exception, sslit("Dungeon not found"));
 		}
 		return ret;

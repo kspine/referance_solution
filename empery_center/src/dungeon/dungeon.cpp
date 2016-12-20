@@ -32,6 +32,13 @@
 #include "../item_box.hpp"
 #include "../reason_ids.hpp"
 #include "../transaction_element.hpp"
+#include "../dungeon_buff.hpp"
+#include "../data/dungeon_buff.hpp"
+#include <poseidon/singletons/job_dispatcher.hpp>
+#include "../events/dungeon.hpp"
+
+#include "../singletons/captain_item_map.hpp"
+
 
 namespace EmperyCenter {
 
@@ -308,6 +315,7 @@ _wounded_done:
 					return;
 				}
 
+				std::uint64_t bequip = 0;
 				boost::container::flat_map<ItemId, std::uint64_t> items_basic;
 
 				{
@@ -327,10 +335,31 @@ _wounded_done:
 								const auto item_id = it->first;
 								const auto count = it->second;
 
-								transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
-									ReasonIds::ID_DUNGEON_MONSTER_REWARD, attacked_object_type_id.get(),
-									static_cast<std::int64_t>(reward_data->unique_id), 0);
-								items_basic[item_id] += count;
+								LOG_EMPERY_CENTER_WARNING("random items  collection_name= ", collection_name,
+									", item_id = ", item_id, ", count = ", count, ", ntype = ", reward_data->ntype);
+
+								if (reward_data->ntype == 1)
+								{
+									// 道具
+									transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
+										ReasonIds::ID_DUNGEON_MONSTER_REWARD, attacked_object_type_id.get(),
+										static_cast<std::int64_t>(reward_data->unique_id), 0);
+
+									items_basic[item_id] += count;
+								}
+								else if (reward_data->ntype == 2)
+								{
+									// 装备
+									CaptainItemMap::account_add_captain_item(attacking_account_uuid, boost::lexical_cast<std::uint64_t>(item_id));
+									bequip = 1;
+								}
+								else
+								{
+									LOG_EMPERY_CENTER_WARNING("Error UnSupport reward: attacked_object_type_id = ", attacked_object_type_id,
+										", collection_name = ", collection_name);
+									continue;
+								}
+
 							}
 						}
 					}
@@ -353,6 +382,7 @@ _wounded_done:
 							elem.count   = it->second;
 						}
 						msg.castle_uuid        = parent_castle->get_map_object_uuid().str();
+						msg.bequip = bequip;
 						session->send(msg);
 					} catch(std::exception &e){
 						LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
@@ -539,10 +569,13 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
 	const auto item_box = ItemBoxMap::require(account_uuid);
 
 	boost::container::flat_map<ItemId, std::uint64_t> rewards;
+	boost::container::flat_map<ResourceId, std::uint64_t> rewards_resources;
 	boost::container::flat_map<DungeonTaskId, boost::container::flat_map<ItemId, std::uint64_t>> tasks_new;
 
 	std::vector<ItemTransactionElement> transaction;
 	transaction.reserve(32);
+	std::vector<ResourceTransactionElement> res_transaction;
+	res_transaction.reserve(32);
 
 	const auto dungeon_type_id = dungeon->get_dungeon_type_id();
 
@@ -550,34 +583,53 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
 	info.finish_count += 1;
 
 	const auto dungeon_data = Data::Dungeon::require(dungeon_type_id);
-	for(auto it = dungeon_data->rewards.begin(); it != dungeon_data->rewards.end(); ++it){
-		const auto item_id = it->first;
-		const auto count = it->second;
-		transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
-			ReasonIds::ID_FINISH_DUNGEON_TASK, dungeon_type_id.get(), 0, 0);
-		rewards[item_id] += count;
-	}
-
-	for(auto tit = req.tasks_finished.begin(); tit != req.tasks_finished.end(); ++tit){
-		const auto dungeon_task_id = DungeonTaskId(tit->dungeon_task_id);
-		if(dungeon_data->tasks.find(dungeon_task_id) == dungeon_data->tasks.end()){
-			LOG_EMPERY_CENTER_WARNING("Dungeon task ignored: dungeon_task_id = ", dungeon_task_id, ", dungeon_type_id = ", dungeon_type_id);
-			continue;
+	if(info.finish_count > 1){
+		for(auto it = dungeon_data->rewards.begin(); it != dungeon_data->rewards.end(); ++it){
+			const auto item_id = it->first;
+			const auto count = it->second;
+			transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
+				ReasonIds::ID_FINISH_DUNGEON_TASK, dungeon_type_id.get(), 0, 0);
+			rewards[item_id] += count;
 		}
-		if(info.tasks_finished.insert(dungeon_task_id).second){
-			const auto task_data = Data::DungeonTask::require(dungeon_task_id);
-			for(auto it = task_data->rewards.begin(); it != task_data->rewards.end(); ++it){
-				const auto item_id = it->first;
-				const auto count = it->second;
-				transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
-					ReasonIds::ID_FINISH_DUNGEON_TASK, dungeon_type_id.get(), dungeon_task_id.get(), 0);
-				tasks_new[dungeon_task_id][item_id] += count;
+		for(auto it = dungeon_data->rewards_resources.begin(); it != dungeon_data->rewards_resources.end(); ++it){
+			const auto resource_id = it->first;
+			const auto count = it->second;
+			res_transaction.emplace_back(ResourceTransactionElement::OP_ADD, resource_id, count,
+				ReasonIds::ID_FINISH_DUNGEON_TASK, dungeon_type_id.get(), 0, 0);
+			rewards_resources[resource_id] += count;
+		}
+	}else{
+		for(auto tit = req.tasks_finished.begin(); tit != req.tasks_finished.end(); ++tit){
+			const auto dungeon_task_id = DungeonTaskId(tit->dungeon_task_id);
+			if(dungeon_data->tasks.find(dungeon_task_id) == dungeon_data->tasks.end()){
+				LOG_EMPERY_CENTER_WARNING("Dungeon task ignored: dungeon_task_id = ", dungeon_task_id, ", dungeon_type_id = ", dungeon_type_id);
+				continue;
+			}
+			if(info.tasks_finished.insert(dungeon_task_id).second){
+				const auto task_data = Data::DungeonTask::require(dungeon_task_id);
+				for(auto it = task_data->rewards.begin(); it != task_data->rewards.end(); ++it){
+					const auto item_id = it->first;
+					const auto count = it->second;
+					transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
+						ReasonIds::ID_FINISH_DUNGEON_TASK, dungeon_type_id.get(), dungeon_task_id.get(), 0);
+					tasks_new[dungeon_task_id][item_id] += count;
+				}
+
+                for(auto it = task_data->rewards_resources.begin(); it != task_data->rewards_resources.end(); ++it){
+					const auto resource_id = it->first;
+					const auto count = it->second;
+				    res_transaction.emplace_back(ResourceTransactionElement::OP_ADD, resource_id, count,
+		            ReasonIds::ID_FINISH_DUNGEON_TASK, dungeon_type_id.get(), dungeon_task_id.get(), 0);
+					rewards_resources[resource_id] += count;
+			    }
 			}
 		}
 	}
 
 	item_box->commit_transaction(transaction, false,
 		[&]{ dungeon_box->set(std::move(info)); });
+	const auto castle =  WorldMap::require_primary_castle(dungeon->get_founder_uuid());
+	castle->commit_resource_transaction(res_transaction);
 
 	const auto session = PlayerSessionMap::get(account_uuid);
 	if(session){
@@ -589,6 +641,11 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
 			for(auto it = rewards.begin(); it != rewards.end(); ++it){
 				auto &elem = *msg.rewards.emplace(msg.rewards.end());
 				elem.item_id = it->first.get();
+				elem.count   = it->second;
+			}
+			for(auto it = rewards_resources.begin(); it != rewards_resources.end(); ++it){
+				auto &elem = *msg.rewards_resources.emplace(msg.rewards_resources.end());
+				elem.resource_id = it->first.get();
 				elem.count   = it->second;
 			}
 			msg.tasks_finished_new.reserve(tasks_new.size());
@@ -611,6 +668,7 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
 				soldier_elem.soldiers_resuscitated = it->second.resuscitated;
 				soldier_elem.soldiers_wounded = it->second.wounded;
 			}
+			LOG_EMPERY_CENTER_FATAL(msg);
 			session->send(msg);
 		} catch(std::exception &e){
 			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
@@ -618,8 +676,16 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
 		}
 	}
 
-	dungeon->remove_observer(account_uuid, Dungeon::Q_PLAYER_WINS, "");
+	//副本通关任务
+	const auto task_box = TaskBoxMap::require(account_uuid);
+    task_box->check_task_dungeon_clearance(boost::lexical_cast<uint64_t>(dungeon_type_id),info.finish_count);
 
+	dungeon->remove_observer(account_uuid, Dungeon::Q_PLAYER_WINS, "");
+	const auto utc_now = Poseidon::get_utc_time();
+	LOG_EMPERY_CENTER_FATAL(req);
+	auto event = boost::make_shared<Events::DungeonFinish>(account_uuid,dungeon->get_dungeon_type_id(),dungeon->get_create_time(),utc_now,true);
+	Poseidon::async_raise_event(event);
+	DungeonMap::remove(dungeon);
 	return Response();
 }
 
@@ -629,9 +695,32 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerLoses, dungeon, server, req){
 	if(!dungeon_box){
 		return Response(Msg::ERR_CONTROLLER_TOKEN_NOT_ACQUIRED);
 	}
-
+	const auto session = PlayerSessionMap::get(account_uuid);
+	if(session){
+		try {
+			Msg::SC_DungeonFailed msg;
+			msg.dungeon_uuid    = dungeon->get_dungeon_uuid().str();
+			msg.dungeon_type_id = dungeon->get_dungeon_type_id().get();
+			std::vector<std::pair<MapObjectTypeId, Dungeon::SoldierStat>> soldier_stats;
+			dungeon->get_soldier_stats(soldier_stats, account_uuid);
+			for(auto it = soldier_stats.begin(); it != soldier_stats.end(); ++it){
+				auto &soldier_elem = *msg.soldier_stats.emplace(msg.soldier_stats.end());
+				soldier_elem.map_object_type_id = it->first.get();
+				soldier_elem.soldiers_damaged = it->second.damaged;
+				soldier_elem.soldiers_resuscitated = it->second.resuscitated;
+				soldier_elem.soldiers_wounded = it->second.wounded;
+			}
+			session->send(msg);
+		} catch(std::exception &e){
+			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+			session->shutdown(e.what());
+		}
+	}
 	dungeon->remove_observer(account_uuid, Dungeon::Q_PLAYER_LOSES, "");
-
+	const auto utc_now = Poseidon::get_utc_time();
+	auto event = boost::make_shared<Events::DungeonFinish>(account_uuid,dungeon->get_dungeon_type_id(),dungeon->get_create_time(),utc_now,false);
+	Poseidon::async_raise_event(event);
+	DungeonMap::remove(dungeon);
 	return Response();
 }
 
@@ -642,6 +731,275 @@ DUNGEON_SERVLET(Msg::DS_DungeonMoveCamera, dungeon, server, req){
 	msg.y                 = req.y;
 	msg.movement_duration = req.movement_duration;
 	msg.position_type     = req.position_type;
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonTriggerEffectForcast, dungeon, server, req){
+	Msg::SC_DungeonTriggerEffectForcast msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	msg.trigger_id        = req.trigger_id;
+	msg.executive_time    = req.executive_time;
+	for(auto it = req.effects.begin(); it != req.effects.end(); ++it){
+		auto &effects = *msg.effects.emplace(msg.effects.end());
+		effects.effect_type = it->effect_type;
+	}
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonTriggerEffectExecutive, dungeon, server, req){
+	Msg::SC_DungeonTriggerEffectExecutive msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	msg.trigger_id        = req.trigger_id;
+	for(auto it = req.effects.begin(); it != req.effects.end(); ++it){
+		auto &effects = *msg.effects.emplace(msg.effects.end());
+		effects.effect_type = it->effect_type;
+	}
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonShowPicture, dungeon, server, req){
+	Msg::SC_DungeonShowPicture msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	msg.picture_url       = req.picture_url;
+	msg.picture_id        = req.picture_id;
+	msg.type              = req.type;
+	msg.layer             = req.layer;
+	msg.tween             = req.tween;
+	msg.time              = req.time;
+	msg.x                 = req.x;
+	msg.y                 = req.y;
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonRemovePicture, dungeon, server, req){
+	Msg::SC_DungeonRemovePicture msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	msg.picture_id        = req.picture_id;
+	msg.tween             = req.tween;
+	msg.time              = req.time;
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonCreateBuff, dungeon, server, req){
+	const auto dungeon_buff_type_id = DungeonBuffTypeId(req.buff_type_id);
+	const auto buff_data = Data::DungeonBuff::get(dungeon_buff_type_id);
+	if(!buff_data){
+		return Response(Msg::ERR_NO_DUNGEON_BUFF_DATA) <<dungeon_buff_type_id;
+	}
+	const auto coord = Coord(req.x, req.y);
+	const auto utc_now = Poseidon::get_utc_time();
+	const auto create_uuid = DungeonObjectUuid(req.create_uuid); 
+	const auto create_owner_uuid = AccountUuid(req.create_owner_uuid);
+	auto dungeon_buff = dungeon->get_dungeon_buff(coord);
+	auto expired_time = utc_now + buff_data->continue_time*1000;
+	auto new_dungeon_buff = boost::make_shared<DungeonBuff>(dungeon->get_dungeon_uuid(), dungeon_buff_type_id,create_uuid,create_owner_uuid,coord,expired_time);
+	if(dungeon_buff){
+		if(dungeon_buff->get_expired_time() < utc_now){
+			LOG_EMPERY_CENTER_FATAL("insert a dungeon buff while old buff not expired at coord",coord);
+		}else{
+			dungeon->update_dungeon_buff(std::move(new_dungeon_buff));
+		}
+	}else{
+		dungeon->insert_dungeon_buff(std::move(new_dungeon_buff));
+	}
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonCreateBlocks, dungeon, server, req){
+	Msg::SC_DungeonCreateBlocks msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	for(auto it = req.blocks.begin(); it != req.blocks.end(); ++it){
+		auto &blocks = *msg.blocks.emplace(msg.blocks.end());
+		blocks.x = it->x;
+		blocks.y = it->y;
+	}
+	dungeon->broadcast_to_observers(msg);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonRemoveBlocks, dungeon, server, req){
+	Msg::SC_DungeonRemoveBlocks msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	for(auto it = req.blocks.begin(); it != req.blocks.end(); ++it){
+		auto &blocks = *msg.blocks.emplace(msg.blocks.end());
+		blocks.x = it->x;
+		blocks.y = it->y;
+	}
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonHideSolider, dungeon, server, req){
+	Msg::SC_DungeonHideSolider msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	msg.type              = req.type;
+	dungeon->broadcast_to_observers(msg);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonUnhideSolider, dungeon, server, req){
+	Msg::SC_DungeonUnhideSolider msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	msg.type              = req.type;
+	dungeon->broadcast_to_observers(msg);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonHideCoords, dungeon, server, req){
+	Msg::SC_DungeonHideCoords msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	for(auto it = req.hide_coord.begin(); it != req.hide_coord.end(); ++it){
+		auto &hide_coord = *msg.hide_coord.emplace(msg.hide_coord.end());
+		hide_coord.x = it->x;
+		hide_coord.y = it->y;
+	}
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonUnhideCoords, dungeon, server, req){
+	Msg::SC_DungeonUnhideCoords msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	for(auto it = req.unhide_coord.begin(); it != req.unhide_coord.end(); ++it){
+		auto &unhide_coord = *msg.unhide_coord.emplace(msg.unhide_coord.end());
+		unhide_coord.x = it->x;
+		unhide_coord.y = it->y;
+	}
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonObjectSkillSingAction, dungeon, server, req){
+	const auto attacking_object_uuid = DungeonObjectUuid(req.attacking_object_uuid);
+
+	auto attacking_object = dungeon->get_object(attacking_object_uuid);
+	if(!attacking_object || attacking_object->is_virtually_removed()){
+		attacking_object.reset();
+	}
+
+	Msg::SC_DungeonObjectSkillSingAction msg;
+	msg.dungeon_uuid               = req.dungeon_uuid;
+	msg.attacking_account_uuid     = req.attacking_account_uuid;
+	msg.attacking_object_uuid      = req.attacking_object_uuid;
+	msg.attacking_object_type_id   = req.attacking_object_type_id;
+	msg.attacking_coord_x          = req.attacking_coord_x;
+	msg.attacking_coord_y          = req.attacking_coord_y;
+    msg.attacked_coord_x           = req.attacked_coord_x;
+	msg.attacked_coord_y           = req.attacked_coord_y;
+	msg.skill_type_id              = req.skill_type_id;
+	msg.sing_delay                 = req.sing_delay;
+
+	dungeon->broadcast_to_observers(msg);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonObjectSkillCastAction, dungeon, server, req){
+	const auto attacking_object_uuid = DungeonObjectUuid(req.attacking_object_uuid);
+
+	auto attacking_object = dungeon->get_object(attacking_object_uuid);
+	if(!attacking_object || attacking_object->is_virtually_removed()){
+		attacking_object.reset();
+	}
+
+	Msg::SC_DungeonObjectSkillCastAction msg;
+	msg.dungeon_uuid               = req.dungeon_uuid;
+	msg.attacking_account_uuid     = req.attacking_account_uuid;
+	msg.attacking_object_uuid      = req.attacking_object_uuid;
+	msg.attacking_object_type_id   = req.attacking_object_type_id;
+	msg.attacking_coord_x          = req.attacking_coord_x;
+	msg.attacking_coord_y          = req.attacking_coord_y;
+    msg.attacked_coord_x           = req.attacked_coord_x;
+	msg.attacked_coord_y           = req.attacked_coord_y;
+	msg.skill_type_id              = req.skill_type_id;
+	msg.cast_delay                 = req.cast_delay;
+	dungeon->broadcast_to_observers(msg);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonObjectSkillEffect, dungeon, server, req){
+	const auto attacking_object_uuid = DungeonObjectUuid(req.attacking_object_uuid);
+
+	auto attacking_object = dungeon->get_object(attacking_object_uuid);
+	if(!attacking_object || attacking_object->is_virtually_removed()){
+		attacking_object.reset();
+	}
+	Msg::SC_DungeonObjectSkillEffect msg;
+	msg.dungeon_uuid               = req.dungeon_uuid;
+	msg.attacking_account_uuid     = req.attacking_account_uuid;
+	msg.attacking_object_uuid      = req.attacking_object_uuid;
+	msg.attacking_object_type_id   = req.attacking_object_type_id;
+	msg.attacking_coord_x          = req.attacking_coord_x;
+	msg.attacking_coord_y          = req.attacking_coord_y;
+    msg.attacked_coord_x           = req.attacked_coord_x;
+	msg.attacked_coord_y           = req.attacked_coord_y;
+	msg.skill_type_id              = req.skill_type_id;
+	for(unsigned i = 0; i < req.effect_range.size(); ++i){
+		auto &effect_coord = req.effect_range.at(i);
+		auto &range_coord   = *msg.effect_range.emplace(msg.effect_range.end());
+		range_coord.x = effect_coord.x;
+		range_coord.y = effect_coord.y;
+	}
+	dungeon->broadcast_to_observers(msg);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonObjectPrepareTransmit, dungeon, server, req){
+	Msg::SC_DungeonObjectPrepareTransmit msg;
+	msg.dungeon_uuid               = req.dungeon_uuid;
+	for(unsigned i = 0; i < req.transmit_objects.size(); ++i){
+		auto &req_transmit_object = req.transmit_objects.at(i);
+		auto &transmit_object  = *msg.transmit_objects.emplace(msg.transmit_objects.end());
+		transmit_object.object_uuid = req_transmit_object.object_uuid;
+		transmit_object.x = req_transmit_object.x;
+		transmit_object.y = req_transmit_object.y;
+	}
+	dungeon->broadcast_to_observers(msg);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonObjectAddBuff, dungeon, server, req){
+	const auto dungeon_buff_type_id = DungeonBuffTypeId(req.buff_type_id);
+	const auto dungeon_object_uuid         = DungeonObjectUuid(req.dungeon_object_uuid);
+	const auto buff_data = Data::DungeonBuff::get(dungeon_buff_type_id);
+	if(!buff_data){
+		return Response(Msg::ERR_NO_DUNGEON_BUFF_DATA) <<dungeon_buff_type_id;
+	}
+	auto dungeon_object = dungeon->get_object(dungeon_object_uuid);
+	if(!dungeon_object){
+		return Response(Msg::ERR_NO_SUCH_DUNGEON_OBJECT) <<dungeon_object_uuid;
+	}
+	auto continue_time = buff_data->continue_time*1000;
+	dungeon_object->set_buff(BuffId(dungeon_buff_type_id.get()),continue_time);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonSetFootAnnimation, dungeon, server, req){
+	Msg::SC_DungeonSetFootAnnimation msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	msg.picture_url       = req.picture_url;
+	msg.type              = req.type;
+	msg.x                 = req.x;
+	msg.y                 = req.y;
+	msg.layer             = req.layer;
+	for(unsigned i = 0; i < req.monsters.size(); ++i){
+		auto &req_monster = req.monsters.at(i);
+		auto &monster = *msg.monsters.emplace(msg.monsters.end());
+		monster.monster_uuid = req_monster.monster_uuid;
+	}
 	dungeon->broadcast_to_observers(msg);
 
 	return Response();
