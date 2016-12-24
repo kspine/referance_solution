@@ -5,6 +5,7 @@
 #include <vector>
 //#include <ostream>
 #include <poseidon/precompiled.hpp>
+#include <poseidon/time.hpp>
 
 namespace PRIMERY_KEYGEN
 {
@@ -35,6 +36,15 @@ namespace PRIMERY_KEYGEN
 		   return (boost::lexical_cast<std::string>(key_1) + m_split);
 		}
 
+		static std::string GenDId(const int64_t &key_1)
+		{
+		  return (boost::lexical_cast<std::string>(key_1) + m_split);
+		}
+
+        static std::string GenDId(const uint64_t &key_1)
+        {
+          return (boost::lexical_cast<std::string>(key_1) + m_split);
+        }
 
         // make int64 string
         static std::string GenId(const int64_t &key_1)
@@ -42,7 +52,11 @@ namespace PRIMERY_KEYGEN
 
             return  (boost::lexical_cast<std::string>(key_1));
         }
-
+        // make uint64 string
+        static std::string GenId(const uint64_t &key_1)
+        {
+            return  (boost::lexical_cast<std::string>(key_1));
+        }
         static std::string GenId(const int64_t &key_1,const int64_t &key_2)
 		{
 
@@ -222,6 +236,69 @@ namespace PRIMERY_KEYGEN
 						+ GenId(key_1)+ m_split
 						+ GenId(key_2));
 		}
+    //format time
+       static std::string  format_times(std::uint64_t times)
+       {
+         char* buffer = NULL;
+         Poseidon::format_time(buffer, 64, times, false);
+         std::string str_time(buffer);
+         return str_time;
+       }
+
+    // make coordinate(uid.id.time_1) combination string
+       static std::string GenID_DateTime(const Poseidon::Uuid& uid1,const int64_t& id1,const boost::uint64_t & key_1)
+       {
+         return (GenDId(uid1) + GenDId(id1) + format_times(key_1));
+       }
+
+    // make coordinate(x,y.dx,dy.time_1) combination string
+		static std::string GenCID_DateTime(const int64_t& coord_x,const int64_t& coord_y,const boost::uint64_t & key_1)
+		{
+			return (GenCID(coord_x,coord_y) + m_split + format_times(key_1));
+		}
+	// make coordinate(id,x,y.dx,dy,time_1)combination string
+       static  std::string GenCID_DateTime(const int64_t& id1,const int64_t& coord_x,const int64_t& coord_y,const boost::uint64_t & key_1)
+	   {
+           return (GenCID(coord_x,coord_y) + m_split + GenDId(id1) + format_times(key_1));
+	   }
+	   static std::string GenCID_DateTime(const uint64_t& id1,const int64_t& coord_x,const int64_t& coord_y,const boost::uint64_t & key_1)
+	   {
+	       return (GenCID(coord_x,coord_y) + m_split + GenDId(id1) + format_times(key_1));
+	   }
+
+	// make coordinate(uid,x,y.dx,dy,time_1)combination string
+	   static std::string GenCID_DateTime(const Poseidon::Uuid& uid1,const int64_t& coord_x,const int64_t& coord_y,const boost::uint64_t & key_1)
+	   {
+	       return (GenCID(coord_x,coord_y) + m_split + GenDId(uid1) + format_times(key_1));
+	   }
+
+	// make coordinate(id,x,y.dx,dy,time_1)combination string
+	   static std::string GenCID_DateTime(const Poseidon::Uuid& uid1,const int64_t& id1,const int64_t& coord_x,const int64_t& coord_y, const boost::uint64_t & key_1)
+	   {
+		   return (GenCID(coord_x,coord_y) + m_split + GenDId(uid1) + GenDId(id1) +format_times(key_1));
+	   }
+	   	// make coordinate(id,x,y.dx,dy,time_1)combination string
+	   static std::string GenCID_DateTime(const Poseidon::Uuid& uid1,const uint64_t& id1,const int64_t& coord_x,const int64_t& coord_y,const boost::uint64_t& key_1)
+	   {
+		   return (GenCID(coord_x,coord_y) + m_split + GenDId(uid1) +GenDId(id1) + format_times(key_1));
+	   }
+ 
+	   // make coordinate(uid.id.string_1) combination string
+       static std::string GenID(const Poseidon::Uuid& uid1,const int64_t& id1,const std::string & key_1)
+       {
+         return (GenDId(uid1) + GenDId(id1) + m_split + key_1);
+       }
+       // make coordinate(uid.id.string_1) combination string
+       static std::string GenID(const Poseidon::Uuid& uid1,const std::string & key_1)
+       {
+         return (GenDId(uid1)  + key_1);
+       }
+
+       // make coordinate(uid.id.string_1) combination string
+       static std::string GenID(const int64_t& id1,const std::string & key_1)
+       {
+         return (GenDId(id1) + m_split + key_1);
+       }
 	};
 }
 #endif

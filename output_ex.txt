@@ -1,0 +1,3 @@
+2016-12-24 12:54:06.040 00 [P   ] ERROR BSON type mismatch: field = rewarded, type = BSON_TYPE_BOOL, expecting 8, got 18 #src/mongodb/connection.cpp:273
+2016-12-24 12:54:06.040 00 [P   ] INFO  Constructing Exception: file = src/mongodb/connection.cpp, line = 273, func = bool Poseidon::MongoDb::{anonymous}::DelegatedConnection::do_get_boolean(const char*) const, message = BSON type mismatch #src/exception.cpp:14
+2016-12-24 12:54:06.414 00 [P   ] ERROR std::exception thrown in main(): what = BSON type mismatch #src/main.cpp:158

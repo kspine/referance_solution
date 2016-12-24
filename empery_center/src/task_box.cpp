@@ -98,7 +98,7 @@ namespace EmperyCenter {
 			info.rewarded = obj->get_rewarded();
 		}
 
-		void fill_task_message(Msg::SC_TaskChanged &msg, const TaskObjectPair &pair, std::uint64_t utc_now) {
+		void fill_task_message(Msg::SC_TaskChanged &msg, const TaskObjectPair &pair, std::uint64_t utc_now,bool finish_show) {
 			PROFILE_ME;
 
 			const auto &obj = pair.first;
@@ -115,6 +115,7 @@ namespace EmperyCenter {
 				elem.count = it->second;
 			}
 			msg.rewarded = obj->get_rewarded();
+			msg.finish_show = finish_show;
 
 	//		LOG_EMPERY_CENTER_ERROR("msg.task_id = ", msg.task_id, "msg.category= ", msg.category);
 		}
@@ -983,11 +984,12 @@ namespace EmperyCenter {
             access_task_dungeon_clearance();
         }
 
+		bool finish = has_been_accomplished(task_id);
 		const auto session = PlayerSessionMap::get(get_account_uuid());
 		if (session) {
 			try {
 				Msg::SC_TaskChanged msg;
-				fill_task_message(msg, it->second, utc_now);
+				fill_task_message(msg, it->second, utc_now,finish);
 				session->send(msg);
 			}
 			catch (std::exception &e) {
@@ -1045,7 +1047,7 @@ namespace EmperyCenter {
 		if (session) {
 			try {
 				Msg::SC_TaskChanged msg;
-				fill_task_message(msg, pair, utc_now);
+				fill_task_message(msg, pair, utc_now,false);
 				session->send(msg);
 			}
 			catch (std::exception &e) {
@@ -1073,7 +1075,7 @@ namespace EmperyCenter {
 		if (session) {
 			try {
 				Msg::SC_TaskChanged msg;
-				fill_task_message(msg, pair, utc_now);
+				fill_task_message(msg, pair, utc_now,false);
 				session->send(msg);
 			}
 			catch (std::exception &e) {
@@ -1170,12 +1172,12 @@ namespace EmperyCenter {
 
 			pair.second = std::move(new_progress);
 			obj->set_progress(std::move(new_progress_str));
-
+			bool finish = has_been_accomplished(task_id);
 			const auto session = PlayerSessionMap::get(get_account_uuid());
 			if (session) {
 				try {
 					Msg::SC_TaskChanged msg;
-					fill_task_message(msg, pair, utc_now);
+					fill_task_message(msg, pair, utc_now,finish);
 					session->send(msg);
 				}
 				catch (std::exception &e) {
@@ -1240,13 +1242,14 @@ void TaskBox::check_task_dungeon_clearance(std::uint64_t key_dungeon_id,std::uin
    auto new_progress_str = encode_progress(*new_progress);
    pair.second = std::move(new_progress);
    obj->set_progress(std::move(new_progress_str));
+   bool finish = has_been_accomplished(task_id);
    const auto session = PlayerSessionMap::get(get_account_uuid());
    if (session)
    {
       try {
 
       		Msg::SC_TaskChanged msg;
-      		fill_task_message(msg, pair, utc_now);
+      		fill_task_message(msg, pair, utc_now,finish);
       		session->send(msg);
       }
       catch (std::exception &e) {
@@ -1308,7 +1311,7 @@ void TaskBox::synchronize_with_player(const boost::shared_ptr<PlayerSession> &se
 	 */
 
 	 Msg::SC_TaskChanged msg;
-	 fill_task_message(msg, it->second, utc_now);
+	 fill_task_message(msg, it->second, utc_now,false);
 	 session->send(msg);
   }
 }

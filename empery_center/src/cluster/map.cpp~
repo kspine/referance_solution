@@ -1454,7 +1454,7 @@ _wounded_done:
 		try{
 			Poseidon::enqueue_async_job([=]{
 				PROFILE_ME;
-				map_activity_acculate_rewards(ActivityIds::ID_MAP_ACTIVITY_CASTLE_DAMAGE,hp_damaged);
+				map_activity_acculate_rewards(ActivityIds::ID_MAP_ACTIVITY_CASTLE_DAMAGE,hp_damaged,ReasonIds::ID_CASTLE_DMAGE_ACCUMULATE);
 			});
 		} catch (std::exception &e){
 			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
