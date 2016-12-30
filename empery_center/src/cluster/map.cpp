@@ -338,9 +338,11 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 		if (pShared)
 		{
 			LOG_EMPERY_CENTER_DEBUG("采集n战略资源*4 * 权重!!!");
+						
+			task_box->check(TaskBox::CAT_LEGION_PACKAGE,TaskTypeIds::ID_HARVEST_STRATEGIC_RESOURCE, 
+						TaskLegionPackageKeyIds::ID_HARVEST_STRATEGIC_RESOURCE.get(),
+						static_cast<std::uint64_t>((amount_harvested * 4)* pShared->unit_weight),TaskBox::TCC_PRIMARY, 0, 0);
 
-			task_box->check(TaskTypeIds::ID_HARVEST_STRATEGIC_RESOURCE, TaskLegionPackageKeyIds::ID_HARVEST_STRATEGIC_RESOURCE.get(), (amount_harvested * 4)* pShared->unit_weight,
-				TaskBox::TCC_ALL, 0, 0);
 		}
 	}
 	catch (std::exception &e) {
@@ -358,13 +360,27 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 				if (member){
 					const auto legion_uuid = LegionUuid(member->get_legion_uuid());
 					const auto legion_task_box = LegionTaskBoxMap::require(legion_uuid);
-					legion_task_box->check(TaskTypeIds::ID_HARVEST_STRATEGIC_RESOURCE, TaskLegionKeyIds::ID_HARVEST_STRATEGIC_RESOURCE, amount_to_harvest,account_uuid, 0, 0);
+					legion_task_box->check(TaskTypeIds::ID_HARVEST_STRATEGIC_RESOURCE,
+						TaskLegionKeyIds::ID_HARVEST_STRATEGIC_RESOURCE, amount_to_harvest,account_uuid, 0, 0);
 					legion_task_box->pump_status();
 				}
 			}
 		});
 	} catch (std::exception &e){
 		LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+	}
+
+    // 主线，分支，日常等采集指定战略资源(军团礼包任务除外)
+	try{
+		Poseidon::enqueue_async_job([=]{
+		    {
+				PROFILE_ME;
+				task_box->check(TaskBox::CAT_NULL,TaskTypeIds::ID_HARVEST_SPECIFIC_STRATEGIC_RESOURCE,
+					resource_id.get(),  amount_to_harvest,TaskBox::TCC_PRIMARY, 0, 0);
+			}
+		});
+	} catch (std::exception &e){
+				LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
 	}
 
 	try {
@@ -622,16 +638,20 @@ CLUSTER_SERVLET(Msg::KS_MapObjectAttackAction, cluster, req){
 		}
 		else if(attacked_object_type_id == MapObjectTypeIds::ID_LEGION_WAREHOUSE)
 		{
-			const auto warehouse = boost::dynamic_pointer_cast<WarehouseBuilding>(attacked_object);
-			if(warehouse)
-			{
-				// 矿井不消失，给个击毁标识
-				if(warehouse->get_mission() == WarehouseBuilding::MIS_DESTRUCT)
-					return Response(Msg::ERR_NO_SUCH_MAP_OBJECT) << attacked_object_uuid;
-			}
+		   const auto warehouse = boost::dynamic_pointer_cast<WarehouseBuilding>(attacked_object);
+		   if(warehouse)
+		   {
+			// 矿井不消失，给个击毁标识
+			if(warehouse->get_mission() == WarehouseBuilding::MIS_DESTRUCT)
+			return Response(Msg::ERR_NO_SUCH_MAP_OBJECT) << attacked_object_uuid;
+		   }
 		}
 		else {
-			attacked_object->delete_from_game();
+			if(attacked_account_uuid){
+				attacked_object->set_garrisoned(true);
+			}else{
+				attacked_object->delete_from_game();
+			}
 		}
 	}
 
@@ -727,8 +747,11 @@ _wounded_done:
 				try {
 					PROFILE_ME;
 
-					send_battle_notification(attacked_account_uuid, -type, attacking_account_uuid, attacked_coord,
-						attacking_object_type_id, attacked_object_type_id,attacking_object->get_parent_object_uuid());
+                    send_battle_notification(attacked_account_uuid, -type, attacking_account_uuid, attacked_coord,
+									attacking_object_type_id, attacked_castle->get_name(), attacked_castle->get_level(),attacked_castle->get_map_object_uuid());
+
+
+
 				} catch(std::exception &e){
 					LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 				}
@@ -1110,8 +1133,28 @@ _wounded_done:
 				if((attacking_object_uuid != primary_castle_uuid) && (parent_object_uuid != primary_castle_uuid)){
 					castle_category = TaskBox::TCC_NON_PRIMARY;
 				}
-				task_box->check(task_type_id, attacked_object_type_id.get(), 1,
-					castle_category, 0, 0);
+
+
+	           task_box->check(TaskBox::CAT_NULL,task_type_id, attacked_object_type_id.get(), 1,castle_category, 0, 0);
+
+               //消灭部队战斗力
+               if(attacked_account_uuid){
+					task_type_id = TaskTypeIds::ID_DESTROY_SOLDIERS;
+					const auto attacked_type_data = Data::MapObjectTypeBattalion::get(attacked_object_type_id);
+				    if(attacked_type_data && attacked_type_data->warfare != 0){
+					task_box->check(TaskBox::CAT_NULL,task_type_id, TaskLegionPackageKeyIds::ID_DESTROY_SOLDIERS.get(), 
+								attacked_type_data->warfare,castle_category, 0, 0);	
+																												}
+			   }
+			   const auto monster_type_data = Data::MapObjectTypeMonster::get(attacked_object_type_id);
+
+
+	           if(monster_type_data){
+                  //击杀指定等级野怪任务
+	              task_type_id = TaskTypeIds::ID_WIPE_OUT_LEVEL_MONSTER;
+			      task_box->check(TaskBox::CAT_NULL,task_type_id, monster_type_data->level, 1,	castle_category, 0, 0);
+			   }
+
 			});
 		} catch(std::exception &e){
 			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
@@ -1140,7 +1183,7 @@ _wounded_done:
 				if (task_type_id == TaskTypeIds::ID_DESTROY_MONSTERS)
 				{
 					const auto monster_data = Data::MapObjectTypeMonster::require(attacked_object_type_id);
-					task_box->check(task_type_id, TaskLegionPackageKeyIds::ID_DESTROY_MONSTERS.get(), monster_data->warfare,
+					task_box->check(TaskBox::CAT_LEGION_PACKAGE,task_type_id, TaskLegionPackageKeyIds::ID_DESTROY_MONSTERS.get(), monster_data->warfare,
 						castle_category, 0, 0);
 				}
 
@@ -1151,7 +1194,8 @@ _wounded_done:
 					const auto map_object_type_data = Data::MapObjectTypeBattalion::get(attacked_object_type_id);
 					if(map_object_type_data)
 					{
-						task_box->check(task_type_id, TaskLegionPackageKeyIds::ID_DESTROY_SOLDIERS.get(), soldiers_damaged*map_object_type_data->warfare,
+						task_box->check(TaskBox::CAT_LEGION_PACKAGE,task_type_id, TaskLegionPackageKeyIds::ID_DESTROY_SOLDIERS.get(), 
+									soldiers_damaged*map_object_type_data->warfare,
 							castle_category, 0, 0);
 
 						LOG_EMPERY_CENTER_DEBUG("军团礼包任务 warfare ", map_object_type_data->warfare);
@@ -1706,11 +1750,23 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestResourceCrate, cluster, req){
 		}
 	}
 
-	const auto amount_to_harvest = req.amount_harvested;
+	const auto cofficient = Data::Global::as_double(Data::Global::SLOT_ATTACK_RESOURCE_CREATE_COEFFICIENT);
+	const auto amount_to_harvest = req.amount_harvested*cofficient;
+	const auto interval = req.interval;
+
 	const auto amount_harvested = resource_crate->harvest(attacking_object, amount_to_harvest / unit_weight, forced_attack);
-	LOG_EMPERY_CENTER_DEBUG("Harvest: attacking_object_uuid = ", attacking_object_uuid, ", attacking_object_type_id = ", attacking_object_type_id,
-		", amount_to_harvest = ", amount_to_harvest, ", amount_harvested = ", amount_harvested, ", forced_attack = ", forced_attack);
+	
+		LOG_EMPERY_CENTER_DEBUG("Harvest: attacking_object_uuid = ", attacking_object_uuid, 
+					",attacking_object_type_id = ", attacking_object_type_id,
+					", amount_to_harvest = ", amount_to_harvest, 
+					", amount_harvested = ", amount_harvested, 
+					", forced_attack = ", forced_attack,
+					" req.amount_harvested = ",req.amount_harvested,
+					" cofficient = ",cofficient);
+
 	amount_remaining = resource_crate->get_amount_remaining();
+
+        attacking_object->set_buff(BuffIds::ID_HARVEST_STATUS, interval);
 
 	const auto attacked_coord = resource_crate->get_coord();
 

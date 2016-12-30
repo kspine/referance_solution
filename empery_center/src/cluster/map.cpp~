@@ -727,8 +727,11 @@ _wounded_done:
 				try {
 					PROFILE_ME;
 
-					send_battle_notification(attacked_account_uuid, -type, attacking_account_uuid, attacked_coord,
-						attacking_object_type_id, attacked_object_type_id,attacking_object->get_parent_object_uuid());
+                    send_battle_notification(attacked_account_uuid, -type, attacking_account_uuid, attacked_coord,
+									attacking_object_type_id, attacked_castle->get_name(), attacked_castle->get_level(),attacked_castle->get_map_object_uuid());
+
+
+
 				} catch(std::exception &e){
 					LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 				}
@@ -1454,7 +1457,7 @@ _wounded_done:
 		try{
 			Poseidon::enqueue_async_job([=]{
 				PROFILE_ME;
-				map_activity_acculate_rewards(ActivityIds::ID_MAP_ACTIVITY_CASTLE_DAMAGE,hp_damaged,ReasonIds::ID_CASTLE_DMAGE_ACCUMULATE);
+				map_activity_acculate_rewards(ActivityIds::ID_MAP_ACTIVITY_CASTLE_DAMAGE,hp_damaged);
 			});
 		} catch (std::exception &e){
 			LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
@@ -1706,11 +1709,19 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestResourceCrate, cluster, req){
 		}
 	}
 
-	const auto amount_to_harvest = req.amount_harvested;
+	const auto cofficient = Data::Global::as_double(Data::Global::SLOT_ATTACK_RESOURCE_CREATE_COEFFICIENT);
+	const auto amount_to_harvest = req.amount_harvested*cofficient;
+	const auto interval = req.interval;
+
 	const auto amount_harvested = resource_crate->harvest(attacking_object, amount_to_harvest / unit_weight, forced_attack);
+	
 	LOG_EMPERY_CENTER_DEBUG("Harvest: attacking_object_uuid = ", attacking_object_uuid, ", attacking_object_type_id = ", attacking_object_type_id,
-		", amount_to_harvest = ", amount_to_harvest, ", amount_harvested = ", amount_harvested, ", forced_attack = ", forced_attack);
+		", amount_to_harvest = ", amount_to_harvest, ", amount_harvested = ", amount_harvested, ", forced_attack = ", forced_attack," 
+                req.amount_harvested = ",req.amount_harvested," cofficient = ",cofficient);
+
 	amount_remaining = resource_crate->get_amount_remaining();
+
+        attacking_object->set_buff(BuffIds::ID_HARVEST_STATUS, interval);
 
 	const auto attacked_coord = resource_crate->get_coord();
 

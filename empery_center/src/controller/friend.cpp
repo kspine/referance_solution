@@ -8,7 +8,7 @@
 #include "../singletons/player_session_map.hpp"
 #include "../player_session.hpp"
 #include "../singletons/friend_private_msg_box_map.hpp"
-
+#include "../data/global.hpp"
 namespace EmperyCenter {
 
 CONTROLLER_SERVLET(Msg::TS_FriendPeerCompareExchange, controller, req){
@@ -46,6 +46,13 @@ CONTROLLER_SERVLET(Msg::TS_FriendPeerCompareExchange, controller, req){
 		if(info.relation == FriendBox::RT_BLACKLIST){
 			return Response(Msg::ERR_FRIEND_BLACKLISTED) <<friend_uuid;
 		}
+		
+		const auto max_number_of_friends = Data::Global::as_unsigned(Data::Global::SLOT_MAX_NUMBER_OF_FRIENDS);
+		std::vector<FriendBox::FriendInfo> friends;
+		friend_box->get_by_category(friends, FriendBox::CAT_FRIEND);
+		if(friends.size() >= max_number_of_friends){
+		return Response(Msg::ERR_FRIEND_LIST_FULL_INTERNAL);
+														}
 	}
 	if(info.category != category){
 		if(category != FriendBox::CAT_DELETED){

@@ -19,7 +19,17 @@ namespace EmperyCenter {
 			ID_DESTROY_SOLDIERS(10), //消灭士兵战斗力ID
 			ID_CHARGE_DIAMOND(11), //充值钻石ID
 			ID_LEGION_DONATE(12), // 军团捐献 单位数
-			ID_DUNGEON_CLEARANCE(13);
+			ID_DUNGEON_CLEARANCE(13),
+			ID_WIPE_OUT_LEVEL_MONSTER(14),//怪物等级 怪物数量
+			ID_JOIN_LEGION(15),//加入军团
+			ID_HARVEST_TYPE_SOLIDERS(16),//arm_type  数量
+			ID_HARVEST_SPECIFIC_STRATEGIC_RESOURCE(17),// 资源id 数量
+			ID_ENTER_DUNGEON(18);//副本id 数量
+	}
+
+	namespace TaskPrimaryKeyIds{
+		constexpr TaskPrimaryKeyId
+			ID_JOIN_LEGION(5710007);
 	}
 
 	namespace TaskLegionPackageKeyIds {

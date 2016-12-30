@@ -469,72 +469,17 @@ namespace Data {
 
 	void unpack_item_trade(std::vector<ItemTransactionElement> &transaction,
 		const boost::shared_ptr<const ItemTrade> &trade_data, std::uint64_t repeat_count,
-		std::int64_t param1,std::uint64_t addition)
+		std::int64_t param1)
 	{
 		PROFILE_ME;
 
 		transaction.reserve(transaction.size() + trade_data->items_consumed.size() + trade_data->items_produced.size());
 		for(auto it = trade_data->items_consumed.begin(); it != trade_data->items_consumed.end(); ++it){
-
-	                std::uint64_t count = 0;
-			if(it->first == ItemIds::ID_DUNGEON_CAN_BUY_TIMES){
-				count = checked_mul(it->second, repeat_count);
-			}else{
-				count = checked_add(checked_mul(it->second, repeat_count),addition);
-			}
-
-			transaction.emplace_back(ItemTransactionElement::OP_REMOVE, it->first, count,
+			transaction.emplace_back(ItemTransactionElement::OP_REMOVE, it->first, checked_mul(it->second, repeat_count),
 				ReasonIds::ID_TRADE_REQUEST, param1, trade_data->trade_id.get(), repeat_count);
 		}
 		for(auto it = trade_data->items_produced.begin(); it != trade_data->items_produced.end(); ++it){
 			transaction.emplace_back(ItemTransactionElement::OP_ADD, it->first, checked_mul(it->second, repeat_count),
-				ReasonIds::ID_TRADE_REQUEST, param1, trade_data->trade_id.get(), repeat_count);
-		}
-	}
-
-	boost::shared_ptr<const ResourceTradeUpgrade> ResourceTradeUpgrade::get(TradeId trade_id){
-		PROFILE_ME;
-
-		const auto resource_trade_upgrade_container = g_resource_trade_upgrade_container.lock();
-		if(!resource_trade_upgrade_container){
-			LOG_EMPERY_CENTER_WARNING("resource_trade_upgrade_container has not been loaded.");
-			return { };
-		}
-
-		const auto it = resource_trade_upgrade_container->find<0>(trade_id);
-		if(it == resource_trade_upgrade_container->end<0>()){
-			LOG_EMPERY_CENTER_TRACE("ResourceTradeUpgrade not found: trade_id = ", trade_id);
-			return { };
-		}
-		return boost::shared_ptr<const ResourceTradeUpgrade>(resource_trade_upgrade_container, &*it);
-	}
-
-	boost::shared_ptr<const ResourceTradeUpgrade> ResourceTradeUpgrade::require(TradeId trade_id){
-		PROFILE_ME;
-
-		auto ret = get(trade_id);
-		if(!ret){
-			LOG_EMPERY_CENTER_WARNING("ResourceTradeUpgrade not found: trade_id = ", trade_id);
-			DEBUG_THROW(Exception, sslit("ResourceTradeUpgrade not found"));
-		}
-		return ret;
-	}
-
-	void unpack_resource_trade_upgrade(std::vector<ItemTransactionElement> &item_transaction,std::vector<ResourceTransactionElement> &res_transaction,
-		const boost::shared_ptr<const ResourceTradeUpgrade> &trade_data, std::uint64_t repeat_count,
-		std::int64_t param1)
-	{
-		PROFILE_ME;
-
-		item_transaction.reserve(item_transaction.size() + trade_data->items_consumed.size());
-		for(auto it = trade_data->items_consumed.begin(); it != trade_data->items_consumed.end(); ++it){
-			auto count = checked_mul(it->second, repeat_count);
-			item_transaction.emplace_back(ItemTransactionElement::OP_REMOVE, it->first, count,
-				ReasonIds::ID_TRADE_REQUEST, param1, trade_data->trade_id.get(), repeat_count);
-		}
-		res_transaction.reserve(res_transaction.size() + trade_data->resource_produced.size());
-		for(auto it = trade_data->resource_produced.begin(); it != trade_data->resource_produced.end(); ++it){
-			res_transaction.emplace_back(ResourceTransactionElement::OP_ADD, it->first, checked_mul(it->second, repeat_count),
 				ReasonIds::ID_TRADE_REQUEST, param1, trade_data->trade_id.get(), repeat_count);
 		}
 	}

@@ -199,6 +199,7 @@ namespace EmperyCenter {
 				}
 			}
 			const auto task_id = task_data->task_id;
+			const auto category = Category(task_data->task_class_1);
 			const auto pit = m_tasks.find(task_id);
 			if (pit != m_tasks.end()) {
 				continue;
@@ -206,7 +207,7 @@ namespace EmperyCenter {
 			LOG_EMPERY_CENTER_DEBUG("New primary task: account_uuid = ", account_uuid, ", task_id = ", task_id);
 			TaskInfo info = {};
 			info.task_id = task_id;
-			info.category = CAT_PRIMARY;
+			info.category = category;
 			info.created_time = utc_now;
 			info.expiry_time = UINT64_MAX;
 			insert(std::move(info));
@@ -984,6 +985,10 @@ namespace EmperyCenter {
             access_task_dungeon_clearance();
         }
 
+        if(task_data->type == TaskTypeIds::ID_JOIN_LEGION){
+		    recheck_join_legion_tasks(get_account_uuid(),task_id);
+		}
+
 		bool finish = has_been_accomplished(task_id);
 		const auto session = PlayerSessionMap::get(get_account_uuid());
 		if (session) {
@@ -1043,6 +1048,10 @@ namespace EmperyCenter {
             access_task_dungeon_clearance();
         }
 
+		if(task_data->type == TaskTypeIds::ID_JOIN_LEGION){
+			  recheck_join_legion_tasks(get_account_uuid(),task_id);
+		}
+
 		const auto session = PlayerSessionMap::get(get_account_uuid());
 		if (session) {
 			try {
@@ -1097,7 +1106,7 @@ namespace EmperyCenter {
 		const auto task_data = Data::TaskAbstract::require(task_id);
 		return has_task_been_accomplished(task_data.get(), *(it->second.second));
 	}
-	void TaskBox::check(TaskTypeId type, std::uint64_t key, std::uint64_t count,
+	void TaskBox::check(Category category,TaskTypeId type, std::uint64_t key, std::uint64_t count,
 		TaskBox::CastleCategory castle_category, std::int64_t param1, std::int64_t param2)
 	{
 		PROFILE_ME;
@@ -1116,7 +1125,11 @@ namespace EmperyCenter {
 				continue;
 			}
 
+
 			const auto task_data = Data::TaskAbstract::require(task_id);
+		    if((category != CAT_NULL) && (category != task_data->task_class_1)){
+				continue;
+			}
 			if (task_data->type != type) {
 				continue;
 			}
@@ -1187,14 +1200,14 @@ namespace EmperyCenter {
 			}
 		}
 	}
-void TaskBox::check(TaskTypeId type, std::uint64_t key, std::uint64_t count,
+void TaskBox::check(Category category,TaskTypeId type, std::uint64_t key, std::uint64_t count,
 		const boost::shared_ptr<Castle> &castle, std::int64_t param1, std::int64_t param2)
 {
 		PROFILE_ME;
 
 		const auto primary_castle = WorldMap::require_primary_castle(castle->get_owner_uuid());
 
-		check(type, key, count, (castle == primary_castle) ? TCC_PRIMARY : TCC_NON_PRIMARY, param1, param2);
+		check(category,type, key, count, (castle == primary_castle) ? TCC_PRIMARY : TCC_NON_PRIMARY, param1, param2);
 }
 
 
@@ -1314,5 +1327,34 @@ void TaskBox::synchronize_with_player(const boost::shared_ptr<PlayerSession> &se
 	 fill_task_message(msg, it->second, utc_now,false);
 	 session->send(msg);
   }
+}
+void TaskBox::recheck_join_legion_tasks(AccountUuid account_uuid,TaskId task_id){
+		PROFILE_ME;
+		  try{
+				const auto it = m_tasks.find(task_id);
+				if (it == m_tasks.end()) {
+					return;
+				}
+				const auto task_data = Data::TaskAbstract::require(task_id);
+			    if(task_data->type != TaskTypeIds::ID_JOIN_LEGION){
+					return;
+				}
+			    auto &pair = it->second;
+				const auto &obj = pair.first;
+				if(obj->get_rewarded()){
+					return;
+				}
+				bool finish = has_been_accomplished(task_id);
+			    if(finish){
+				    return;
+				}
+				const auto legion_member = LegionMemberMap::get_by_account_uuid(account_uuid);
+				if(!legion_member){
+					return;
+				}
+				check(TaskBox::CAT_NULL,TaskTypeIds::ID_JOIN_LEGION, TaskPrimaryKeyIds::ID_JOIN_LEGION.get(), 1,TaskBox::TCC_ALL, 0, 0);
+			 }catch(std::exception &e){
+				LOG_EMPERY_CENTER_WARNING(e.what());
+		    }
 }
 }

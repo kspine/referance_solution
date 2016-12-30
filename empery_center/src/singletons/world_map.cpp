@@ -468,6 +468,7 @@ namespace EmperyCenter {
 			PROFILE_ME;
 			LOG_EMPERY_CENTER_TRACE("Map event block refresh timer: now = ", now);
 
+/*
 			const auto map_event_block_map = g_map_event_block_map.lock();
 			if (!map_event_block_map) {
 				return;
@@ -482,7 +483,7 @@ namespace EmperyCenter {
 					LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 				}
 			}
-
+*/
 			Poseidon::MongoDb::BsonBuilder query;
 			query.append_datetime(sslit("expiry_time"), 0);
             Poseidon::MongoDbDaemon::enqueue_for_deleting("Center_MapEvent", query, true);
@@ -1743,6 +1744,26 @@ namespace EmperyCenter {
 	    }
 	}
 
+	void WorldMap::get_map_event_blocks_by_rectangle(std::vector<boost::shared_ptr<MapEventBlock>> &ret,Rectangle rectangle){
+		PROFILE_ME;
+
+		const auto map_event_block_map = g_map_event_block_map.lock();
+		if(!map_event_block_map){
+			LOG_EMPERY_CENTER_WARNING("Map event block map not loaded.");
+			return;
+		}
+		ret.reserve(ret.size() + map_event_block_map->size());
+		for(auto it = map_event_block_map->begin<0>(); it != map_event_block_map->end<0>(); ++it){
+			auto event_block_rectangle = it->map_event_block->get_block_scope();
+			if( rectangle.hit_test(event_block_rectangle.bottom_left())  ||
+				rectangle.hit_test(event_block_rectangle.bottom_right()) ||
+				rectangle.hit_test(event_block_rectangle.top_left()) ||
+				rectangle.hit_test(event_block_rectangle.top_right()) ){
+				ret.emplace_back(it->map_event_block);
+			}
+		}
+	}
+
 	boost::shared_ptr<MapEventBlock> WorldMap::require_map_event_block(Coord coord){
 	    PROFILE_ME;
 
@@ -1798,6 +1819,22 @@ namespace EmperyCenter {
 
 	    LOG_EMPERY_CENTER_DEBUG("Updating map event block: block_coord = ", block_coord);
 	    map_event_block_map->replace<0>(it, MapEventBlockElement(map_event_block));
+	}
+
+	void WorldMap::refresh_rectange_event(Rectangle rectangle){
+		PROFILE_ME;
+
+		LOG_EMPERY_CENTER_DEBUG("refresh rectange event ");
+		std::vector<boost::shared_ptr<MapEventBlock>> ret;
+		WorldMap::get_map_event_blocks_by_rectangle(ret,rectangle);
+		for(auto it = ret.begin(); it != ret.end(); ++it){
+			const auto &map_event_block = *it;
+			try{
+				map_event_block->pump_status();
+			}catch(std::exception &e){
+				LOG_EMPERY_CENTER_WARNING(e.what());
+			}
+		}
 	}
 
 	void WorldMap::refresh_activity_event(unsigned map_event_type){

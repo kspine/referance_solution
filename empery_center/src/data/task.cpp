@@ -27,6 +27,7 @@ namespace EmperyCenter
 			csv.get(elem.castle_category, "task_city");
 			csv.get(elem.type, "task_type");
 			csv.get(elem.accumulative, "accumulation");
+			csv.get(elem.task_class_1,  "task_class_1");
 
 			Poseidon::JsonObject object;
 			csv.get(object, "task_need");

@@ -127,10 +127,8 @@ namespace Data {
 	};
 
 	extern void unpack_item_trade(std::vector<ItemTransactionElement> &transaction,
-		const boost::shared_ptr<const ItemTrade> &trade_data, std::uint64_t repeat_count,std::int64_t param1,std::uint64_t additon = 0);
-
-	extern void unpack_resource_trade_upgrade(std::vector<ItemTransactionElement> &item_transaction,std::vector<ResourceTransactionElement> &res_transaction,
-		const boost::shared_ptr<const ResourceTradeUpgrade> &trade_data, std::uint64_t repeat_count,std::int64_t param1);
+		const boost::shared_ptr<const ItemTrade> &trade_data, std::uint64_t repeat_count,
+		std::int64_t param1);
 }
 
 }

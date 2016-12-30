@@ -243,6 +243,7 @@ namespace IdTypes {
     using CaptainAttributeId		= GenericId<std::uint32_t, 120043>;
 	using CaptainItemAttributeId	= GenericId<std::uint32_t, 120044>;
 	using TaskDungeonClearanceId    = GenericId<std::uint32_t, 120045>;
+	using TaskPrimaryKeyId          = GenericId<std::uint32_t, 120046>;
 
 	using AccountUuid               = GenericUuid<210001>;
 	using MapObjectUuid             = GenericUuid<210002>;

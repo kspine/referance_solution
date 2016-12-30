@@ -19,7 +19,9 @@
 #include <poseidon/singletons/mongodb_daemon.hpp>
 #include <poseidon/singletons/job_dispatcher.hpp>
 #include "singletons/legion_task_box_map.hpp"
-
+#include "task_box.hpp"
+#include "singletons/task_box_map.hpp"
+#include "task_type_ids.hpp"
 namespace EmperyCenter {
 
 std::pair<boost::shared_ptr<const Poseidon::JobPromise>, boost::shared_ptr<Legion>> Legion::async_create(
@@ -115,6 +117,12 @@ void Legion::AddMember(boost::shared_ptr<Account> account,unsigned rank,std::uin
 			msg.nick = account->get_nick();
 			msg.ext1 = "";
 			sendNoticeMsg(msg);
+		}
+		try{
+			 auto task_box = TaskBoxMap::require(account->get_account_uuid());
+			 task_box->check(TaskBox::CAT_NULL,TaskTypeIds::ID_JOIN_LEGION, TaskPrimaryKeyIds::ID_JOIN_LEGION.get(), 1,TaskBox::TCC_PRIMARY, 0, 0);
+		}catch(std::exception &e){
+			LOG_EMPERY_CENTER_WARNING(e.what());
 		}
 
 	}

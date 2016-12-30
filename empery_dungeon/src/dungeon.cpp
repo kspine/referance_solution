@@ -119,6 +119,11 @@ void Dungeon::pump_triggers_damage(){
 			++it;
 		}
 	}
+
+    if(m_fight_state == FIGHT_PAUSE){ 
+	    return;
+    }
+
 	for(auto it = triggers_damaged.begin(); it != triggers_damaged.end(); ++it){
 		const auto &damage = *it;
 		try {
@@ -798,7 +803,7 @@ void Dungeon::check_triggers_tag_die(){
 						}
 					}
 					if((count == 0) || (count != params_array.size())){
-						return;
+						continue;
 					}
 				}catch(std::exception &e){
 					LOG_EMPERY_DUNGEON_WARNING("std::exception thrown: what = ", e.what());
@@ -1978,6 +1983,9 @@ void Dungeon::pump_skill_damage(){
 		}
 	}
 
+	if(m_fight_state == FIGHT_PAUSE){
+		return;
+	}
 	for(auto it = skill_damage.begin(); it != skill_damage.end(); ++it){
 		const auto &damage = *it;
 		try {
