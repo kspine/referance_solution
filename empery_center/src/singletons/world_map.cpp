@@ -2444,6 +2444,40 @@ namespace EmperyCenter {
 			}
 		}
 
+	    const auto resource_crate_map = g_resource_crate_map.lock();
+		if (resource_crate_map) {
+			LOG_EMPERY_CENTER_INFO("Loading resource crates: scope = ", scope);
+
+			const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_ResourceCrate>>>();
+			{
+				Poseidon::MongoDb::BsonBuilder query;
+				// query.append_object(sslit("amount_remaining"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gt"), 0));
+				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
+				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
+				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
+				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
+
+				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
+					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
+					auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_ResourceCrate>();
+					obj->fetch(conn);
+					obj->enable_auto_saving();
+					sink->emplace_back(std::move(obj));
+				}, "Center_ResourceCrate", std::move(query), 0, INT32_MAX);
+				Poseidon::JobDispatcher::yield(promise, true);
+			}
+			for (const auto &obj : *sink) {
+				CONCURRENT_LOAD_BEGIN{
+					auto resource_crate = boost::make_shared<ResourceCrate>(obj);
+					const auto elem = ResourceCrateElement(std::move(resource_crate));
+					const auto result = resource_crate_map->insert(elem);
+					if (!result.second) {
+						resource_crate_map->replace(result.first, elem);
+					}
+				} CONCURRENT_LOAD_END;
+			}
+		}
+
 		const auto map_event_block_map = g_map_event_block_map.lock();
 		if (map_event_block_map) {
 			LOG_EMPERY_CENTER_INFO("Loading map event block: scope = ", scope);
@@ -2498,41 +2532,8 @@ LOG_EMPERY_CENTER_DEBUG("Load Center_MapEventBlock");
 				} CONCURRENT_LOAD_END;
 			}
 		}
-
-		const auto resource_crate_map = g_resource_crate_map.lock();
-		if (resource_crate_map) {
-			LOG_EMPERY_CENTER_INFO("Loading resource crates: scope = ", scope);
-
-			const auto sink = boost::make_shared<std::vector<boost::shared_ptr<MongoDb::Center_ResourceCrate>>>();
-			{
-				Poseidon::MongoDb::BsonBuilder query;
-				// query.append_object(sslit("amount_remaining"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gt"), 0));
-				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.left()));
-				query.append_object(sslit("x"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.right()));
-				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$gte"), scope.bottom()));
-				query.append_object(sslit("y"), Poseidon::MongoDb::bson_scalar_signed(sslit("$lt"), scope.top()));
-				
-				const auto promise = Poseidon::MongoDbDaemon::enqueue_for_batch_loading(
-					[sink](const boost::shared_ptr<Poseidon::MongoDb::Connection> &conn) {
-					auto obj = boost::make_shared<EmperyCenter::MongoDb::Center_ResourceCrate>();
-					obj->fetch(conn);
-					obj->enable_auto_saving();
-					sink->emplace_back(std::move(obj));
-				}, "Center_ResourceCrate", std::move(query), 0, INT32_MAX);
-				Poseidon::JobDispatcher::yield(promise, true);
-			}
-			for (const auto &obj : *sink) {
-				CONCURRENT_LOAD_BEGIN{
-					auto resource_crate = boost::make_shared<ResourceCrate>(obj);
-					const auto elem = ResourceCrateElement(std::move(resource_crate));
-					const auto result = resource_crate_map->insert(elem);
-					if (!result.second) {
-						resource_crate_map->replace(result.first, elem);
-					}
-				} CONCURRENT_LOAD_END;
-			}
-		}
 	}
+	
 	void WorldMap::synchronize_cluster(const boost::shared_ptr<ClusterSession> &cluster, Rectangle view) noexcept
 		try {
 		PROFILE_ME;

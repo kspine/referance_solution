@@ -317,7 +317,7 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 	}
 
 	const auto interval = req.interval;
-	const auto amount_to_harvest = req.amount_harvested;
+	const auto amount_to_harvest = req.amount_harvested/1000.0;
 	//地图活动翻倍
 	double activity_add_rate = 1;
 	const auto map_activity = ActivityMap::get_map_activity();
@@ -326,7 +326,7 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 			activity_add_rate = 2;
 		}
 	}
-	const auto amount_harvested = strategic_resource->harvest(map_object, amount_to_harvest/1000.0 * activity_add_rate / unit_weight, forced_attack);
+	const auto amount_harvested = strategic_resource->harvest(map_object, amount_to_harvest * activity_add_rate / unit_weight, forced_attack);
 	LOG_EMPERY_CENTER_DEBUG("Harvest: map_object_uuid = ", map_object_uuid, ", map_object_type_id = ", map_object_type_id,
 		", harvest_speed = ", harvest_speed, ", amount_to_harvest = ", amount_to_harvest,", unit_weight = ", unit_weight,
 		", amount_harvested = ", amount_harvested, ", forced_attack = ", forced_attack);
@@ -338,7 +338,7 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 		if (pShared)
 		{
 			LOG_EMPERY_CENTER_DEBUG("采集n战略资源*4 * 权重!!!");
-						
+
 			task_box->check(TaskBox::CAT_LEGION_PACKAGE,TaskTypeIds::ID_HARVEST_STRATEGIC_RESOURCE, 
 						TaskLegionPackageKeyIds::ID_HARVEST_STRATEGIC_RESOURCE.get(),
 						static_cast<std::uint64_t>((amount_harvested * 4)* pShared->unit_weight),TaskBox::TCC_PRIMARY, 0, 0);
@@ -361,7 +361,7 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 					const auto legion_uuid = LegionUuid(member->get_legion_uuid());
 					const auto legion_task_box = LegionTaskBoxMap::require(legion_uuid);
 					legion_task_box->check(TaskTypeIds::ID_HARVEST_STRATEGIC_RESOURCE,
-						TaskLegionKeyIds::ID_HARVEST_STRATEGIC_RESOURCE, amount_to_harvest,account_uuid, 0, 0);
+						TaskLegionKeyIds::ID_HARVEST_STRATEGIC_RESOURCE, amount_harvested,account_uuid, 0, 0);
 					legion_task_box->pump_status();
 				}
 			}
@@ -376,7 +376,7 @@ CLUSTER_SERVLET(Msg::KS_MapHarvestStrategicResource, cluster, req){
 		    {
 				PROFILE_ME;
 				task_box->check(TaskBox::CAT_NULL,TaskTypeIds::ID_HARVEST_SPECIFIC_STRATEGIC_RESOURCE,
-					resource_id.get(),  amount_to_harvest,TaskBox::TCC_PRIMARY, 0, 0);
+					resource_id.get(),  amount_harvested,TaskBox::TCC_PRIMARY, 0, 0);
 			}
 		});
 	} catch (std::exception &e){
