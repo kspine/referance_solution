@@ -182,7 +182,7 @@ bool find_path(std::vector<std::pair<signed char, signed char>> &path,
 					AStarCoordElement elem = { };
 					elem.coord            = coord;
 					const auto result = get_move_result(coord, account_uuid, true);
-				    elem.closed           = (result.first != Msg::ST_OK);
+					elem.closed           = (result.first != Msg::ST_OK);
 					elem.distance_from    = UINT64_MAX;
 					elem.distance_to_hint = get_distance_of_coords(coord, to_coord);
 					cit = astar_coords.emplace(coord, elem).first;
@@ -205,8 +205,7 @@ bool find_path(std::vector<std::pair<signed char, signed char>> &path,
 					nearest_dist = 0;
 					goto _done;
 				}
-                                
-if(new_elem.distance_to_hint < nearest_dist){
+				if(new_elem.distance_to_hint < nearest_dist){
 					nearest_dist = new_elem.distance_to_hint;
 					nearest_coord = coord;
 				}
@@ -216,12 +215,14 @@ if(new_elem.distance_to_hint < nearest_dist){
 				}
 			}
 		}
-                if(coords_open.empty()){
+
+		if(coords_open.empty()){
 			LOG_EMPERY_CLUSTER_DEBUG("Pathfinding failed: from_coord = ", from_coord, ", to_coord = ", to_coord,
 				", distance_limit = ", distance_limit, ", distance_close_enough = ", distance_close_enough);
 			goto _done;
 		}
 	}
+
 _done:
 	;
 	if(nearest_dist != UINT64_MAX){

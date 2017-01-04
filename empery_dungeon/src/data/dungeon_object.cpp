@@ -83,6 +83,31 @@ namespace {
 			csvMonster.get(elem.hp,                                "hp");
 			csvMonster.get(elem.ai_id,                             "ai_id");
 			csvMonster.get(elem.view,                              "view");
+			
+			Poseidon::JsonArray array;
+			csvMonster.get(array,                                         "trigger_condition");
+			for(unsigned i = 0; i < array.size(); ++i){
+				auto &range_array = array.at(i).get<Poseidon::JsonArray>();
+				auto high = static_cast<std::uint32_t>(range_array.at(0).get<double>());
+				auto low  = static_cast<std::uint32_t>(range_array.at(1).get<double>());
+				elem.skill_trigger.push_back(std::make_pair(high,low));
+			}
+			
+			array.clear();
+			csvMonster.get(array,                                         "skill");
+			if(array.size() != elem.skill_trigger.size()){
+				LOG_EMPERY_DUNGEON_ERROR("skill trigger size != skill size, dungeon_object_type_id = ", elem.dungeon_object_type_id);
+				DEBUG_THROW(Exception, sslit("skill trigger size != skill size"));
+			}
+			for(unsigned i = 0; i < array.size(); ++i){
+				auto skills_array = array.at(i).get<Poseidon::JsonArray>();
+				std::vector<DungeonMonsterSkillId> skills;
+				for(unsigned j = 0; j < skills_array.size(); ++j){
+					auto skill_id = static_cast<std::uint64_t>(skills_array.at(j).get<double>());
+					skills.push_back(DungeonMonsterSkillId(skill_id));
+				}
+				elem.skills.push_back(std::move(skills));
+			}
 
 			if(!dungeon_object_map->insert(std::move(elem)).second){
 				LOG_EMPERY_DUNGEON_ERROR("Duplicate DungeonObjectType: dungeon_object_type_id = ", elem.dungeon_object_type_id);
@@ -136,7 +161,9 @@ namespace {
 			csvAi.get(elem.unique_id,         "ai_id");
 			csvAi.get(elem.ai_type,           "ai_type");
 			csvAi.get(elem.params,            "ai_numerical");
-
+			csvAi.get(elem.params2,           "ai_numerical_2");
+			csvAi.get(elem.ai_linkage,        "ai_linkage");
+			csvAi.get(elem.ai_Intelligence,   "ai_Intelligence");
 			if(!dungeon_object_ai_map->insert(std::move(elem)).second){
 				LOG_EMPERY_DUNGEON_ERROR("Duplicate ai data: ai_id = ", elem.unique_id);
 				DEBUG_THROW(Exception, sslit("Duplicate ai data"));

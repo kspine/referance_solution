@@ -119,11 +119,9 @@ void Dungeon::pump_triggers_damage(){
 			++it;
 		}
 	}
-
-    if(m_fight_state == FIGHT_PAUSE){ 
-	    return;
-    }
-
+	if(m_fight_state == FIGHT_PAUSE){
+		return;
+	}
 	for(auto it = triggers_damaged.begin(); it != triggers_damaged.end(); ++it){
 		const auto &damage = *it;
 		try {
@@ -465,7 +463,7 @@ void Dungeon::remove_dungeon_buff_no_synchronize(const Coord coord){
 
 std::uint64_t Dungeon::get_dungeon_attribute(DungeonObjectUuid create_uuid,AccountUuid owner_uuid,AttributeId attribute_id){
 	PROFILE_ME;
-	const auto utc_now = Poseidon::get_utc_time(); 
+	const auto utc_now = Poseidon::get_utc_time();
 	std::uint64_t total_attribute = 0;
 	for(auto it = m_dungeon_buffs.begin();it != m_dungeon_buffs.end(); ++it){
 		auto &dungeon_buff = it->second;
@@ -1106,7 +1104,7 @@ void Dungeon::on_triggers_buff(const TriggerAction &action){
 				msg.create_uuid        = create_uuid.str();
 				msg.create_owner_uuid  = create_owner_uuid.str();
 				dungeon_client->send(msg);
-				
+
 				//将buff直接加到野怪或者兵身上
 				const auto data_buff = Data::DungeonBuff::require(DungeonBuffTypeId(buff_type_id));
 				if(data_buff->target == 1){
@@ -1460,8 +1458,8 @@ void Dungeon::on_triggers_dungeon_show_pictures(const TriggerAction &action){
 		auto tween  =  static_cast<int>(param_array.at(4).get<double>());
 		auto time   =  static_cast<int>(param_array.at(5).get<double>());
 		auto &picture_coord  =  param_array.at(6).get<Poseidon::JsonArray>();
-		auto x = static_cast<int>(picture_coord.at(0).get<double>());  
-		auto y = static_cast<int>(picture_coord.at(1).get<double>()); 
+		auto x = static_cast<int>(picture_coord.at(0).get<double>()); 
+		auto y = static_cast<int>(picture_coord.at(1).get<double>());
 
 		const auto dungeon_client = get_dungeon_client();
 		if(dungeon_client){
@@ -1982,7 +1980,6 @@ void Dungeon::pump_skill_damage(){
 			}
 		}
 	}
-
 	if(m_fight_state == FIGHT_PAUSE){
 		return;
 	}
@@ -2131,42 +2128,27 @@ void Dungeon::insert_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuf
 }
 
 void Dungeon::remove_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuffTypeId buff_id){
-		const auto dungeon_client = get_dungeon_client();
-		if(!dungeon_client){
-			 LOG_EMPERY_DUNGEON_WARNING("empty dungeon client");
-			 return;
+	const auto dungeon_client = get_dungeon_client();
+	if(!dungeon_client){
+		LOG_EMPERY_DUNGEON_WARNING("empty dungeon client");
+		return;
+	}
+	try{
+		auto it = m_skill_buffs.find(std::make_pair(dungeon_object_uuid,buff_id));
+		if(it != m_skill_buffs.end()){
+			m_skill_buffs.erase(it);
+			Msg::DS_DungeonObjectClearBuff msg;
+		    msg.dungeon_uuid        = get_dungeon_uuid().str();
+			msg.dungeon_object_uuid = dungeon_object_uuid.str();
+			msg.buff_type_id        = buff_id.get();
+			LOG_EMPERY_DUNGEON_FATAL(msg);
+			dungeon_client->send(msg);
 		}
-		try{
-			 auto it = m_skill_buffs.find(std::make_pair(dungeon_object_uuid,buff_id));
-			 if(it != m_skill_buffs.end()){
-			    m_skill_buffs.erase(it);
-			    Msg::DS_DungeonObjectClearBuff msg;
-			    msg.dungeon_uuid        = get_dungeon_uuid().str();
-			    msg.dungeon_object_uuid = dungeon_object_uuid.str();
-			    msg.buff_type_id        = buff_id.get();
-			    LOG_EMPERY_DUNGEON_FATAL(msg);
-			    dungeon_client->send(msg);
-		    }
-		} catch(std::exception &e){
-			LOG_EMPERY_DUNGEON_WARNING("std::exception thrown: what = ", e.what());
-			dungeon_client->shutdown(e.what());
-		}
+	} catch(std::exception &e){
+		LOG_EMPERY_DUNGEON_WARNING("std::exception thrown: what = ", e.what());
+		dungeon_client->shutdown(e.what());
+	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 void Dungeon::pump_defense_matrix(){
 	PROFILE_ME;

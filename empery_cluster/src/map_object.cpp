@@ -537,27 +537,16 @@ std::uint64_t MapObject::attack(std::pair<long, std::string> &result, std::uint6
 	int result_type = IMPACT_NORMAL;
 	std::uint64_t damage = 0;
 	double k = 0.03;
-
-	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
-	auto ememy_solider_count = target_object->get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
-
 	double attack_rate = map_object_type_data->attack_speed + get_attribute(EmperyCenter::AttributeIds::ID_RATE_OF_FIRE_ADD) / 1000.0;
 	double doge_rate = emempy_type_data->doge_rate + get_attribute(EmperyCenter::AttributeIds::ID_DODGING_RATIO_ADD)/ 1000.0;
 	double critical_rate = map_object_type_data->critical_rate + get_attribute(EmperyCenter::AttributeIds::ID_CRITICAL_DAMAGE_RATIO_ADD) / 1000.0;
 	double critical_demage_plus_rate = map_object_type_data->critical_damage_plus_rate + get_attribute(EmperyCenter::AttributeIds::ID_CRITICAL_DAMAGE_MULTIPLIER_ADD) / 1000.0;
-	
-	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + 
-		get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0 + 
-		get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_ATTACK_ADD)*soldier_count*0.1;
-
-	
-	double total_defense = emempy_type_data->defence * (1.0 + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_BONUS) / 1000.0) + 
-		target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_ADD) / 1000.0 + 
-		target_object->get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_DEFENSE_ADD)*ememy_solider_count*0.1;
-
+	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0;
+	double total_defense = emempy_type_data->defence * (1.0 + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_BONUS) / 1000.0) + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_ADD) / 1000.0;
 	double relative_rate = Data::MapObjectRelative::get_relative(get_arm_attack_type(),target_object->get_arm_defence_type());
 //	std::uint32_t hp =  map_object_type_data->hp ;
 //	hp = (hp == 0 )? 1:hp;
+	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 //	if(soldier_count%hp != 0){
 //		soldier_count = (soldier_count/hp + 1)*hp;
 //	}
@@ -674,7 +663,8 @@ std::uint64_t MapObject::on_attack_goblin(boost::shared_ptr<MapObject> attacker,
 }
 
 std::uint64_t MapObject::harvest_resource_crate(std::pair<long, std::string> &result, std::uint64_t now,bool force_attack){
-		PROFILE_ME;
+	PROFILE_ME;
+
 	const auto harvest_interval = get_config<std::uint64_t>("harvest_interval", 1000);
 	const auto map_object_type_data = get_map_object_type_data();
 	if(!map_object_type_data){
@@ -697,21 +687,17 @@ std::uint64_t MapObject::harvest_resource_crate(std::pair<long, std::string> &re
 		return UINT64_MAX;
 	}
 	if(m_action != ACT_HARVEST_RESOURCE_CRATE && m_action != ACT_HARVEST_RESOURCE_CRATE_FORCE){
-		 LOG_EMPERY_CLUSTER_DEBUG("harvest resouce create ,error action = ",m_action);
+		LOG_EMPERY_CLUSTER_DEBUG("harvest resouce create ,error action = ",m_action);
 		return UINT64_MAX;
 	}
-	if(!is_in_attack_scope(target_resource_crate)){
-		return UINT64_MAX;
-	}
+
 	const auto utc_now = Poseidon::get_utc_time();
 	if(target_resource_crate->get_expiry_time() < utc_now){
-         LOG_EMPERY_CLUSTER_DEBUG("target resource crate expired , coord = ",target_resource_crate->get_coord());
+		LOG_EMPERY_CLUSTER_DEBUG("target resource crate expired , coord = ",target_resource_crate->get_coord());
 		return UINT64_MAX;
 	}
 
-	double attack_rate = map_object_type_data->harvest_speed*(1 + get_attribute(EmperyCenter::AttributeIds::ID_HARVEST_SPEED_BONUS) / 1000.0) + 
-		        get_attribute(EmperyCenter::AttributeIds::ID_HARVEST_SPEED_ADD) / 1000.0;
-
+	double attack_rate = map_object_type_data->harvest_speed*(1 + get_attribute(EmperyCenter::AttributeIds::ID_HARVEST_SPEED_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_HARVEST_SPEED_ADD) / 1000.0;
 	std::uint64_t damage = (std::uint64_t)std::max(harvest_interval / 60000.0 * get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT) * attack_rate*1000.0, 0.0);
 	damage = damage < 1 ? 1 : damage ;
 	const auto amount_remainging = target_resource_crate->get_amount_remaining();
@@ -735,6 +721,7 @@ std::uint64_t MapObject::harvest_resource_crate(std::pair<long, std::string> &re
 		result = std::move(sresult);
 		return UINT64_MAX;
 	}
+
 	return harvest_interval;
 }
 
@@ -781,17 +768,13 @@ std::uint64_t MapObject::attack_territory(std::pair<long, std::string> &result, 
 
 	std::uint64_t damage = 0;
 	double k = 0.35;
-	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 	double attack_rate = map_object_type_data->attack_speed + get_attribute(EmperyCenter::AttributeIds::ID_RATE_OF_FIRE_ADD) / 1000.0;
-
-	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + 
-		get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0 + 
-		get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_ATTACK_ADD)*soldier_count*0.1;
-
+	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0;;
 	double total_defense = map_cell_ticket->defense;
 	double relative_rate = Data::MapObjectRelative::get_relative(get_arm_attack_type(),map_cell_ticket->defence_type);
 //	std::uint32_t hp =  map_object_type_data->hp ;
 //	hp = (hp == 0 )? 1:hp;
+	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 //	if(soldier_count%hp != 0){
 //		soldier_count = (soldier_count/hp + 1)*hp;
 //	}
@@ -963,7 +946,7 @@ void MapObject::troops_attack(boost::shared_ptr<MapObject> target,bool passive){
 	{
 		WorldMap::get_map_objects_by_account(friendly_map_objects,get_owner_uuid());
 	}
-	
+
 	if(friendly_map_objects.empty()){
 		return;
 	}
@@ -1290,6 +1273,11 @@ bool  MapObject::is_protectable(){
 }
 
 bool MapObject::is_level_limit(boost::shared_ptr<MapObject> enemy_map_object){
+	const auto map_object_type_data = enemy_map_object->get_map_object_type_data();
+	if(map_object_type_data->map_object_chassis_id == MapObjectChassisId(2605000)){
+		LOG_EMPERY_CLUSTER_WARNING("map_object_class_id = 2605000,level limit ignore");
+		return false;
+	}
 	if(!is_monster() && enemy_map_object->is_monster()){
 		const auto max_account_attack_level  = get_attribute(EmperyCenter::AttributeIds::ID_OWNER_MAX_ATTACK_MONSTER_LEVEL);
 		const auto monster_level = enemy_map_object->get_monster_level();
@@ -1611,6 +1599,7 @@ std::uint64_t MapObject::on_action_harvest_resource_crate(std::pair<long, std::s
 	const auto target_resource_crate_uuid = ResourceCrateUuid(m_action_param);
 	const auto target_resource_crate = WorldMap::get_resource_crate(target_resource_crate_uuid);
 	if(!target_resource_crate){
+		LOG_EMPERY_CLUSTER_FATAL("no target resouce crate,target_resource_crate_uuid",target_resource_crate_uuid);
 		return UINT64_MAX;
 	}
 	return require_ai_control()->harvest_resource_crate(result,now,forced_attack);

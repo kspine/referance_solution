@@ -120,7 +120,7 @@ public:
 	bool check_valid_coord_for_birth(const Coord &src_coord);
 	bool get_monster_birth_coord(const Coord &src_coord,Coord &dest_coord);
 
-	//副本中触发器buff相关操作
+	//鍓湰涓Е鍙戝櫒buff鐩稿叧鎿嶄綔
 	boost::shared_ptr<DungeonBuff> get_dungeon_buff(const Coord coord) const;
 	void insert_dungeon_buff(const boost::shared_ptr<DungeonBuff> &dungeon_buff);
 	void update_dungeon_buff(const boost::shared_ptr<DungeonBuff> &dungeon_buff, bool throws_if_not_exists = true);
@@ -174,11 +174,10 @@ public:
 	void do_skill_damage(const boost::shared_ptr<SkillRecycleDamage>& damage);
 	void insert_skill_damage(const boost::shared_ptr<SkillRecycleDamage>& damage);
 	void check_skill_damage_move_pass(Coord coord,std::string params,bool isMonster = false);
-	//副本中技能产生的buff
+	//鍓湰涓妧鑳戒骇鐢熺殑buff
 	void insert_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuffTypeId buff_id,const boost::shared_ptr<DungeonBuff> dungeon_buff);
-	
 	void remove_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuffTypeId buff_id);
-
+	
 	//
 	virtual void pump_defense_matrix();
 };
