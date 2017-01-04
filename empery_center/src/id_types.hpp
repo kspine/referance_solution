@@ -244,7 +244,7 @@ namespace IdTypes {
 	using CaptainItemAttributeId	= GenericId<std::uint32_t, 120044>;
 	using TaskDungeonClearanceId    = GenericId<std::uint32_t, 120045>;
 	using TaskPrimaryKeyId          = GenericId<std::uint32_t, 120046>;
-
+    using SourceId                  = GenericId<std::uint32_t, 120047>;
 	using AccountUuid               = GenericUuid<210001>;
 	using MapObjectUuid             = GenericUuid<210002>;
 	using MailUuid                  = GenericUuid<210003>;

@@ -2130,6 +2130,44 @@ void Dungeon::insert_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuf
 	}
 }
 
+void Dungeon::remove_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuffTypeId buff_id){
+		const auto dungeon_client = get_dungeon_client();
+		if(!dungeon_client){
+			 LOG_EMPERY_DUNGEON_WARNING("empty dungeon client");
+			 return;
+		}
+		try{
+			 auto it = m_skill_buffs.find(std::make_pair(dungeon_object_uuid,buff_id));
+			 if(it != m_skill_buffs.end()){
+			    m_skill_buffs.erase(it);
+			    Msg::DS_DungeonObjectClearBuff msg;
+			    msg.dungeon_uuid        = get_dungeon_uuid().str();
+			    msg.dungeon_object_uuid = dungeon_object_uuid.str();
+			    msg.buff_type_id        = buff_id.get();
+			    LOG_EMPERY_DUNGEON_FATAL(msg);
+			    dungeon_client->send(msg);
+		    }
+		} catch(std::exception &e){
+			LOG_EMPERY_DUNGEON_WARNING("std::exception thrown: what = ", e.what());
+			dungeon_client->shutdown(e.what());
+		}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void Dungeon::pump_defense_matrix(){
 	PROFILE_ME;
 
@@ -2138,7 +2176,7 @@ void Dungeon::pump_defense_matrix(){
 	const auto utc_now = Poseidon::get_utc_time();
 	for(auto it = m_defense_matrixs.begin(); it != m_defense_matrixs.end(); ++it){
 		auto &defense_matrix = *it;
-		if(defense_matrix->get_next_change_time() < utc_now){
+		if(defense_matrix->get_next_change_time() < utc_now || defense_matrix->is_ignore_die()){
 			defense_matrixs.push_back(defense_matrix);
 		}
 	}

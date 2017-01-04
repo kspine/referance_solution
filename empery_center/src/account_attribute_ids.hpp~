@@ -37,7 +37,6 @@ constexpr AccountAttributeId
 	ID_LAST_CHAT_TIME_ALLIANCE        ( 402 ),
 	ID_GOLD_PAYMENT_ENABLED           ( 403 ),
 	ID_LAST_CHAT_TIME_KING            ( 404 ),
-	ID_OFFLINE_DUNGEON                ( 405 ),
 
 	ID_LEGION_UUID            		  ( 410 ),
 	ID_LEAGUE_UUID            		  ( 411 ),

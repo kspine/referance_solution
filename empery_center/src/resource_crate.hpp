@@ -23,7 +23,7 @@ private:
 
 	// 非持久化数据。
 	boost::weak_ptr<MapObject> m_last_harvester;
-
+    double m_harvest_remainder = 0;
 public:
 	ResourceCrate(ResourceCrateUuid resource_crate_uuid, ResourceId resource_id, std::uint64_t amount_max,
 		Coord coord, std::uint64_t created_time, std::uint64_t expiry_time);

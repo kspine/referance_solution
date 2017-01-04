@@ -8,4 +8,4 @@ id,caster_releas,caster_interval,caster_object,caster_range,sing_time,cast_time,
 1007,1,"[5,15]",0,1,0,0.5,2,3,"[2,2000]",1,0,0,0,0,hengsao,leidian,1,,
 1008,1,"[5,10]",2,4,3,0.5,0,2,"[2,2000]",1,0,0,0,2,magic,huoyin,1,,
 1009,1,"[10,10]",0,4,4,0.5,0,2,[],1,0,3316002,1,0,magic,zhaohuankulou,3,,
-1010,2,"[0,0]",0,0,0,0,2,2,[100000],1,0,0,0,3,,yujing,1,nengliangbaozha,1
+1010,2,"[0,0]",0,0,0,0,2,2,[2000],1,0,0,0,3,,yujing,1,nengliangbaozha,1

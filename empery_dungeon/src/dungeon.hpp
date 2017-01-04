@@ -177,6 +177,8 @@ public:
 	//副本中技能产生的buff
 	void insert_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuffTypeId buff_id,const boost::shared_ptr<DungeonBuff> dungeon_buff);
 	
+	void remove_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuffTypeId buff_id);
+
 	//
 	virtual void pump_defense_matrix();
 };

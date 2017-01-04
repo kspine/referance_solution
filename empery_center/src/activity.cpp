@@ -237,7 +237,7 @@ void MapActivity::reward_target(std::uint64_t target,MapActivityAccumulateMap::A
 							ReasonIds::ID_MAP_ACTIVITY_ACCUMULATE,info.activity_id.get(),
 							info.avaliable_since,target);
 		}
-		item_box->commit_transaction(transaction, false);
+		item_box->commit_transaction(transaction, false,{},SourceIds::ID_ACTIVITY_REWARD);
 	} catch (std::exception &e){
 		LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
 	}	
@@ -272,6 +272,7 @@ void MapActivity::reward_rank(AccountUuid account_uuid,MapActivityRankMap::MapAc
 							ReasonIds::ID_SOLDIER_KILL_RANK,ActivityIds::ID_MAP_ACTIVITY_KILL_SOLDIER.get(),
 							info.rank,info.settle_date);
 		}
+		item_box->commit_transaction(transaction, false,{},SourceIds::ID_ACTIVITY_REWARD);
 	} catch (std::exception &e){
 		LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
 	}
@@ -808,7 +809,7 @@ void WorldActivity::reward_activity(Coord cluster_coord,WorldActivityId sub_worl
 				}
 			}
 		}
-		item_box->commit_transaction(transaction, false);
+		item_box->commit_transaction(transaction, false,{},SourceIds::ID_ACTIVITY_REWARD);
 	}  catch (std::exception &e){
 				LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
 	}
@@ -852,7 +853,7 @@ void WorldActivity::reward_rank(Coord cluster_coord,AccountUuid account_uuid){
 							ReasonIds::ID_WORLD_ACTIVITY_RANK,ActivityIds::ID_WORLD_ACTIVITY.get(),
 							self_info.rank,m_available_since);
 		}
-		item_box->commit_transaction(transaction, false);
+		item_box->commit_transaction(transaction, false,{},SourceIds::ID_ACTIVITY_REWARD);
 	} catch (std::exception &e){
 		LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
 	}

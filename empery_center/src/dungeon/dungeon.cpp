@@ -39,6 +39,12 @@
 
 #include "../singletons/captain_item_map.hpp"
 
+#include "../singletons/account_map.hpp"
+#include "../singletons/account_map.hpp"
+#include "../account.hpp"
+#include "../account_attribute_ids.hpp"
+
+
 
 namespace EmperyCenter {
 
@@ -129,6 +135,44 @@ DUNGEON_SERVLET(Msg::DS_DungeonObjectAttackAction, dungeon, server, req){
 	LOG_EMPERY_CENTER_DEBUG("Dungeon object damaged: attacked_object_uuid = ", attacked_object_uuid,
 		", hp_previous = ", hp_previous, ", hp_damaged = ", hp_damaged, ", hp_remaining = ", hp_remaining,
 		", soldiers_previous = ", soldiers_previous, ", soldiers_damaged = ", soldiers_damaged, ", soldiers_remaining = ", soldiers_remaining);
+
+        // 通知客户端。
+	try {
+		PROFILE_ME;
+
+		Msg::SC_DungeonObjectAttackResult msg;
+		msg.dungeon_uuid             = dungeon->get_dungeon_uuid().str();
+		msg.attacking_object_uuid    = attacking_object_uuid.str();
+		msg.attacking_coord_x        = attacking_coord.x();
+		msg.attacking_coord_y        = attacking_coord.y();
+		msg.attacked_object_uuid     = attacked_object_uuid.str();
+		msg.attacked_coord_x         = attacked_coord.x();
+		msg.attacked_coord_y         = attacked_coord.y();
+		msg.result_type              = result_type;
+		msg.soldiers_resuscitated    = 0;
+		msg.soldiers_wounded         = 0;
+		msg.soldiers_wounded_added   = 0;
+		msg.soldiers_damaged         = hp_damaged;
+		msg.soldiers_remaining       = hp_remaining;
+		msg.attacking_object_type_id = attacking_object_type_id.get();
+		msg.attacked_object_type_id  = attacked_object_type_id.get();
+		LOG_EMPERY_CENTER_TRACE("Broadcasting attack result message: msg = ", msg);
+
+		std::vector<std::pair<AccountUuid, boost::shared_ptr<PlayerSession>>> observers_all;
+		dungeon->get_observers_all(observers_all);
+		for(auto it = observers_all.begin(); it != observers_all.end(); ++it){
+			const auto &session = it->second;
+			try {
+				session->send(msg);
+			} catch(std::exception &e){
+				LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
+			}
+		}
+	} catch(std::exception &e){
+		LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
+	}
+
+
 
 	const auto shadow_attacked_map_object_uuid = MapObjectUuid(attacked_object_uuid.get());
 	const auto shadow_attacked_map_object = WorldMap::get_map_object(shadow_attacked_map_object_uuid);
@@ -235,54 +279,6 @@ _wounded_done:
 	}
 	attacked_object->set_buff(BuffIds::ID_BATTLE_STATUS, utc_now, battle_status_timeout);
 
-	// 通知客户端。
-	try {
-		PROFILE_ME;
-
-		Msg::SC_DungeonObjectAttackResult msg;
-		msg.dungeon_uuid             = dungeon->get_dungeon_uuid().str();
-		msg.attacking_object_uuid    = attacking_object_uuid.str();
-		msg.attacking_coord_x        = attacking_coord.x();
-		msg.attacking_coord_y        = attacking_coord.y();
-		msg.attacked_object_uuid     = attacked_object_uuid.str();
-		msg.attacked_coord_x         = attacked_coord.x();
-		msg.attacked_coord_y         = attacked_coord.y();
-		msg.result_type              = result_type;
-		msg.soldiers_resuscitated    = soldiers_resuscitated;
-		msg.soldiers_wounded         = soldiers_wounded;
-		msg.soldiers_wounded_added   = soldiers_wounded_added;
-		msg.soldiers_damaged         = hp_damaged;
-		msg.soldiers_remaining       = hp_remaining;
-		msg.attacking_object_type_id = attacking_object_type_id.get();
-		msg.attacked_object_type_id  = attacked_object_type_id.get();
-		LOG_EMPERY_CENTER_TRACE("Broadcasting attack result message: msg = ", msg);
-
-		std::vector<std::pair<AccountUuid, boost::shared_ptr<PlayerSession>>> observers_all;
-		dungeon->get_observers_all(observers_all);
-		for(auto it = observers_all.begin(); it != observers_all.end(); ++it){
-			const auto &session = it->second;
-			try {
-				session->send(msg);
-			} catch(std::exception &e){
-				LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ", e.what());
-			}
-		}
-	} catch(std::exception &e){
-		LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
-	}
-
-	// 更新交战状态。
-	try {
-		PROFILE_ME;
-
-		const auto state_persistence_duration = Data::Global::as_double(Data::Global::SLOT_WAR_STATE_PERSISTENCE_DURATION);
-
-		WarStatusMap::set(attacking_account_uuid, attacked_account_uuid,
-		saturated_add(utc_now, static_cast<std::uint64_t>(state_persistence_duration * 60000)));
-	} catch(std::exception &e){
-		LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
-	}
-
 	// 怪物掉落。
 	if(attacking_account_uuid && (soldiers_remaining == 0)){
 		try {
@@ -319,7 +315,6 @@ _wounded_done:
 				boost::container::flat_map<ItemId, std::uint64_t> items_basic;
 
 				{
-					std::vector<ItemTransactionElement> transaction;
 					const auto &monster_rewards = monster_type_data->monster_rewards;
 					for(auto rit = monster_rewards.begin(); rit != monster_rewards.end(); ++rit){
 						const auto &collection_name = rit->first;
@@ -341,9 +336,6 @@ _wounded_done:
 								if (reward_data->ntype == 1)
 								{
 									// 道具
-									transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
-										ReasonIds::ID_DUNGEON_MONSTER_REWARD, attacked_object_type_id.get(),
-										static_cast<std::int64_t>(reward_data->unique_id), 0);
 
 									items_basic[item_id] += count;
 								}
@@ -364,9 +356,9 @@ _wounded_done:
 						}
 					}
 
-					item_box->commit_transaction(transaction, false);
 				}
 
+				dungeon->add_monster_reward(items_basic);
 				const auto session = PlayerSessionMap::get(attacking_account_uuid);
 				if(session){
 					try {
@@ -625,6 +617,16 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
 		}
 	}
 
+	//野怪掉落只在副本胜利发放
+	boost::container::flat_map<ItemId, std::uint64_t> monster_reward;
+	dungeon->get_monster_reward(monster_reward);
+	for(auto it = monster_reward.begin(); it != monster_reward.end(); ++it){
+		const auto item_id = it->first;
+		const auto count = it->second;
+		transaction.emplace_back(ItemTransactionElement::OP_ADD, item_id, count,
+						ReasonIds::ID_DUNGEON_MONSTER_REWARD, 0, 0, 0);
+	}
+
 	item_box->commit_transaction(transaction, false,
 		[&]{ dungeon_box->set(std::move(info)); });
 	const auto castle =  WorldMap::require_primary_castle(dungeon->get_founder_uuid());
@@ -680,6 +682,16 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
     task_box->check_task_dungeon_clearance(boost::lexical_cast<uint64_t>(dungeon_type_id),info.finish_count);
 
 	dungeon->remove_observer(account_uuid, Dungeon::Q_PLAYER_WINS, "");
+
+	const auto account = AccountMap::require(account_uuid);
+	const auto offline_dungeon_uuid = DungeonUuid(account->get_attribute(AccountAttributeIds::ID_OFFLINE_DUNGEON));
+	if(offline_dungeon_uuid){
+		boost::container::flat_map<AccountAttributeId, std::string> modifiers;
+		modifiers.reserve(1);
+        modifiers[AccountAttributeIds::ID_OFFLINE_DUNGEON] = "";
+		account->set_attributes(std::move(modifiers));
+	}
+
 	const auto utc_now = Poseidon::get_utc_time();
 	LOG_EMPERY_CENTER_FATAL(req);
 	auto event = boost::make_shared<Events::DungeonFinish>(account_uuid,dungeon->get_dungeon_type_id(),dungeon->get_create_time(),utc_now,true);
@@ -1017,6 +1029,21 @@ DUNGEON_SERVLET(Msg::DS_DungeonSetFootAnnimation, dungeon, server, req){
 	}
 	dungeon->broadcast_to_observers(msg);
 
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonObjectClearBuff, dungeon, server, req){
+	const auto dungeon_buff_type_id = DungeonBuffTypeId(req.buff_type_id);
+	const auto dungeon_object_uuid         = DungeonObjectUuid(req.dungeon_object_uuid);
+	const auto buff_data = Data::DungeonBuff::get(dungeon_buff_type_id);
+	if(!buff_data){
+		return Response(Msg::ERR_NO_DUNGEON_BUFF_DATA) <<dungeon_buff_type_id;
+	}
+	auto dungeon_object = dungeon->get_object(dungeon_object_uuid);
+	if(!dungeon_object){
+		return Response(Msg::ERR_NO_SUCH_DUNGEON_OBJECT) <<dungeon_object_uuid;
+	}
+	dungeon_object->clear_buff(BuffId(dungeon_buff_type_id.get()));
 	return Response();
 }
 
