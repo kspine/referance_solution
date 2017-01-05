@@ -537,16 +537,27 @@ std::uint64_t MapObject::attack(std::pair<long, std::string> &result, std::uint6
 	int result_type = IMPACT_NORMAL;
 	std::uint64_t damage = 0;
 	double k = 0.03;
+	
+	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
+	auto ememy_solider_count = target_object->get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
+
 	double attack_rate = map_object_type_data->attack_speed + get_attribute(EmperyCenter::AttributeIds::ID_RATE_OF_FIRE_ADD) / 1000.0;
 	double doge_rate = emempy_type_data->doge_rate + get_attribute(EmperyCenter::AttributeIds::ID_DODGING_RATIO_ADD)/ 1000.0;
+
 	double critical_rate = map_object_type_data->critical_rate + get_attribute(EmperyCenter::AttributeIds::ID_CRITICAL_DAMAGE_RATIO_ADD) / 1000.0;
 	double critical_demage_plus_rate = map_object_type_data->critical_damage_plus_rate + get_attribute(EmperyCenter::AttributeIds::ID_CRITICAL_DAMAGE_MULTIPLIER_ADD) / 1000.0;
-	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0;
-	double total_defense = emempy_type_data->defence * (1.0 + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_BONUS) / 1000.0) + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_ADD) / 1000.0;
+	
+	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + 
+	                  	get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0 + 
+	                 	get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_ATTACK_ADD)*soldier_count*0.1;
+	
+	double total_defense = emempy_type_data->defence * (1.0 + target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_BONUS) / 1000.0) + 
+		                target_object->get_attribute(EmperyCenter::AttributeIds::ID_DEFENSE_ADD) / 1000.0 + 
+						target_object->get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_DEFENSE_ADD)*ememy_solider_count*0.1;
+	
 	double relative_rate = Data::MapObjectRelative::get_relative(get_arm_attack_type(),target_object->get_arm_defence_type());
 //	std::uint32_t hp =  map_object_type_data->hp ;
 //	hp = (hp == 0 )? 1:hp;
-	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 //	if(soldier_count%hp != 0){
 //		soldier_count = (soldier_count/hp + 1)*hp;
 //	}
@@ -768,13 +779,19 @@ std::uint64_t MapObject::attack_territory(std::pair<long, std::string> &result, 
 
 	std::uint64_t damage = 0;
 	double k = 0.35;
+	
+	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
+	
 	double attack_rate = map_object_type_data->attack_speed + get_attribute(EmperyCenter::AttributeIds::ID_RATE_OF_FIRE_ADD) / 1000.0;
-	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0;;
+	
+	double total_attack  = map_object_type_data->attack * (1.0 + get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_BONUS) / 1000.0) + 
+		get_attribute(EmperyCenter::AttributeIds::ID_ATTACK_ADD) / 1000.0 + 
+		get_attribute(EmperyCenter::AttributeIds::ID_CAPTAIN_ATTACK_ADD)*soldier_count*0.1;
+	
 	double total_defense = map_cell_ticket->defense;
 	double relative_rate = Data::MapObjectRelative::get_relative(get_arm_attack_type(),map_cell_ticket->defence_type);
 //	std::uint32_t hp =  map_object_type_data->hp ;
 //	hp = (hp == 0 )? 1:hp;
-	auto soldier_count = get_attribute(EmperyCenter::AttributeIds::ID_SOLDIER_COUNT);
 //	if(soldier_count%hp != 0){
 //		soldier_count = (soldier_count/hp + 1)*hp;
 //	}
