@@ -1046,5 +1046,13 @@ DUNGEON_SERVLET(Msg::DS_DungeonObjectClearBuff, dungeon, server, req){
 	dungeon_object->clear_buff(BuffId(dungeon_buff_type_id.get()));
 	return Response();
 }
+DUNGEON_SERVLET(Msg::DS_DungeonPlaySound, dungeon, server, req){
+	Msg::SC_DungeonPlaySound msg;
+	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
+	msg.sound_id          = req.sound_id;
+	dungeon->broadcast_to_observers(msg);
+
+	return Response();
+}
 
 }
