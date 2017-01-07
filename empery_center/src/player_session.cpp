@@ -104,7 +104,7 @@ protected:
 			parent->send_control(message_id, result.first, std::move(result.second));
 
 			if(result.first != 0){
-				const auto max_error_count        = get_config<std::uint64_t>("player_session_max_error_count", 10);
+				const auto max_error_count        = get_config<std::uint64_t>("player_session_max_error_count", 180);
 				const auto counter_reset_duration = get_config<std::uint64_t>("player_session_error_counter_reset_duration", 60000);
 
 				const auto now = Poseidon::get_fast_mono_clock();
