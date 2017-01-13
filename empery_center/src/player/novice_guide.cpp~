@@ -58,7 +58,7 @@ namespace EmperyCenter
        TaskId task_ids = TaskId(task_id);
        std::uint64_t stepid = (std::uint64_t)step_id;
 
-       NoviceGuideMap::make_insert(account_uuid,task_ids,stepid);
+     
        
        auto pshare = Data::NoviceGuideSetup::require(stepid);
 

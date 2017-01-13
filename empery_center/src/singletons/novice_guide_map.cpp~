@@ -43,8 +43,6 @@ namespace EmperyCenter{
 
 		MODULE_RAII_PRIORITY(handles, 5000)
 		{
-                  const auto novice_guide_map = boost::make_shared<NoviceGuideContainer>();
-
 		  const auto conn = Poseidon::MongoDbDaemon::create_connection();
 
 		  LOG_EMPERY_CENTER_INFO("Loading Center_NoviceGuide...");
