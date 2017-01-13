@@ -488,6 +488,9 @@ PLAYER_SERVLET(Msg::CS_ApplyJoinLegionMessage, account, session, req){
 					LOG_EMPERY_CENTER_DEBUG("CS_ApplyJoinLegionMessage apply_count = ",LegionApplyJoinMap::get_apply_count(account_uuid));
 
 
+					// legion approve hot push
+					legion->send_legion_approve_hot_push_msg();
+
 					return Response(Msg::ST_OK);
 				}
 			}

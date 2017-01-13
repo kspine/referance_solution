@@ -21,6 +21,10 @@
 #include "buff_ids.hpp"
 
 #include "singletons/castle_offline_upgrade_building_base_map.hpp"
+#include "singletons/account_map.hpp"
+#include "account.hpp"
+#include "account_attribute_ids.hpp"
+
 
 namespace EmperyCenter {
 
@@ -513,10 +517,21 @@ void Castle::pump_population_production(){
 	// 人口消耗。
 	const auto last_consumption_time = m_population_production_stamps->get_production_time_begin();
 	const auto consumption_minutes = saturated_sub(utc_now, last_consumption_time) / 60000;
-	if(consumption_minutes > 0){
+
+	const auto account = AccountMap::require(get_owner_uuid());
+	const auto notivice_period_str = account->get_attribute(AccountAttributeIds::ID_IN_NOVICE_PERIOD);
+	bool is_notivice_period = false;
+	LOG_EMPERY_CENTER_DEBUG("account_uuid = ",get_owner_uuid()," notivice_period = ",notivice_period_str);
+
+	if(!notivice_period_str.empty()){
+		is_notivice_period = boost::lexical_cast<std::uint64_t>(notivice_period_str);
+	}
+
+	if(consumption_minutes > 0 && !is_notivice_period){
+
 		const auto consumption_duration = consumption_minutes * 60000;
 		LOG_EMPERY_CENTER_DEBUG("Checking population consumption: map_object_uuid = ", get_map_object_uuid(),
-			", consumption_minutes = ", consumption_minutes);
+					", consumption_minutes = ", consumption_minutes);
 
 		boost::container::flat_map<ResourceId, std::uint64_t> resources_to_consume;
 		for(auto it = m_soldiers.begin(); it != m_soldiers.end(); ++it){

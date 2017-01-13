@@ -30,7 +30,8 @@
 #include <poseidon/async_job.hpp>
 #include "../singletons/world_map.hpp"
 #include "../legion_log.hpp"
-
+#include "../msg/sl_league.hpp"
+#include "../singletons/league_client.hpp"
 namespace EmperyCenter {
 
 namespace {
@@ -918,7 +919,8 @@ void LegionMemberMap::check_in_waittime()
 									// 设置原来团长为团员
 									boost::container::flat_map<LegionMemberAttributeId, std::string> Attributes1;
 
-									Attributes1[LegionMemberAttributeIds::ID_TITLEID] = boost::lexical_cast<std::string>(Data::Global::as_unsigned(Data::Global::SLOT_LEGION_MEMBER_DEFAULT_POWERID));
+									Attributes1[LegionMemberAttributeIds::ID_TITLEID] =
+										boost::lexical_cast<std::string>(Data::Global::as_unsigned(Data::Global::SLOT_LEGION_MEMBER_DEFAULT_POWERID));
 
 									member->set_attributes(Attributes1);
 
@@ -926,12 +928,24 @@ void LegionMemberMap::check_in_waittime()
 									const auto target_account = AccountMap::get(target_member->get_account_uuid());
 									if(target_account && account)
 									{
+										boost::container::flat_map<AccountAttributeId, std::string> modifiers;
+										modifiers.reserve(1);
+										modifiers[AccountAttributeIds::ID_LEAGUE_CAHT_FALG]             = "0";
+										target_account->set_attributes(std::move(modifiers));
+
 										Msg::SC_LegionNoticeMsg msg;
 										msg.msgtype = Legion::LEGION_NOTICE_MSG_TYPE::LEGION_NOTICE_MSG_TYPE_ATTORN;
 										msg.nick = target_account->get_nick();
 										msg.ext1 = account->get_nick();
 										legion->sendNoticeMsg(msg);
 									}
+									//广播到联盟的其他军团
+									Msg::SL_AttornLegionNotice msg;
+									msg.account_uuid = member->get_account_uuid().str();
+									msg.target_uuid  = target_member->get_account_uuid().str();
+									msg.legion_uuid  = member->get_legion_uuid().str();;
+									const auto league = LeagueClient::require();
+									league->send(msg);
 
 									LOG_EMPERY_CENTER_DEBUG("成功转让=============================== ",member->get_account_uuid(), "  目标对象：",target_member->get_account_uuid());
 									// 转让成功，重置转让等待时间

@@ -157,7 +157,7 @@ namespace Msg {
 	FIELD_STRING        (legion_leadername)	\
 	FIELD_STRING        (legion_icon)	\
 	FIELD_STRING        (legion_notice)	\
-	FIELD_STRING        (legion_level)	\
+ 	FIELD_STRING        (legion_level)	\
 	FIELD_STRING        (legion_rank)	\
 	FIELD_STRING        (legion_money)	\
 	FIELD_STRING        (legion_titleid)	\
@@ -167,6 +167,11 @@ namespace Msg {
 #include <poseidon/cbpp/message_generator.hpp>
 
 
+
+#define MESSAGE_NAME    SC_LegionApproveHotPushMsg
+#define MESSAGE_ID      1665
+#define MESSAGE_FIELDS
+#include <poseidon/cbpp/message_generator.hpp>
 }
 
 }

@@ -155,7 +155,6 @@ namespace Msg {
 	FIELD_STRING        (ntype)	\
 	FIELD_STRING        (ext1) 	\
 	FIELD_STRING        (mandator)
-
 #include <poseidon/cbpp/message_generator.hpp>
 
 #define MESSAGE_NAME    LS_LookLeagueLegionsReq
@@ -217,7 +216,24 @@ namespace Msg {
 	FIELD_ARRAY         (legions,	\
 	FIELD_STRING        (legion_uuid)	\
 	)
+#include <poseidon/cbpp/message_generator.hpp>
 
+
+#define MESSAGE_NAME    LS_AttornLegionNotice
+#define MESSAGE_ID      51017
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (account_uuid)      \
+	FIELD_STRING        (target_uuid)       \
+	FIELD_STRING        (legion_uuid)       \
+	FIELD_ARRAY         (legions,   \
+	FIELD_STRING        (legion_uuid)       \
+	)
+#include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    LS_LeagueApproveHotPushMsg
+#define MESSAGE_ID      51018
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (legion_uuid)
 #include <poseidon/cbpp/message_generator.hpp>
 
 }

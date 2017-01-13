@@ -946,4 +946,40 @@ LEAGUE_SERVLET(Msg::LS_ModifyLeagueNoticeRes, server, req){
 }
 
 
+LEAGUE_SERVLET(Msg::LS_AttornLegionNotice, server, req){
+	PROFILE_ME;
+
+	LOG_EMPERY_CENTER_DEBUG("LS_AttornLegionNotice=================== ", req.account_uuid);
+
+	Msg::SC_LeagueNoticeMsg msg;
+	msg.msgtype = 12;      // 联盟内的军团军团长转换
+	msg.nick = req.legion_uuid;
+
+	// 广播通知
+	for(auto it = req.legions.begin(); it != req.legions.end(); ++it )
+	{
+		auto info = *it;
+
+		const auto& legion = LegionMap::get(LegionUuid(info.legion_uuid));
+		if(legion)
+		{
+
+			legion->broadcast_to_members(msg);
+		}
+	}
+	return Response();
+}
+
+LEAGUE_SERVLET(Msg::LS_LeagueApproveHotPushMsg, server, req){
+	PROFILE_ME;
+
+	auto legion_uuid = req.legion_uuid;
+
+	const auto& legion = LegionMap::get(LegionUuid(legion_uuid));
+	if(legion){
+		legion->send_league_approve_hot_push_msg();
+	}
+	return Response();
+}
+
 }
