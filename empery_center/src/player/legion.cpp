@@ -166,6 +166,7 @@ PLAYER_SERVLET(Msg::CS_LegionCreateReqMessage, account, session, req){
 			LOG_EMPERY_CENTER_INFO("CS_LegionCreateReqMessage count:", count);
 
 			legion->synchronize_with_player(account_uuid,session);
+			WorldMap::synchronize_account_map_object_all(account_uuid);
             
 			// 如果还请求加入过其他军团，也需要做善后操作，删除其他所有加入请求
 			LegionApplyJoinMap::deleteInfo(LegionUuid(legion->get_legion_uuid()),account_uuid,true);
@@ -468,7 +469,7 @@ PLAYER_SERVLET(Msg::CS_ApplyJoinLegionMessage, account, session, req){
 					msg.ntype = Legion::LEGION_EMAIL_TYPE::LEGION_EMAIL_JOIN;
 					session->send(msg);
 					*/
-
+					WorldMap::synchronize_account_map_object_all(account_uuid);
 					//军团成员追踪日志：申请加入
 					LegionLog::LegionMemberTrace(AccountUuid(account_uuid),
 							LegionUuid(req.legion_uuid),AccountUuid(account_uuid),
@@ -602,7 +603,7 @@ PLAYER_SERVLET(Msg::CS_LegionAuditingResMessage, account, session, req)
 				//		legion->AddMember(AccountUuid(req.account_uuid),Data::Global::as_unsigned(Data::Global::SLOT_LEGION_MEMBER_DEFAULT_POWERID),utc_now,join_account->get_attribute(AccountAttributeIds::ID_DONATE),join_account->get_attribute(AccountAttributeIds::ID_WEEKDONATE),//  // //join_account->get_nick());
 
 						legion->AddMember(join_account,Data::Global::as_unsigned(Data::Global::SLOT_LEGION_MEMBER_DEFAULT_POWERID),utc_now);
-
+						WorldMap::synchronize_account_map_object_all(AccountUuid(req.account_uuid));
 						//军团成员追踪日志：审核加入
 						LegionLog::LegionMemberTrace(AccountUuid(req.account_uuid),
 									LegionUuid(member->get_legion_uuid()),AccountUuid(account_uuid),
@@ -980,6 +981,8 @@ PLAYER_SERVLET(Msg::CS_LegionInviteJoinResMessage, account, session, req)
 					bdeleteAll = true;
 
 					legion->sendmail(join_account,ChatMessageTypeIds::ID_LEVEL_LEGION_JOIN,legion->get_nick());
+					
+					WorldMap::synchronize_account_map_object_all(account_uuid);
 
 					//军团成员追踪日志：邀请加入
 					LegionLog::LegionMemberTrace(AccountUuid(invite->unlocked_get_invited_uuid()),
@@ -1746,12 +1749,12 @@ PLAYER_SERVLET(Msg::CS_banChatLegionReqMessage, account, session, req)
 					return Response(Msg::ERR_LEGION_NO_POWER);
 				}
 
-                                if(othermember->get_attribute(LegionMemberAttributeIds::ID_SPEAKFLAG) == "1" )
+                if(othermember->get_attribute(LegionMemberAttributeIds::ID_SPEAKFLAG) == "1" )
 				{
 					return Response(Msg::ERR_LEGION_BAN_CHAT);
 				}
 
-                                if(othermember->get_attribute(LegionMemberAttributeIds::ID_SPEAKFLAG) == "0" )
+                if(othermember->get_attribute(LegionMemberAttributeIds::ID_SPEAKFLAG) == "0" )
 				{
 					return Response(Msg::ERR_LEGION_OPEN_CHAT);
 				}
