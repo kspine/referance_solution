@@ -63,8 +63,9 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/singletons/novice_guide_map.cpp \
 	src/singletons/friend_record_box_map.cpp \
 	src/singletons/friend_private_msg_box_map.cpp \
-  src/singletons/captain_map.cpp \
+    src/singletons/captain_map.cpp \
 	src/singletons/captain_item_map.cpp \
+    src/singletons/spy_report_map.cpp \
 	src/data/common.cpp	\
 	src/data/global.cpp	\
 	src/data/castle.cpp	\
@@ -91,7 +92,7 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/data/skill.cpp \
 	src/data/novice_guide_setup.cpp \
 	src/data/map_country.cpp \
-  src/data/captain_config.cpp  \
+    src/data/captain_config.cpp  \
 	src/data/captain_level_config.cpp  \
 	src/data/captain_star_config.cpp  \
 	src/data/captain_item_config.cpp  \
@@ -99,6 +100,7 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/data/captain_equipaffix_config.cpp  \
 	src/data/captain_suit_config.cpp  \
 	src/data/captain_equippro_config.cpp  \
+    src/data/spy.cpp \
 	src/player/account.cpp	\
 	src/player/map.cpp	\
 	src/player/castle.cpp	\
@@ -120,7 +122,8 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/player/activity.cpp \
 	src/player/novice_guide.cpp \
 	src/player/map_country.cpp \
-  src/player/captain.cpp \
+    src/player/captain.cpp \
+    src/player/spy.cpp \
 	src/admin/account.cpp	\
 	src/admin/item.cpp	\
 	src/admin/castle.cpp	\
@@ -212,6 +215,6 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/friend_record_box.cpp \
 	src/friend_private_msg_data.cpp \
 	src/friend_private_msg_box.cpp \
-  src/captain.cpp \
+    src/captain.cpp \
 	src/captain_item.cpp \
 	src/mmain.cpp

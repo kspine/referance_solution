@@ -245,6 +245,7 @@ namespace IdTypes {
 	using TaskDungeonClearanceId    = GenericId<std::uint32_t, 120045>;
 	using TaskPrimaryKeyId          = GenericId<std::uint32_t, 120046>;
     using SourceId                  = GenericId<std::uint32_t, 120047>;
+    using SpyId                     = GenericId<std::uint32_t, 120048>;
 	using AccountUuid               = GenericUuid<210001>;
 	using MapObjectUuid             = GenericUuid<210002>;
 	using MailUuid                  = GenericUuid<210003>;
@@ -263,6 +264,7 @@ namespace IdTypes {
 	using FriendPrivateMsgUuid      = GenericUuid<210016>;
     using CaptainUuid			    = GenericUuid<210017>;
 	using CaptainItemUuid			= GenericUuid<210018>;
+    using SpyUuid                   = GenericUuid<210019>;
 }
 
 using namespace IdTypes;

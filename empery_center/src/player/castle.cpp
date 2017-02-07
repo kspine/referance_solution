@@ -3,6 +3,7 @@
 #include "../msg/cs_castle.hpp"
 #include "../msg/err_castle.hpp"
 #include "../msg/err_map.hpp"
+#include "../msg/err_spy.hpp"
 #include "../resource_utilities.hpp"
 #include "../singletons/world_map.hpp"
 #include "../castle.hpp"
@@ -1584,6 +1585,12 @@ PLAYER_SERVLET(Msg::CS_CastleQueryTreatmentInfo, account, session, req){
 }
 
 PLAYER_SERVLET(Msg::CS_CastleRelocate, account, session, req){
+     auto accounts    = AccountMap::require(account->get_account_uuid());
+     const auto &spy_status  = accounts->get_attribute(AccountAttributeIds::ID_SPY_STATUS);
+     if(!spy_status.empty())
+         if(spy_status == "1")
+                    return Response(Msg::ERR_SPY_QUEUE_FULL);
+
 	const auto map_object_uuid = MapObjectUuid(req.map_object_uuid);
 	const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(map_object_uuid));
 	if(!castle){
@@ -1799,6 +1806,12 @@ PLAYER_SERVLET(Msg::CS_CastleReactivateCastle, account, session, req){
 }
 
 PLAYER_SERVLET(Msg::CS_CastleInitiateProtection, account, session, req){
+   auto accounts    = AccountMap::require(account->get_account_uuid());
+   const auto &spy_status  = accounts->get_attribute(AccountAttributeIds::ID_SPY_STATUS);
+   if(!spy_status.empty())
+  	 if(spy_status == "1")
+  		 return Response(Msg::ERR_SPY_QUEUE_FULL);
+
 	const auto map_object_uuid = MapObjectUuid(req.map_object_uuid);
 	const auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(map_object_uuid));
 	if(!castle){

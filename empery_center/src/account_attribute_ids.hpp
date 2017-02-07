@@ -53,7 +53,8 @@ constexpr AccountAttributeId
 	ID_FIRST_CASTLE_NAME_SET          ( 507 ),
 	ID_NOVICIATE_PROTECTION_EXPIRED   ( 508 ),
 	ID_LEGION_PERSONAL_CONTRIBUTION   ( 509 ),
-	ID_MAP_COUNTRY                    ( 510 );
+	ID_MAP_COUNTRY                    ( 510 ),
+    ID_SPY_STATUS                     ( 511 );
 }
 
 }
