@@ -25,6 +25,8 @@
 #include "account.hpp"
 #include "account_attribute_ids.hpp"
 
+#include "data/vip.hpp"
+
 
 namespace EmperyCenter {
 
@@ -384,6 +386,7 @@ void Castle::pump_status(){
 	if(dirty){
 		recalculate_attributes(true);
 		async_recheck_building_level_tasks(get_owner_uuid());
+		async_recheck_tech_level_tasks(get_owner_uuid());
 	}
 
 	pump_population_production();
@@ -1261,6 +1264,7 @@ void Castle::create_tech_mission(TechId tech_id, Castle::Mission mission, std::u
 
 	if(check_tech_mission(obj, utc_now)){
 		recalculate_attributes(true);
+	    async_recheck_tech_level_tasks(get_owner_uuid());
 	}
 
 	const auto session = PlayerSessionMap::get(get_owner_uuid());
@@ -1334,6 +1338,7 @@ void Castle::speed_up_tech_mission(TechId tech_id, std::uint64_t delta_duration)
 
 	if(check_tech_mission(obj, utc_now)){
 		recalculate_attributes(true);
+		async_recheck_tech_level_tasks(get_owner_uuid());
 	}
 
 	const auto session = PlayerSessionMap::get(get_owner_uuid());
@@ -1398,6 +1403,7 @@ void Castle::pump_tech_status(TechId tech_id){
 
 	if(check_tech_mission(it->second, utc_now)){
 		recalculate_attributes(true);
+		async_recheck_tech_level_tasks(get_owner_uuid());
 	}
 }
 unsigned Castle::get_tech_queue_size() const {
@@ -1429,7 +1435,19 @@ void Castle::synchronize_tech_with_player(TechId tech_id, const boost::shared_pt
 	fill_tech_message(msg, it->second, utc_now);
 	session->send(msg);
 }
+void Castle::accumulate_tech_levels(boost::container::flat_map<TechId, boost::container::flat_map<unsigned, std::size_t>> &ret) const{
+	PROFILE_ME;
 
+	for(auto it = m_techs.begin(); it != m_techs.end(); ++it){
+		const auto tech_id = TechId(it->second->get_tech_id());
+		if(!tech_id){
+			continue;
+		}
+		const unsigned level = it->second->get_tech_level();
+		auto &count = ret[tech_id][level];
+		++count;
+	}
+}
 void Castle::check_init_resources(){
 	PROFILE_ME;
 	LOG_EMPERY_CENTER_TRACE("Checking init resources: map_object_uuid = ", get_map_object_uuid());
@@ -1460,6 +1478,9 @@ void Castle::check_auto_inc_resources(){
 	std::vector<boost::shared_ptr<const Data::CastleResource>> resources_to_check;
 	Data::CastleResource::get_auto_inc(resources_to_check);
 	boost::container::flat_map<boost::shared_ptr<MongoDb::Center_CastleResource>, std::uint64_t> new_timestamps;
+	const auto account = AccountMap::require(get_owner_uuid());
+	const auto vip_level = account->cast_attribute<unsigned>(AccountAttributeIds::ID_VIP_LEVEL);
+	const auto vip_data  = Data::Vip::require(vip_level);
 	for(auto dit = resources_to_check.begin(); dit != resources_to_check.end(); ++dit){
 		const auto &resource_data = *dit;
 		const auto resource_id = resource_data->resource_id;
@@ -1531,7 +1552,18 @@ void Castle::check_auto_inc_resources(){
 					ReasonIds::ID_AUTO_INCREMENT, resource_data->auto_inc_type, resource_data->auto_inc_offset, 0);
 			}
 		}
-		const auto new_updated_time = saturated_add(old_updated_time, saturated_mul(auto_inc_period, interval_count));
+        auto new_updated_time = saturated_add(old_updated_time, saturated_mul(auto_inc_period, interval_count));
+		//vip 搜查令时间减免
+		//vip 加成
+		if(vip_level > 0){
+			if(resource_id == ResourceIds::ID_MONSTER_REWARD_COUNT){
+				if(vip_data->search_time > 0){
+					new_updated_time = saturated_sub(new_updated_time, static_cast<std::uint64_t>(vip_data->search_time*60*1000));
+					LOG_EMPERY_CENTER_DEBUG("time free for monster reward count auto incing of vip, free_time ",vip_data->search_time*60*1000.0," account_uuid = ",get_owner_uuid());
+				}
+			}
+		}
+		
 		new_timestamps.emplace(obj, new_updated_time);
 	}
 	commit_resource_transaction(transaction,

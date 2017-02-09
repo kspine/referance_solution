@@ -40,6 +40,9 @@
 
 #include "singletons/legion_financial_map.hpp"
 
+#include "legion_donate_box.hpp"
+#include "singletons/legion_donate_box_map.hpp"
+
 namespace EmperyCenter {
 	namespace {
 		uint64_t CaculateWeekDay(unsigned y, unsigned m, unsigned d)
@@ -587,7 +590,7 @@ namespace EmperyCenter {
 				const auto utc_now = Poseidon::get_utc_time();
 				const auto legion = LegionMap::require(get_legion_uuid());
 				const auto task_contribution_data = Data::TaskLegionContribution::require(key);
-				auto legion_task_contribution_box = LegionTaskContributionBoxMap::require(get_legion_uuid());
+				//auto legion_task_contribution_box = LegionTaskContributionBoxMap::require(get_legion_uuid());
 				for (auto it = m_tasks.begin(); it != m_tasks.end(); ++it) {
 					const auto task_id = it->first;
 					auto &pair = it->second;
@@ -665,7 +668,7 @@ namespace EmperyCenter {
 					if(total_contribution > person_contribution_finish){
 						person_contribution = person_contribution_finish - day_personal_contribution;
 					}
-					legion_task_contribution_box->update(account_uuid,delta,person_contribution);
+					//legion_task_contribution_box->update(account_uuid,delta);
 					const auto legion_member = LegionMemberMap::get_by_account_uuid(account_uuid);
 					if(legion_member && (person_contribution > 0) && should_award_personal_contribution){
 						boost::container::flat_map<LegionMemberAttributeId, std::string> legion_attributes_modifer;

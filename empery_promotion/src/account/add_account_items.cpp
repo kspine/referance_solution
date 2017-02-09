@@ -16,6 +16,11 @@ ACCOUNT_SERVLET("addAccountItems", session, params){
 	const auto &remarks = params.get("remarks");
 
 	Poseidon::JsonObject ret;
+	if(item_id == ItemIds::ID_ACCOUNT_BALANCE){
+		ret[sslit("errorCode")] = (int)Msg::ERR_NO_ENOUGH_ITEMS;
+		ret[sslit("errorMessage")] = "Forbidden";
+		return ret;
+	}
 	auto info = AccountMap::get_by_login_name(login_name);
 	if(Poseidon::has_none_flags_of(info.flags, AccountMap::FL_VALID)){
 		ret[sslit("errorCode")] = (int)Msg::ERR_NO_SUCH_ACCOUNT;

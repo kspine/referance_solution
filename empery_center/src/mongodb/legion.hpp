@@ -112,6 +112,17 @@ namespace MongoDb {
     FIELD_UNSIGNED           (action_count) \
     FIELD_DATETIME           (created_time)
 #include <poseidon/mongodb/object_generator.hpp>
+
+#define MONGODB_OBJECT_NAME   Center_LegionDonate
+#define MONGODB_OBJECT_PRIMARY_KEY {return PRIMERY_KEYGEN::GenIDS::GenId(legion_uuid,account_uuid);}
+#define MONGODB_OBJECT_FIELDS \
+	FIELD_UUID              (legion_uuid) \
+	FIELD_UUID              (account_uuid) \
+	FIELD_UNSIGNED  (day_donate)	\
+	FIELD_UNSIGNED  (week_donate)	\
+	FIELD_UNSIGNED  (total_donate)	\
+	FIELD_DATETIME  (last_update_time)
+#include <poseidon/mongodb/object_generator.hpp>
 }
 }
 

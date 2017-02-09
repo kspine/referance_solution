@@ -119,9 +119,11 @@ namespace EmperyCenter {
 				SLOT_MAX_FRIEND_RECORD_COUNT                           = 100146,
 				SLOT_FRIEND_RECORD_EXPIRY_DAYS                         = 100147,
 				SLOT_FRIEND_RECENT_EXPIRY_DAYS                         = 100148,
-	                        SLOT_ITEM_DUNGEON_TRAD_PARAM                           = 100149,
+	            SLOT_ITEM_DUNGEON_TRAD_PARAM                           = 100149,
 				SLOT_BUILDING_FREE_UPGRADE_LIMIT                       = 100151,
 				SLOT_ATTACK_RESOURCE_CREATE_COEFFICIENT                = 100152,
+				SLOT_MAP_CELL_ITEM_REBATE_RATE                         = 100154,
+                SLOT_MAP_CELL_RESOURCE_REBATE_RATE                     = 100155,
 			};
 
 		public:

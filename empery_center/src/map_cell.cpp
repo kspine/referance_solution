@@ -188,7 +188,7 @@ void MapCell::pump_production(){
 		auto castle = boost::dynamic_pointer_cast<Castle>(WorldMap::get_map_object(parent_object_uuid));
 		if(!castle){
 			LOG_EMPERY_CENTER_DEBUG("No parent castle: coord = ", coord, ", parent_object_uuid = ", get_parent_object_uuid());
-		        DEBUG_THROW(Exception, sslit("No parent castle"));
+		    return;
 		}
 		const auto account = AccountMap::require(castle->get_owner_uuid());
 
@@ -251,7 +251,8 @@ void MapCell::pump_production(){
 		production_rate *= (1 + tech_turbo);
                 capacity        *= (1 + tech_turbo);
 
-		const auto vip_data = Data::Vip::require(account->get_promotion_level());
+		const auto vip_level = account->cast_attribute<unsigned>(AccountAttributeIds::ID_VIP_LEVEL);
+		const auto vip_data = Data::Vip::require(vip_level);
 		production_rate *= (1 + vip_data->production_turbo);
 	        capacity        *= (1 + vip_data->production_turbo);
 
@@ -700,13 +701,31 @@ void MapCell::check_occupation(){
 		const auto protection_duration = checked_mul<std::uint64_t>(protection_minutes, 60000);
 
 		std::vector<ItemTransactionElement> transaction;
+		std::vector<ResourceTransactionElement> resource_transaction;
 		bool ticket_reclaimed = false;
 		const auto castle_level = castle->get_level();
 		const auto updrade_data = Data::CastleUpgradePrimary::require(castle_level);
 		const auto distance = get_distance_of_coords(coord, castle->get_coord());
 		if(distance > updrade_data->max_map_cell_distance){
-			transaction.emplace_back(ItemTransactionElement::OP_ADD, ticket_item_id, 1,
-				ReasonIds::ID_OCCUPATION_END_RELOCATED, coord.x(), coord.y(), 0);
+			const auto ticket_data = Data::MapCellTicket::require(ticket_item_id);
+			const auto item_rebate_rate = Data::Global::as_double(Data::Global::SLOT_MAP_CELL_ITEM_REBATE_RATE);
+			const auto resource_rebate_rate = Data::Global::as_double(Data::Global::SLOT_MAP_CELL_RESOURCE_REBATE_RATE);
+			for (auto it = ticket_data->need_items.begin(); it != ticket_data->need_items.end(); ++it) {
+				const auto rebate = static_cast<std::uint64_t>(it->second * item_rebate_rate);
+				if (rebate <= 0) {
+					continue;
+				}
+				transaction.emplace_back(ItemTransactionElement::OP_ADD, it->first, rebate,
+					ReasonIds::ID_OCCUPATION_END_RELOCATED, coord.x(), coord.y(), 0);
+			}
+			for (auto it = ticket_data->need_resources.begin(); it != ticket_data->need_resources.end(); ++it) {
+				const auto rebate = static_cast<std::uint64_t>(it->second * resource_rebate_rate);
+				if (rebate <= 0) {
+					continue;
+				}
+				resource_transaction.emplace_back(ResourceTransactionElement::OP_ADD, it->first, rebate,
+					ReasonIds::ID_OCCUPATION_END_RELOCATED, coord.x(), coord.y(), 0);
+			}
 			if(is_acceleration_card_applied()){
 				transaction.emplace_back(ItemTransactionElement::OP_ADD, ItemIds::ID_ACCELERATION_CARD, 1,
 					ReasonIds::ID_OCCUPATION_END_RELOCATED, coord.x(), coord.y(), 0);
@@ -715,14 +734,17 @@ void MapCell::check_occupation(){
 		}
 		item_box->commit_transaction(transaction, false,
 			[&]{
-				set_buff(BuffIds::ID_OCCUPATION_PROTECTION, protection_duration);
-				clear_buff(BuffIds::ID_OCCUPATION_MAP_CELL);
-				set_occupier_object({ });
+				castle->commit_resource_transaction_nothrow(resource_transaction,
+				[&] {
+					set_buff(BuffIds::ID_OCCUPATION_PROTECTION, protection_duration);
+					clear_buff(BuffIds::ID_OCCUPATION_MAP_CELL);
+					set_occupier_object({});
 
-				if(ticket_reclaimed){
-					set_parent_object({ }, { }, { });
-					set_acceleration_card_applied(false);
-				}
+					if (ticket_reclaimed) {
+						set_parent_object({}, {}, {});
+						set_acceleration_card_applied(false);
+					}
+				});
 			});
 	};
 
@@ -770,35 +792,54 @@ void MapCell::synchronize_with_player(const boost::shared_ptr<PlayerSession> &se
 			AccountMap::cached_synchronize_account_with_player_all(occupier_owner_uuid, session);
 		}
 
-
-         const  auto accounts    = AccountMap::require(AccountUuid(owner_uuid));
-		 const auto &map_name  = accounts->get_attribute(AccountAttributeIds::ID_MAP_COUNTRY);
-		 if(map_name.empty())
+		 std::string mapname(""); 
+		 const  auto accounts    = AccountMap::get(AccountUuid(owner_uuid));
+		 if(!accounts)
 		 {
-			 const auto primary_castle =  WorldMap::get_primary_castle(AccountUuid(owner_uuid));
-			 if(primary_castle)
+            const auto scope = WorldMap::get_cluster_scope(get_coord());
+            std::int64_t numerical_x = scope.left() / static_cast<std::int64_t>(scope.width());
+			std::int64_t numerical_y = scope.bottom() / static_cast<std::int64_t>(scope.height());
+			std::string map_id = boost::lexical_cast<std::string>(numerical_x) + ","+ boost::lexical_cast<std::string>(numerical_y);
+
+		    mapname =  Data::MapCountry::get_map_name(map_id);
+		 }
+		 else
+		 {
+			 const auto &map_name  = accounts->get_attribute(AccountAttributeIds::ID_MAP_COUNTRY);
+			 if(map_name.empty())
 			 {
-				 const auto scope = WorldMap::get_cluster_scope(primary_castle->get_coord());
+				 const auto primary_castle =  WorldMap::get_primary_castle(AccountUuid(owner_uuid));
+				 if(primary_castle)
+				 {
+					 const auto scope = WorldMap::get_cluster_scope(primary_castle->get_coord());
 
-				 std::int64_t numerical_x = scope.left() / static_cast<std::int64_t>(scope.width());
-				 std::int64_t numerical_y = scope.bottom() / static_cast<std::int64_t>(scope.height());
-				 std::string map_id = boost::lexical_cast<std::string>(numerical_x) + ","+ boost::lexical_cast<std::string>(numerical_y);
+					 std::int64_t numerical_x = scope.left() / static_cast<std::int64_t>(scope.width());
+					 std::int64_t numerical_y = scope.bottom() / static_cast<std::int64_t>(scope.height());
+					 std::string map_id = boost::lexical_cast<std::string>(numerical_x) + ","+ boost::lexical_cast<std::string>(numerical_y);
 
-				 std::string map_names =  Data::MapCountry::get_map_name(map_id);
+					 std::string map_names =  Data::MapCountry::get_map_name(map_id);
+					 //update account attributive 
+					 boost::container::flat_map<AccountAttributeId, std::string> modifiers;
+					 modifiers.reserve(1);
+					 modifiers[AccountAttributeIds::ID_MAP_COUNTRY]  = map_names;
+					 accounts->set_attributes(std::move(modifiers)); 
 
-				 boost::container::flat_map<AccountAttributeId, std::string> modifiers;
-				 modifiers.reserve(1);
-				 modifiers[AccountAttributeIds::ID_MAP_COUNTRY]  = map_names;
-				 accounts->set_attributes(std::move(modifiers)); 
+					 mapname = map_names;
+				 }
+		     }
+			 else
+			 {
+				 mapname = map_name;
 			 }
 		 }
 
 		Msg::SC_MapCellInfo msg;
+
 		msg.x                         = get_coord().x();
 		msg.y                         = get_coord().y();
 		msg.parent_object_uuid        = parent_object_uuid.str();
 		msg.owner_uuid                = owner_uuid.str();
-		msg.map_name                  = accounts->get_attribute(AccountAttributeIds::ID_MAP_COUNTRY);
+		msg.map_name                  = mapname;
 		msg.acceleration_card_applied = is_acceleration_card_applied();
 		msg.ticket_item_id            = get_ticket_item_id().get();
 		msg.production_resource_id    = get_production_resource_id().get();
@@ -833,9 +874,8 @@ void MapCell::synchronize_with_player(const boost::shared_ptr<PlayerSession> &se
 		const auto& member = LegionMemberMap::get_by_account_uuid(get_owner_uuid());
 		if(member)
 		{
-			msg.legion_uuid            = member->get_legion_uuid().str();
+			msg.legion_uuid		   = member->get_legion_uuid().str();
 		}
-
 		session->send(msg);
 	}
 }

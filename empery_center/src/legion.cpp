@@ -262,6 +262,10 @@ void Legion::synchronize_with_player(AccountUuid account_uuid,const boost::share
 
 	// 军团成员数量
 	msg.legion_member_count     = 	boost::lexical_cast<std::string>(LegionMemberMap::get_legion_member_count(get_legion_uuid()));
+	
+	msg.bautojoin     		    = 	get_attribute(LegionAttributeIds::ID_AUTOJOIN);
+	
+	msg.language                =   get_attribute(LegionAttributeIds::ID_LANAGE);
 
 	LOG_EMPERY_CENTER_INFO("legion members size==============================================",msg.legion_member_count);
 

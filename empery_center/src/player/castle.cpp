@@ -229,11 +229,16 @@ PLAYER_SERVLET(Msg::CS_CastleUpgradeBuilding, account, session, req){
 			return Response(Msg::ERR_PREREQUISITE_NOT_MET) <<it->first;
 		}
 	}
-	const auto duration = static_cast<std::uint64_t>(std::ceil(upgrade_data->upgrade_duration * 60000.0 - 0.001));
+		
+	auto duration = static_cast<std::uint64_t>(std::ceil(upgrade_data->upgrade_duration * 60000.0 - 0.001));  
+    const auto vip_level = account->cast_attribute<unsigned>(AccountAttributeIds::ID_VIP_LEVEL);
+	const auto vip_data = Data::Vip::require(vip_level);
+	const auto real_duration = checked_sub(duration, vip_data->building_free_update_time*60000);
+	LOG_EMPERY_CENTER_DEBUG("upgrade bulding,duration = ",duration, " vip_level = ",vip_level, " vip_free_time = ",vip_data->building_free_update_time*60000," real_duration = ",real_duration);
 
 	const auto insuff_resource_id = try_decrement_resources(castle, task_box, upgrade_data->upgrade_cost,
 		ReasonIds::ID_UPGRADE_BUILDING, building_data->building_id.get(), upgrade_data->building_level, 0,
-		[&]{ castle->create_building_mission(building_base_id, Castle::MIS_UPGRADE, duration, BuildingId()); });
+		[&]{ castle->create_building_mission(building_base_id, Castle::MIS_UPGRADE, real_duration, BuildingId()); });
 	if(insuff_resource_id){
 		return Response(Msg::ERR_CASTLE_NO_ENOUGH_RESOURCES) <<insuff_resource_id;
 	}
@@ -1297,7 +1302,9 @@ PLAYER_SERVLET(Msg::CS_CastleCreateChildCastle, account, session, req){
 			", other_object_uuid = ", other_object->get_map_object_uuid(), ", other_object_type_id = ", other_object_type_id);
 		++immigrant_group_count;
 	}
-	const auto vip_data = Data::Vip::require(account->get_promotion_level());
+	
+	const auto vip_level = account->cast_attribute<unsigned>(AccountAttributeIds::ID_VIP_LEVEL);
+	const auto vip_data = Data::Vip::require(vip_level);
 	if(immigrant_group_count >= vip_data->max_castle_count + 1){
 		return Response(Msg::ERR_ACCOUNT_MAX_IMMIGRANT_GROUPS) <<vip_data->max_castle_count;
 	}
@@ -1672,6 +1679,8 @@ PLAYER_SERVLET(Msg::CS_CastleRelocate, account, session, req){
 	}
 
 	// 回收所有领地。
+	const auto item_rebate_rate = Data::Global::as_double(Data::Global::SLOT_MAP_CELL_ITEM_REBATE_RATE);
+	const auto resource_rebate_rate = Data::Global::as_double(Data::Global::SLOT_MAP_CELL_RESOURCE_REBATE_RATE);
 	for(auto it = map_cells.begin(); it != map_cells.end(); ++it){
 		const auto &map_cell = *it;
 
@@ -1683,18 +1692,37 @@ PLAYER_SERVLET(Msg::CS_CastleRelocate, account, session, req){
 		map_cell->harvest(castle, UINT32_MAX, true);
 
 		const auto ticket_item_id = map_cell->get_ticket_item_id();
+		const auto ticket_data = Data::MapCellTicket::require(ticket_item_id);
 
 		std::vector<ItemTransactionElement> transaction;
-		transaction.emplace_back(ItemTransactionElement::OP_ADD, ticket_item_id, 1,
-			ReasonIds::ID_RELOCATE_CASTLE, new_castle_coord.x(), new_castle_coord.y(), 0);
+		std::vector<ResourceTransactionElement> resource_transaction;
+		for (auto it = ticket_data->need_items.begin(); it != ticket_data->need_items.end(); ++it) {
+			const auto rebate = static_cast<std::uint64_t>(it->second * item_rebate_rate);
+			if (rebate <= 0) {
+				continue;
+			}
+			transaction.emplace_back(ItemTransactionElement::OP_ADD, it->first, rebate,
+				ReasonIds::ID_RELOCATE_CASTLE, new_castle_coord.x(), new_castle_coord.y(), 0);
+		}
+		for (auto it = ticket_data->need_resources.begin(); it != ticket_data->need_resources.end(); ++it) {
+			const auto rebate = static_cast<std::uint64_t>(it->second * resource_rebate_rate);
+			if (rebate <= 0) {
+				continue;
+			}
+			resource_transaction.emplace_back(ResourceTransactionElement::OP_ADD, it->first, rebate,
+				ReasonIds::ID_RELOCATE_CASTLE, new_castle_coord.x(), new_castle_coord.y(), 0);
+		}
 		if(map_cell->is_acceleration_card_applied()){
 			transaction.emplace_back(ItemTransactionElement::OP_ADD, ItemIds::ID_ACCELERATION_CARD, 1,
 				ReasonIds::ID_RELOCATE_CASTLE, new_castle_coord.x(), new_castle_coord.y(), 0);
 		}
 		item_box->commit_transaction(transaction, false,
 			[&]{
-				map_cell->set_parent_object({ }, { }, { });
+				castle->commit_resource_transaction_nothrow(resource_transaction,
+				[&] {
+				map_cell->set_parent_object({}, {}, {});
 				map_cell->set_acceleration_card_applied(false);
+			   });
 			});
 	}
 

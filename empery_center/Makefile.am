@@ -55,7 +55,10 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/singletons/legion_package_pick_share_map.cpp \
 	src/singletons/league_client.cpp \
 	src/singletons/legion_task_box_map.cpp \
+	src/singletons/legion_task_reward_box_map.cpp \
+	src/singletons/legion_task_contribution_box_map.cpp \
 	src/singletons/legion_financial_map.cpp \
+	src/singletons/legion_donate_box_map.cpp \
 	src/singletons/activity_map.cpp \
 	src/singletons/map_activity_accumulate_map.cpp \
 	src/singletons/activity_http_server.cpp \
@@ -204,9 +207,8 @@ lib_libposeidon_empery_center_la_SOURCES = \
 	src/warehouse_building.cpp	\
 	src/legion_task_box.cpp \
 	src/legion_task_reward_box.cpp \
-	src/singletons/legion_task_reward_box_map.cpp \
 	src/legion_task_contribution_box.cpp \
-	src/singletons/legion_task_contribution_box_map.cpp \
+	src/legion_donate_box.cpp \
 	src/legion_log.cpp \
 	src/activity.cpp \
 	src/activity_session.cpp \

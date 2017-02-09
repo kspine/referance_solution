@@ -42,6 +42,7 @@ lib_libposeidon_empery_promotion_la_SOURCES = \
 	src/account/get_outcome_balance_history.cpp	\
 	src/account/get_both_balance_history.cpp	\
 	src/account/get_gold_coin_history.cpp	\
+	src/account/get_acceleration_card_history.cpp	\
 	src/account/get_withdrawal_requests.cpp	\
 	src/account/commit_withdrawal.cpp	\
 	src/account/rollback_withdrawal.cpp	\
@@ -84,6 +85,8 @@ lib_libposeidon_empery_promotion_la_SOURCES = \
 	src/synuser/create.cpp	\
 	src/synuser/update.cpp	\
 	src/synuser/buycards.cpp	\
+	src/synuser/set_password.cpp	\
+	src/synuser/set_deal_password.cpp	\
 	src/checked_arithmetic.cpp	\
 	src/account_http_session.cpp	\
 	src/admin_http_session.cpp	\

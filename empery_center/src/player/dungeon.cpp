@@ -421,7 +421,7 @@ PLAYER_SERVLET(Msg::CS_DungeonPlayerConfirmation, account, session, req){
 		LOG_EMPERY_CENTER_DEBUG("Dungeon server returned an error: code = ", dresult.first, ", msg = ", dresult.second);
 		return std::move(dresult);
 	}
-
+    dungeon->clear_suspension();
 	return Response();
 }
 
@@ -483,7 +483,6 @@ PLAYER_SERVLET(Msg::CS_ReconnDungeon, account, session, req){
          LOG_EMPERY_CENTER_FATAL(msg);
          session->send(msg);
          dungeon->update_observer(account_uuid,session);
-         dungeon->synchronize_with_player(session);
     }catch(std::exception &e){
 	         LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ",e.what());
     }
@@ -505,4 +504,16 @@ PLAYER_SERVLET(Msg::CS_ReconnDungeon, account, session, req){
 
 }
 
+PLAYER_SERVLET(Msg::CS_ReconnResetScope, account, session, req){
+	PROFILE_ME;
+	
+	const auto dungeon_uuid = DungeonUuid(req.dungeon_uuid);
+	const auto dungeon = DungeonMap::get(dungeon_uuid);
+	if(!dungeon){
+		return Response(Msg::ERR_NO_SUCH_DUNGEON);
+	}
+	const auto scope = dungeon->get_scope();
+	dungeon->set_scope(scope);
+	return Response();
+}
 }

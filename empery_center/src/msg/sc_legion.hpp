@@ -20,7 +20,9 @@ namespace Msg {
 	FIELD_STRING         (legion_money)	\
 	FIELD_STRING         (legion_titleid)	\
 	FIELD_STRING         (legion_donate)	\
-	FIELD_STRING         (legion_member_count)
+	FIELD_STRING         (legion_member_count) \
+	FIELD_STRING         (bautojoin) \
+	FIELD_STRING         (language) 
 #include <poseidon/cbpp/message_generator.hpp>
 
 #define MESSAGE_NAME    SC_LegionMembers
@@ -172,6 +174,21 @@ namespace Msg {
 #define MESSAGE_ID      1665
 #define MESSAGE_FIELDS
 #include <poseidon/cbpp/message_generator.hpp>
+
+#define MESSAGE_NAME    SC_LegionDonates
+#define MESSAGE_ID      1666
+#define MESSAGE_FIELDS  \
+	FIELD_STRING        (legion_uuid)	\
+	FIELD_ARRAY         (donates,	\
+		FIELD_STRING        (account_uuid)	\
+		FIELD_STRING        (account_nick)	\
+		FIELD_VUINT         (day_donate)	\
+		FIELD_VUINT         (week_donate)	\
+		FIELD_VUINT         (total_donate) \
+	)
+
+#include <poseidon/cbpp/message_generator.hpp>
+
 }
 
 }
