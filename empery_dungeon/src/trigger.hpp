@@ -50,6 +50,12 @@ public:
 		A_DEFENSE_MATRIX         = 24,//防御矩阵
 		A_SET_FOOT_ANNIMATION    = 25,//野怪脚底动画
 		A_PLAY_SOUND             = 26,//播放声音
+		A_CREATE_BATTALION       = 27,//刷部队
+		A_TARGET_MOVE            = 28,//向指定目标移动
+		A_CONTROL_BUFF           = 29,//控制buff,根据buffId不同，控制待机，血条显示，免伤
+		A_TARGET_ATTACK          = 30,//攻击或者解除攻击
+		A_DISABLE_OPERATE        = 31,//不可操作/解除不可操作
+		A_HIDE_UI                = 32,//隐藏UI/解除隐藏
 	};
 
 	Type                     type;

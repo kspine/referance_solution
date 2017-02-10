@@ -31,7 +31,6 @@
 #include "../singletons/task_box_map.hpp"
 #include "../task_type_ids.hpp"
 #include "../account_attribute_ids.hpp"
-
 namespace EmperyCenter {
 
 PLAYER_SERVLET(Msg::CS_DungeonGetAll, account, session, /* req */){
@@ -90,7 +89,7 @@ PLAYER_SERVLET(Msg::CS_DungeonCreate, account, session, req){
 	if(req.battalions.size() > start_points.size()){
 		return Response(Msg::ERR_DUNGEON_TOO_MANY_BATTALIONS) <<start_points.size();
 	}
-	std::vector<boost::shared_ptr<MapObject>> battalions;
+	std::vector<std::pair<boost::shared_ptr<MapObject>,bool>> battalions;
 	battalions.reserve(start_points.size());
 	for(auto it = req.battalions.begin(); it != req.battalions.end(); ++it){
 		const auto map_object_uuid = MapObjectUuid(it->map_object_uuid);
@@ -164,7 +163,7 @@ PLAYER_SERVLET(Msg::CS_DungeonCreate, account, session, req){
 			return Response(Msg::ERR_BATTALION_TYPE_FORBIDDEN) <<map_object_uuid;
 		}
 
-		battalions.emplace_back(std::move(map_object));
+		battalions.emplace_back(std::make_pair(std::move(map_object),false));
 	}
 
 	const auto &entry_cost = dungeon_data->entry_cost;
@@ -185,6 +184,8 @@ PLAYER_SERVLET(Msg::CS_DungeonCreate, account, session, req){
 		[&]{
 			const auto dungeon = boost::make_shared<Dungeon>(dungeon_uuid, dungeon_type_id, server, account_uuid,utc_now, expiry_time,info.finish_count);
 			dungeon->insert_observer(account_uuid, session);
+			dungeon->set_dungeon_battalions(std::move(battalions));
+			/*
 			for(std::size_t i = 0; i < battalions.size(); ++i){
 				const auto &map_object = battalions.at(i);
 				const auto map_object_uuid = map_object->get_map_object_uuid();
@@ -201,13 +202,13 @@ PLAYER_SERVLET(Msg::CS_DungeonCreate, account, session, req){
 				dungeon_object->recalculate_attributes(false);
 				dungeon->insert_object(std::move(dungeon_object));
 			}
+			*/
 			DungeonMap::insert(std::move(dungeon));
 
 			info.entry_count += 1;
 			dungeon_box->set(std::move(info));
-		
-			task_box->check(TaskBox::CAT_NULL,TaskTypeIds::ID_ENTER_DUNGEON,dungeon_type_id.get(), 1,TaskBox::TCC_PRIMARY, 0, 0);
-			
+			task_box->check(TaskBox::CAT_NULL,TaskTypeIds::ID_ENTER_DUNGEON,dungeon_type_id.get(), 1,
+			TaskBox::TCC_PRIMARY, 0, 0);
 			auto  event = boost::make_shared<Events::DungeonCreated>(
 					account_uuid, dungeon_type_id);
 			Poseidon::async_raise_event(event);
@@ -231,22 +232,20 @@ PLAYER_SERVLET(Msg::CS_DungeonQuit, account, session, req){
 	if(observer_session != session){
 		return Response(Msg::ERR_NOT_IN_DUNGEON) <<dungeon_uuid;
 	}
-
 	const auto dungeon_type_id = dungeon->get_dungeon_type_id();
 	const auto dungeon_data = Data::Dungeon::get(dungeon_type_id);
 	if(!dungeon_data){
-			return Response(Msg::ERR_NO_SUCH_DUNGEON_ID) <<dungeon_type_id;
+		return Response(Msg::ERR_NO_SUCH_DUNGEON_ID) <<dungeon_type_id;
 	}
 	const auto &entry_cost = dungeon_data->entry_cost;
 	std::vector<ItemTransactionElement> transaction;
 	transaction.reserve(entry_cost.size());
 	for(auto it = entry_cost.begin(); it != entry_cost.end(); ++it){
 		transaction.emplace_back(ItemTransactionElement::OP_ADD, it->first, it->second,
-		          ReasonIds::ID_DUNGEON_FAIL, dungeon_type_id.get(), 0, 0);
+			ReasonIds::ID_DUNGEON_FAIL, dungeon_type_id.get(), 0, 0);
 	}
 	const auto item_box = ItemBoxMap::require(account_uuid);
 	item_box->commit_transaction(transaction, false);
-
 	const auto utc_now = Poseidon::get_utc_time();
 	try {
 		Msg::SC_DungeonFailed msg;
@@ -281,7 +280,6 @@ PLAYER_SERVLET(Msg::CS_DungeonSetWaypoints, account, session, req){
 	}
 	dungeon->increase_set_way_point_count();
 	LOG_EMPERY_CENTER_ERROR("set_way_point_count = ",dungeon->get_set_wap_point_count());
-
 	const auto server = dungeon->get_server();
 	if(!server){
 		return Response(Msg::ERR_DUNGEON_SERVER_CONNECTION_LOST);
@@ -412,7 +410,7 @@ PLAYER_SERVLET(Msg::CS_DungeonPlayerConfirmation, account, session, req){
 	if(!server){
 		return Response(Msg::ERR_DUNGEON_SERVER_CONNECTION_LOST);
 	}
-
+	
 	Msg::SD_DungeonPlayerConfirmation dreq;
 	dreq.dungeon_uuid = dungeon_uuid.str();
 	dreq.context      = std::move(req.context);
@@ -421,7 +419,7 @@ PLAYER_SERVLET(Msg::CS_DungeonPlayerConfirmation, account, session, req){
 		LOG_EMPERY_CENTER_DEBUG("Dungeon server returned an error: code = ", dresult.first, ", msg = ", dresult.second);
 		return std::move(dresult);
 	}
-    dungeon->clear_suspension();
+	dungeon->clear_suspension();
 	return Response();
 }
 
@@ -462,7 +460,7 @@ PLAYER_SERVLET(Msg::CS_ReconnDungeon, account, session, req){
 	const auto dungeon_uuid = DungeonUuid(account->get_attribute(AccountAttributeIds::ID_OFFLINE_DUNGEON));
 	boost::container::flat_map<AccountAttributeId, std::string> modifiers;
 	modifiers.reserve(1);
-    modifiers[AccountAttributeIds::ID_OFFLINE_DUNGEON] = "";
+	modifiers[AccountAttributeIds::ID_OFFLINE_DUNGEON] = "";
 	account->set_attributes(std::move(modifiers));
 	const auto dungeon = DungeonMap::get(dungeon_uuid);
 	if(!dungeon){
@@ -474,34 +472,20 @@ PLAYER_SERVLET(Msg::CS_ReconnDungeon, account, session, req){
 	if(observer_session == session){
 		LOG_EMPERY_CENTER_WARNING("not reconnect ????");
 	}
-         
- if(observer_session != session){	
-	try{
-         Msg::SC_DungeonOffline msg;
-         msg.dungeon_uuid = dungeon_uuid.str();
-         msg.dungeon_type_id = dungeon->get_dungeon_type_id().get();
-         LOG_EMPERY_CENTER_FATAL(msg);
-         session->send(msg);
-         dungeon->update_observer(account_uuid,session);
-    }catch(std::exception &e){
-	         LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ",e.what());
-    }
-
-    try{
-         const auto server = dungeon->get_server();
-         if(!server){
-             return Response(Msg::ERR_DUNGEON_SERVER_CONNECTION_LOST);
-         }
-         Msg::SD_DungeonReconnectStart msg;
-         msg.dungeon_uuid    = dungeon_uuid.str();
-         server->send(msg);
-    }catch(std::exception &e){
-             LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ",e.what());
-    }
-    return Response();       
-  }
-  return Response(Msg::ERR_DUNGEON_OFFLINE_HAVE_FAILED) << dungeon->get_dungeon_type_id();
-
+	if(observer_session != session){
+		try{
+			Msg::SC_DungeonOffline msg;
+			msg.dungeon_uuid = dungeon_uuid.str();
+			msg.dungeon_type_id = dungeon->get_dungeon_type_id().get();
+			LOG_EMPERY_CENTER_FATAL(msg);
+			session->send(msg);
+			dungeon->update_observer(account_uuid,session);
+		}catch(std::exception &e){
+			LOG_EMPERY_CENTER_WARNING("std::exception thrown: what = ",e.what());
+		}
+		return Response();
+	}
+	return Response(Msg::ERR_DUNGEON_OFFLINE_HAVE_FAILED) << dungeon->get_dungeon_type_id();
 }
 
 PLAYER_SERVLET(Msg::CS_ReconnResetScope, account, session, req){
@@ -516,4 +500,7 @@ PLAYER_SERVLET(Msg::CS_ReconnResetScope, account, session, req){
 	dungeon->set_scope(scope);
 	return Response();
 }
+
+
+
 }

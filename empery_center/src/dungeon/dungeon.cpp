@@ -45,7 +45,6 @@
 #include "../account_attribute_ids.hpp"
 
 
-
 namespace EmperyCenter {
 
 namespace {
@@ -171,8 +170,6 @@ DUNGEON_SERVLET(Msg::DS_DungeonObjectAttackAction, dungeon, server, req){
 	} catch(std::exception &e){
 		LOG_EMPERY_CENTER_ERROR("std::exception thrown: what = ", e.what());
 	}
-
-
 
 	const auto shadow_attacked_map_object_uuid = MapObjectUuid(attacked_object_uuid.get());
 	const auto shadow_attacked_map_object = WorldMap::get_map_object(shadow_attacked_map_object_uuid);
@@ -355,9 +352,7 @@ _wounded_done:
 							}
 						}
 					}
-
 				}
-
 				dungeon->add_monster_reward(items_basic);
 				const auto session = PlayerSessionMap::get(attacking_account_uuid);
 				if(session){
@@ -695,7 +690,6 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
     task_box->check_task_dungeon_clearance(boost::lexical_cast<uint64_t>(dungeon_type_id),info.finish_count);
 
 	dungeon->remove_observer(account_uuid, Dungeon::Q_PLAYER_WINS, "");
-
 	const auto account = AccountMap::require(account_uuid);
 	const auto offline_dungeon_uuid = DungeonUuid(account->get_attribute(AccountAttributeIds::ID_OFFLINE_DUNGEON));
 	if(offline_dungeon_uuid){
@@ -704,7 +698,6 @@ DUNGEON_SERVLET(Msg::DS_DungeonPlayerWins, dungeon, server, req){
         modifiers[AccountAttributeIds::ID_OFFLINE_DUNGEON] = "";
 		account->set_attributes(std::move(modifiers));
 	}
-
 	const auto utc_now = Poseidon::get_utc_time();
 	LOG_EMPERY_CENTER_FATAL(req);
 	auto event = boost::make_shared<Events::DungeonFinish>(account_uuid,dungeon->get_dungeon_type_id(),dungeon->get_create_time(),utc_now,true);
@@ -815,7 +808,6 @@ DUNGEON_SERVLET(Msg::DS_DungeonShowPicture, dungeon, server, req){
 	msg.x                 = req.x;
 	msg.y                 = req.y;
 	dungeon->broadcast_to_observers(msg);
-	
 	auto new_dungeon_picture = boost::make_shared<Dungeon::DungeonPicture>();
 	if(new_dungeon_picture){
 		new_dungeon_picture->picture_url = req.picture_url;
@@ -828,7 +820,6 @@ DUNGEON_SERVLET(Msg::DS_DungeonShowPicture, dungeon, server, req){
 		new_dungeon_picture->y           = req.y;
 		dungeon->insert_dungeon_picture(req.picture_id,new_dungeon_picture);
 	}
-
 	return Response();
 }
 
@@ -840,7 +831,6 @@ DUNGEON_SERVLET(Msg::DS_DungeonRemovePicture, dungeon, server, req){
 	msg.time              = req.time;
 	dungeon->broadcast_to_observers(msg);
 	dungeon->remove_dungeon_picture(req.picture_id);
-
 	return Response();
 }
 
@@ -1075,12 +1065,92 @@ DUNGEON_SERVLET(Msg::DS_DungeonObjectClearBuff, dungeon, server, req){
 	dungeon_object->clear_buff(BuffId(dungeon_buff_type_id.get()));
 	return Response();
 }
+
 DUNGEON_SERVLET(Msg::DS_DungeonPlaySound, dungeon, server, req){
 	Msg::SC_DungeonPlaySound msg;
 	msg.dungeon_uuid      = dungeon->get_dungeon_uuid().str();
 	msg.sound_id          = req.sound_id;
 	dungeon->broadcast_to_observers(msg);
 
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonCreateBattalion, dungeon, server, req){
+	PROFILE_ME;
+	auto &battalions = dungeon->get_dungeon_battalions();
+	auto tag = boost::lexical_cast<std::uint64_t>(req.tag);
+	auto index = tag%1000;
+	if(index == 0){
+		//出生点走副本配置,将未刷新的全部刷新
+		const auto dungeon_data = Data::Dungeon::get(dungeon->get_dungeon_type_id());
+		if(!dungeon_data){
+			return Response(Msg::ERR_NO_SUCH_DUNGEON_ID) <<dungeon->get_dungeon_type_id();
+		}
+		const auto &start_points = dungeon_data->start_points;
+		if(battalions.size() > start_points.size()){
+			return Response(Msg::ERR_DUNGEON_TOO_MANY_BATTALIONS) <<start_points.size();
+		}
+		for(std::size_t i = 0; i < battalions.size(); ++i){
+			const auto &map_object = battalions.at(i).first;
+			const auto &is_create = battalions.at(i).second;
+			if(is_create){
+				LOG_EMPERY_CENTER_WARNING("dungeon index battalions have already created");
+				continue;
+			}
+			const auto map_object_uuid = map_object->get_map_object_uuid();
+			const auto map_object_type_id = map_object->get_map_object_type_id();
+
+			const auto &start_point = start_points.at(i);
+			const auto start_coord = Coord(start_point.first, start_point.second);
+			LOG_EMPERY_CENTER_DEBUG("@@ New dungeon object: dungeon_uuid = ", dungeon->get_dungeon_uuid(),
+				", map_object_uuid = ", map_object_uuid, ", start_coord = ", start_coord);
+
+			auto dungeon_object = boost::make_shared<DungeonObject>(dungeon->get_dungeon_uuid(), DungeonObjectUuid(map_object_uuid.get()),
+				map_object_type_id, dungeon->get_founder_uuid(), std::string(), start_coord);
+			dungeon_object->pump_status();
+			dungeon_object->recalculate_attributes(false);
+			dungeon->insert_object(std::move(dungeon_object));
+			battalions.at(i).second = true;
+		}	
+	}else{
+	   if(index > battalions.size()){
+		   LOG_EMPERY_CENTER_WARNING("not enough battalion to create,index = ", index, " battalions size = ",battalions.size());
+		   return Response(Msg::ERR_DUNGEON_NOT_ENOUGH_BATTALION) << index;
+	   }
+	   const auto &map_object = battalions.at(index - 1).first;
+		const auto &is_create = battalions.at(index - 1).second;
+		if(is_create){
+			LOG_EMPERY_CENTER_WARNING("dungeon index battalions have already created,index = ",index);
+			return Response(Msg::ERR_DUNGEON_BATTALION_HAVE_CREATED) << index;
+		}
+		const auto map_object_uuid = map_object->get_map_object_uuid();
+		const auto map_object_type_id = map_object->get_map_object_type_id();
+
+		const auto start_coord = Coord(req.x, req.y);
+		LOG_EMPERY_CENTER_DEBUG("@@ New dungeon object: dungeon_uuid = ", dungeon->get_dungeon_uuid(),
+			", map_object_uuid = ", map_object_uuid, ", start_coord = ", start_coord);
+
+		auto dungeon_object = boost::make_shared<DungeonObject>(dungeon->get_dungeon_uuid(), DungeonObjectUuid(map_object_uuid.get()),
+				map_object_type_id, dungeon->get_founder_uuid(), req.tag, start_coord);
+		dungeon_object->pump_status();
+		dungeon_object->recalculate_attributes(false);
+		dungeon->insert_object(std::move(dungeon_object));
+		battalions.at(index - 1).second = true;  
+	}
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonDisableOperation, dungeon, server, req){
+	PROFILE_ME;
+
+	dungeon->set_disable_operation(req.disable);
+	return Response();
+}
+
+DUNGEON_SERVLET(Msg::DS_DungeonHideUi, dungeon, server, req){
+	PROFILE_ME;
+	
+	dungeon->set_hide_ui(req.hide);
 	return Response();
 }
 

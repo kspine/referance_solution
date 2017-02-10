@@ -112,6 +112,7 @@ public:
 	void get_objects_all(std::vector<boost::shared_ptr<DungeonObject>> &ret) const;
 	void get_dungeon_objects_by_rectangle(std::vector<boost::shared_ptr<DungeonObject>> &ret,Rectangle rectangle) const;
 	void get_dungeon_objects_by_account(std::vector<boost::shared_ptr<DungeonObject>> &ret,AccountUuid account_uuid);
+	void get_dungeon_objects_exclude_account(std::vector<boost::shared_ptr<DungeonObject>> &ret,AccountUuid account_uuid);
 	void insert_object(const boost::shared_ptr<DungeonObject> &dungeon_object);
 	void update_object(const boost::shared_ptr<DungeonObject> &dungeon_object, bool throws_if_not_exists = true);
 	void replace_dungeon_object_no_synchronize(const boost::shared_ptr<DungeonObject> &dungeon_object);
@@ -119,6 +120,7 @@ public:
 	bool check_all_die(bool is_monster);
 	bool check_valid_coord_for_birth(const Coord &src_coord);
 	bool get_monster_birth_coord(const Coord &src_coord,Coord &dest_coord);
+	boost::shared_ptr<DungeonObject> get_object_by_tag(std::string tag);
 
 	//副本中触发器buff相关操作
 	boost::shared_ptr<DungeonBuff> get_dungeon_buff(const Coord coord) const;
@@ -168,8 +170,15 @@ public:
 	void on_triggers_dungeon_defense_matrix(const TriggerAction &action);
 	void on_triggers_dungeon_set_foot_annimation(const TriggerAction &action);
 	void on_triggers_dungeon_play_sound(const TriggerAction &action);
+	void on_triggers_dungeon_create_battalion(const TriggerAction &action);
+	void on_triggers_dungeon_target_move(const TriggerAction &action);
+	void on_triggers_dungeon_control_buff(const TriggerAction &action);
+	void on_triggers_dungeon_target_attack(const TriggerAction &action);
+	void on_triggers_dungeon_disable_operation(const TriggerAction &action);
+	void on_triggers_dungeon_hide_ui(const TriggerAction &action);
 	void notify_triggers_executive(const boost::shared_ptr<Trigger> &trigger);
-
+	//开启，并且次数满足的时候执行1次
+	void activate_trigger(std::uint64_t trigger_id);
 	//
 	virtual void pump_skill_damage();
 	void do_skill_damage(const boost::shared_ptr<SkillRecycleDamage>& damage);
@@ -178,7 +187,6 @@ public:
 	//副本中技能产生的buff
 	void insert_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuffTypeId buff_id,const boost::shared_ptr<DungeonBuff> dungeon_buff);
 	void remove_skill_buff(DungeonObjectUuid dungeon_object_uuid,DungeonBuffTypeId buff_id);
-	
 	//
 	virtual void pump_defense_matrix();
 };

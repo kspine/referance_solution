@@ -17,6 +17,7 @@ class DungeonObject;
 class PlayerSession;
 class DungeonSession;
 class DungeonBuff;
+class MapObject;
 
 class Dungeon : NONCOPYABLE, public virtual Poseidon::VirtualSharedFromThis {
 public:
@@ -41,7 +42,7 @@ public:
 		std::uint64_t resuscitated;
 		std::uint64_t wounded;
 	};
-	
+
 	struct DungeonPicture {
 		std::string picture_url;
 		std::uint64_t picture_id;
@@ -52,7 +53,6 @@ public:
 		std::int64_t x;
 		std::int64_t y;
 	};
-
 
 private:
 	const DungeonUuid m_dungeon_uuid;
@@ -68,6 +68,8 @@ private:
 	std::uint64_t m_set_way_point_count;
 	bool          m_offline_stop;
 	std::uint64_t m_last_offline_time;
+	bool          m_disable_operation;
+	bool          m_hide_ui;
 
 	struct Observer {
 		boost::weak_ptr<PlayerSession> session;
@@ -80,7 +82,8 @@ private:
 	std::set<Coord>                                                                 m_dungeon_block_coords;
 	Rectangle m_scope;
 	Suspension m_suspension = { };
-	boost::container::flat_map<ItemId, std::uint64_t> m_monster_reward;
+	boost::container::flat_map<ItemId, std::uint64_t>                               m_monster_reward;
+	std::vector<std::pair<boost::shared_ptr<MapObject>,bool>>                       m_dungeon_battalions;//加入的部队
 
 public:
 	Dungeon(DungeonUuid dungeon_uuid, DungeonTypeId dungeon_type_id, const boost::shared_ptr<DungeonSession> &server,
@@ -142,11 +145,11 @@ public:
 		return m_expiry_time;
 	}
 	void set_expiry_time(std::uint64_t expiry_time) noexcept;
-	
+
 	std::uint64_t get_create_time() const {
 		return m_create_time;
 	}
-	
+
 	bool is_begin() const {
 		return m_begin;
 	}
@@ -158,6 +161,17 @@ public:
 	}
 	void set_scope(Rectangle scope);
 
+	bool get_disable_operation() const {
+		return m_disable_operation;
+	}
+	void set_disable_operation(bool disable_operation);
+
+	bool get_hide_ui() const {
+		return m_hide_ui;
+	}
+
+	void set_hide_ui(bool hide_ui);
+
 	const Suspension &get_suspension() const {
 		return m_suspension;
 	}
@@ -167,8 +181,8 @@ public:
 	boost::shared_ptr<PlayerSession> get_observer(AccountUuid account_uuid) const;
 	void get_observers_all(std::vector<std::pair<AccountUuid, boost::shared_ptr<PlayerSession>>> &ret) const;
 	void insert_observer(AccountUuid account_uuid, const boost::shared_ptr<PlayerSession> &session);
-	void update_observer(AccountUuid account_uuid, const boost::shared_ptr<PlayerSession> &session);	
-        bool remove_observer(AccountUuid account_uuid, QuitReason reason, const char *param) noexcept;
+	void update_observer(AccountUuid account_uuid, const boost::shared_ptr<PlayerSession> &session);
+	bool remove_observer(AccountUuid account_uuid, QuitReason reason, const char *param) noexcept;
 	void clear_observers(QuitReason reason, const char *param) noexcept;
 
 	void get_soldier_stats(std::vector<std::pair<MapObjectTypeId, SoldierStat>> &ret, AccountUuid account_uuid) const;
@@ -188,7 +202,7 @@ public:
 	boost::shared_ptr<DungeonBuff> get_dungeon_buff(Coord coord);
 	void insert_dungeon_buff(const boost::shared_ptr<DungeonBuff> &dungeon_buff);
 	void update_dungeon_buff(const boost::shared_ptr<DungeonBuff> &dungeon_buff, bool throws_if_not_exists = true);
-	
+
 	void insert_dungeon_picture(std::uint64_t picture_id,const boost::shared_ptr<DungeonPicture> &dungeon_picture);
 	void remove_dungeon_picture(std::uint64_t picture_id);
 
@@ -205,10 +219,14 @@ public:
 	std::uint64_t get_set_wap_point_count(){
 		return m_set_way_point_count;
 	}
-	
+
 	void check_founder_offline();
 	void add_monster_reward(const boost::container::flat_map<ItemId, std::uint64_t> &items_basic);
 	void get_monster_reward(boost::container::flat_map<ItemId, std::uint64_t> &items_basic);
+	void set_dungeon_battalions(std::vector<std::pair<boost::shared_ptr<MapObject>,bool>> battalions);
+	std::vector<std::pair<boost::shared_ptr<MapObject>,bool>> & get_dungeon_battalions(){
+		return m_dungeon_battalions;
+	}
 };
 
 }
